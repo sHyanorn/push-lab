@@ -1,8 +1,9 @@
 """Run every setting of the frozen design (METHODS Sections 12.3 to 12.6).
 
 ``python -m push_lab.policy.sweep`` writes one file pair per setting to
-``results/runs/policy/`` (ignored by git), skips settings already written, then writes
-``results/policy.json`` with ``compare``. Run it alone: it uses one thread per process.
+``results/runs/policy/`` (ignored by git), skips settings finished at the same commit and
+refuses to mix commits, then writes ``results/policy.json`` with ``compare``. Run it
+alone: it uses one thread per process.
 """
 
 import argparse
@@ -286,10 +287,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     ctx = load_context(args.root)
     check_design(frozen, len(ctx.inputs.user_ids))
     del ctx
+    # Every setting already on disk must come from this commit, selected or not
+    finished_ids = {s["id"] for s in frozen["settings"] if finished(args.root, s["id"], commit)}
     todo = [
         s
         for s in frozen["settings"]
-        if (args.ids is None or s["id"] in args.ids) and not finished(args.root, s["id"], commit)
+        if (args.ids is None or s["id"] in args.ids) and s["id"] not in finished_ids
     ]
     # Settings with secondary policies take longest; start them first
     todo.sort(key=lambda s: (s["sweep"] not in SECONDARY_SWEEPS, s["id"]))

@@ -90,7 +90,7 @@ def test_compare_summarizes_the_settings(
     assert set(summary["primary_holm"]) == {
         f"{s}.{h}" for s in ("main", "annoyance_free") for h in compare.PRIMARY
     }
-    assert sum(summary["stress_verdicts"]["H1"].values()) == 1
+    assert sum(summary["stress_verdicts"]["counts"]["H1"].values()) == 1
     json.dumps(summary)
 
 

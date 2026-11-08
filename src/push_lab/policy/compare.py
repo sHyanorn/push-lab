@@ -292,7 +292,6 @@ def summarize(
         for key in PRIMARY:
             verdicts = [results[i].summary["primary"][key]["verdict"] for i in by_sweep["stress"]]
             stress[key] = {v: verdicts.count(v) for v in ("win", "loss", "neither")}
-        stress["H2"]["note"] = H2_NOTE
 
     band: dict[str, int] = {}
     for i in by_sweep.get("main", []):
@@ -326,7 +325,7 @@ def summarize(
                 else ("flip" if any(c["resolved"] for c in crossings) else "not resolved"),
             }
 
-    fit_variability = {}
+    fit_variability: dict[str, dict[str, Any]] = {}
     refits = by_sweep.get("refit", [])
     if len(refits) > 1:
         for key in PRIMARY:
@@ -337,6 +336,7 @@ def summarize(
                 "mean_bootstrap_se": _r(se),
                 "refits": len(refits),
             }
+        fit_variability["H2"]["note"] = H2_NOTE
 
     diagnostics: dict[str, dict[str, float]] = {}
     for sweep, ids in by_sweep.items():
@@ -345,13 +345,20 @@ def summarize(
             k: _r(float(np.median([infos[i]["diagnostics"][k] for i in ids]))) for k in keys
         }
 
+    samples = len(next(iter(results.values())).boot["H1"])
     return {
         "tier": "C",
         "note": "Simulator results with the sweep; settings are points drawn uniformly over "
         "the parameter box, not probabilities of the real world.",
+        "p_value_resolution": _r(2 / samples),
+        "complete": {
+            sweep: len(by_sweep.get(sweep, []))
+            == sum(s["sweep"] == sweep for s in frozen["settings"])
+            for sweep in sorted({s["sweep"] for s in frozen["settings"]})
+        },
         "primary": labeled,
         "primary_holm": {k: bool(v) for k, v in rejected.items()},
-        "stress_verdicts": stress,
+        "stress_verdicts": {"counts": stress, "H2_note": H2_NOTE},
         "band_F_over_N": {"bounds": list(BAND), "main_sweep_counts": band},
         "flips": grid_flips,
         "fit_variability": fit_variability,
@@ -382,16 +389,20 @@ def run(root: Path) -> dict[str, Any]:
     )
     results: dict[int, SettingResult] = {}
     infos: dict[int, dict[str, Any]] = {}
+    commits: set[str] = set()
     for s in frozen["settings"]:
         npz, meta = setting_paths(root, s["id"])
         if not npz.exists():
             continue
         info = json.loads(meta.read_text("utf-8"))
+        commits.add(info["commit"])
         with np.load(npz) as z:
             metrics = z["metrics"].astype(np.float64)
         results[s["id"]] = evaluate_setting(metrics, info["policies"], boot)
         infos[s["id"]] = info
-    out = summarize(results, frozen, infos)
+    if len(commits) != 1:
+        raise SystemExit(f"the settings come from {len(commits)} commits: {sorted(commits)}")
+    out = {"commit": commits.pop()} | summarize(results, frozen, infos)
     out["settings_run"] = len(results)
     out["settings_designed"] = len(frozen["settings"])
     return out
