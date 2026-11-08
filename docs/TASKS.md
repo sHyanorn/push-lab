@@ -61,10 +61,10 @@ Hour estimates are for planning; the required core is about 85 hours. If behind,
 - [x] Policy comparison with Holm correction and flip thresholds
 
 ## M6 Copy and templates (10 h)
-- [ ] METHODS.md: template families, placeholders, filters, recovering bandit
-- [ ] Generation script: Claude API with structured output, manifest of model, effort, prompt, request ids and usage; tested against a recorded response
-- [ ] Generate once and commit the outputs and manifest
-- [ ] Filters: schema, length, placeholders, near-duplicates, banned claims
+- [x] METHODS.md: template families, placeholders, filters, recovering bandit
+- [x] Generation script: Claude API with structured output, manifest of model, effort, prompt, request ids and usage; tested against a recorded response
+- [x] Generate once and commit the outputs and manifest
+- [x] Filters: schema, length, placeholders, near-duplicates, banned claims
 - [ ] Recovering bandit against uniform and greedy without the penalty, in the simulator with the copy-spread sweep
 
 ## M7 Off-policy evaluation (8 h)
