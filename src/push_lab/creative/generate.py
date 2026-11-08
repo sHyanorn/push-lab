@@ -244,7 +244,13 @@ def write(
     _write(folder / "exchanges.json", exchanges)
     _write(folder / "catalog.json", catalog)
     _write(folder / "manifest.json", manifest)
-    _write(root / paths.RESULTS / RESULTS_FILE, results)
+    out = root / paths.RESULTS / RESULTS_FILE
+    if out.exists():
+        # Rating counts come from a person, not from the responses; keep them
+        previous = json.loads(out.read_text("utf-8"))
+        if "rating" in previous:
+            results["rating"] = previous["rating"]
+    _write(out, results)
 
 
 def load_catalog(root: Path) -> dict[str, Any]:
