@@ -35,11 +35,11 @@ Hour estimates are for planning; the required core is about 85 hours. If behind,
 
 ## M3 Uplift methods (9 h)
 - [x] METHODS.md: meta-learners, causal forest, Qini and AUUC variants, Hillstrom contrast
-- [ ] Qini and AUUC implementation, cross-checked against scikit-uplift on Hillstrom
-- [ ] S-, T- and X-learners on LightGBM; EconML causal forest
-- [ ] Synthetic-effect tests: known effect recovered, zero effect gives Qini near zero
-- [ ] Hillstrom and Criteo results with bootstrap intervals (Criteo evaluated on all rows outside the training sample)
-- [ ] Budget-constrained targeting: uplift against response ranking and random
+- [x] Qini and AUUC implementation, cross-checked against scikit-uplift on Hillstrom
+- [x] S-, T- and X-learners on LightGBM; EconML causal forest
+- [x] Synthetic-effect tests: known effect recovered, zero effect gives Qini near zero
+- [x] Hillstrom and Criteo results with bootstrap intervals (Criteo evaluated on all rows outside the training sample)
+- [x] Budget-constrained targeting: uplift against response ranking and random
 
 ## M4 Push simulator (12 h)
 - [ ] METHODS.md: simulator equations, every parameter with its source and range
