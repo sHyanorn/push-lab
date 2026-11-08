@@ -53,7 +53,7 @@ This is a hypothesis to be tested, not a result. The comparisons are pre-registe
 - Delivery policies
   - Baselines: fixed daily push at a fixed slot, score threshold
   - Uplift-gated send, with the uplift model fitted on the simulator's exploration logs
-  - Global volume budget allocated by marginal gain with a single Lagrange multiplier
+  - Global volume budget allocated by marginal gain: one multiplier per day in the primary analysis, a single Lagrange multiplier as a secondary variant (D028)
   - Send time: each user's most active slot, estimated from earlier logs than the ones the simulator uses, with a swept shift and noise on top (Section 6)
   - Sensitivity sweep over the simulator parameters
 - Copy (Section 7)
@@ -194,7 +194,7 @@ Target: 4 vCPU, no GPU, 16 GB RAM. Full reproduction under one hour; CI under te
 | Meta-learners on Criteo 10% (1.4M rows), scoring 12.6M rows | a few minutes each |
 | Causal forest, 200k rows, 100 trees | about 1 minute (measured: 46 s) |
 | Simulator, 27k users x 28 days x 4 slots (3M decisions), one policy and seed | about 5 seconds, vectorized over users, scores precomputed |
-| Sensitivity sweep, 64 settings x 6 policies x 5 seeds (1,920 runs) | about 40 minutes on 4 processes; a 5k-user subsample for CI-sized runs |
+| Sensitivity sweep, 263 settings x 3 seeds on 5k users, policy models refitted per setting | about 2 to 3 hours on 4 processes (D031) |
 | Copy generation (one-off, not in CI) | 6 requests; under 1 USD at 2026-11-08 prices (D011) |
 
 Estimates are measured in M1 to M4 and recorded in DECISIONS.md.

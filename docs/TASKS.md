@@ -51,7 +51,7 @@ Hour estimates are for planning; the required core is about 85 hours. If behind,
 - [x] Invariant tests (SPEC Section 11)
 
 ## M5 Delivery policies (14 h)
-- [ ] Pre-register sweep ranges, policy pairs and decision rules in DECISIONS.md and push them before running any comparison
+- [x] Pre-register sweep ranges, policy pairs and decision rules in DECISIONS.md and push them before running any comparison
 - [ ] Baselines: fixed daily push at a fixed slot, score threshold
 - [ ] Uplift gate fitted on exploration logs (Tier C)
 - [ ] Global volume budget: marginal-gain allocation with one Lagrange multiplier, tested against brute force

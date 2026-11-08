@@ -179,3 +179,40 @@
 - Organic visit rates and the simulator profile use the timestamps of all random exposures, including the evaluation half's (597,219 of 1,178,025 rows), because random exposures mark activity for every user and leaving out half of them would make the two halves' users look unequally active. Only `user_id`, `date` and `time_ms` are read from those rows; no click or other outcome of the evaluation half enters the simulator, and the response model uses the simulator half only
 - The opt-out evidence is Zhang et al. (2023) instead of Zhao et al. (2018) named in SPEC Section 6: the full text of Zhao et al. could not be obtained
 - The policy profile starts on 04-09 (METHODS Section 1), where SPEC Section 6 and D014 say 04-08: the KuaiRand-Pure standard log has no tab-1 rows on 04-08, so nothing changes
+
+## D026 Delivery policies push from the cascade list
+- Date: 2026-11-08
+- The cascade (fine-ranker top items) is the pipeline SPEC Section 4 describes, and the exploration logs of METHODS 11.7, which M7 reuses, follow it. The response model gives 6% of its gain to the two-tower score (D024), which orders the two-tower list, so in the simulator that list is favored by construction. Its comparison with the cascade list (L1) is secondary and carries this caveat; every delivery comparison holds the list fixed, so the choice moves the shared level of $p_0$, not which policy wins
+
+## D027 What policies observe
+- Date: 2026-11-08
+- `Observation` gains the opens and daily visits of earlier days, so policies can use feedback; outcomes of the current day stay hidden. Two policy-side inputs are added to the cached simulator inputs: hourly standard-log counts per user from 04-09 to 04-21, from which the misspecified profile is rebuilt (METHODS 12.5), and a visit rate over the same period. Neither reads the simulator period
+- The environment can also return each user's open probability at every slot and the organic visit probability of every day. Only the score diagnostics read them (METHODS 12.3); no policy does
+- Templates are drawn from a stream keyed by (run seed, day, slot) that every policy shares, because `Draws` holds no template draws and template effects would otherwise be unpaired
+
+## D028 Per-day budget in the primary analysis
+- Date: 2026-11-08
+- SPEC Section 4 named a single Lagrange multiplier for the global budget. A multiplier set from the exploration logs does not hold volume at the budget once the policy's own histories differ from the logs, and with a floor at zero only the uplift gate stops sending, so the response threshold and the gate would compare unequal volumes. The primary analysis therefore sends each day to the $\lfloor b n \rfloor$ eligible users with the highest scores, which is the allocator with one multiplier per day; the single multiplier is a secondary variant reported with its realized volume and the days the cap binds. The allocator is still tested against brute force. SPEC Section 4 is updated
+
+## D029 Statistics for the policy comparisons
+- Date: 2026-11-08
+- 10,000 bootstrap resamples instead of the 1,000 of D012: at 1,000 the first Holm step rests on a handful of tail draws
+- Per setting, each of the four primary comparisons is tested at 0.0125 (Bonferroni) instead of Holm, so one comparison's verdict does not depend on another's p-value
+- The sweep average is bootstrapped over settings as well as users, so its interval covers the choice of the 64 settings and their fit and world randomness; per-setting intervals are conditional on the setting's fitted models
+- Holm runs across the eight sweep-level tests (four comparisons in the main and the annoyance-free sweep). Claim labels are in METHODS 12.7
+
+## D030 Design choices made after a synthetic replica
+- Date: 2026-11-08
+- Before this pre-registration, the independent review of the draft ran the simulator on synthetic inputs, with visit rates and the mean $p_0$ of pushed items matched to D024. It used no KuaiRand evaluation user and no real policy run. What it showed:
+  - Score quality against the true same-day uplift (Spearman): T-learner $\hat\tau$ 0.07, predicted open probability 0.57, the decomposed score $\hat p (1 - \hat\mu_0)$ 0.77. $\hat\tau$ had an SD of 0.021 against a true 0.0045, and the T-learner picked the true best slot on 26% of user-days (open probability 38%, chance 25%)
+  - In a 64-point hypercube, one push a day lowered active days below no pushes in 56% of settings; its lift fell inside the 0.07% to 0.5% band in 6%, below in 58% and above in 36%, and inside in none with $\epsilon_v = 0$. Annoyance at one push a day costs about $(1 - e^{-\epsilon_v})\bar v$ of daily active share, 2.8 points at the reference, against about 0.5 points from opens
+  - Per-setting standard errors of 0.0014 to 0.012 active days, so differences below about 0.04 days are not detectable per setting with 5,000 users
+- Design changed because of it: the decomposed gate G2 became a primary comparison (H2); S, G and G2 choose the slot by predicted open probability and differ only in which user-days they send; the per-day budget (D028); 10,000 resamples and the per-setting levels (D029); the T½ split of H3 and the comparisons against no pushes as secondary results; the band is read by interval
+- Not changed: the M4 parameter ranges. H1 and H2 compare equal volumes, so annoyance acts on both sides; the comparisons it moves most (H3, H4 and those against no pushes) are also reported on the annoyance-free sweep and the one-at-a-time grid, which gives the annoyance elasticity at which a daily push breaks even
+
+## D031 Sweep design, users and cost
+- Date: 2026-11-08
+- Users: 5,000 for evaluation (the quick sample), 10,000 of the others for fitting the policies' models, 2,000 more for score diagnostics; disjoint
+- Settings: 64 main (Latin hypercube over 13 parameters), the same 64 with $\epsilon_v = 0$, the same 64 with the opt-out stress value, 61 one-at-a-time points and 10 refits at the reference, 263 in all. Three evaluation run seeds per setting
+- Cost measured on synthetic inputs of full size, 4 processes with one thread each: fitting the three LightGBM models takes about 20 s per setting and one model predicts 28 days for 5,000 users in about 3.5 s, so the sweep takes about 2 to 3 hours (3 to 4 with five seeds). This replaces the 40-minute estimate in SPEC Section 10, which assumed no fitted policies
+- Design points and seeds are frozen in `results/policy_design.json` and pushed before any policy runs on evaluation users. A later change needs a new decision with its reason, and results before and after the change are both reported

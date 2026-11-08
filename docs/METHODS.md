@@ -363,3 +363,109 @@ with $\varepsilon = 0.3$ and $q = 1/4$, so the send probability is 0.775 at $\ha
 - The exploration policy's logged propensities match the formula, and its empirical send and template frequencies match them within sampling error.
 - Response-model features use no data on or after $c_2$ (Section 5 tests).
 - On the real data, the `date` field agrees with the UTC+8 date of `time_ms` more often than with any other offset, and hourly activity in UTC+8 is lowest between 00:00 and 06:00.
+
+---
+
+## 12. Delivery policies and their comparison
+
+**Problem.** Decide for each user and day whether to push and at which slot under a global volume budget, and test whether an uplift gate keeps more users active than sending to everyone or sending by predicted open rate. Every result here is Tier C and is reported only with the sweep (12.6).
+
+### 12.1 What a policy may read
+
+| Input | Source | Never |
+|---|---|---|
+| Policy profile, shifted and noised (12.5) | standard logs 04-09 to 04-21, hourly counts per user | `profile_sim` |
+| Policy visit rate $\hat v_u$ | share of the 13 days 04-09 to 04-21 with a tab-1 standard-log row, smoothed as in 11.1 | `visit_rate` |
+| Score of the next item | `lists["cascade"].score[u, j]`, $j$ the number of the policy's own deliveries to $u$ | `p0` |
+| Own history | sends, deliveries (send to a user not opted out), templates | |
+| Feedback | opens and daily visits of days before $d$; opted-out flags | outcomes of day $d$ or later |
+
+The environment passes feedback in `Observation` (D027). Every policy plans day $d$ at its first slot from data before $d$ and sends at most one push per user per day. Templates are uniform over $K$ and drawn from a stream keyed by (run seed, day, slot), so every policy gives a user the same template at the same (day, slot) and template effects stay paired.
+
+**Item list** (D026). All policies push from the cascade list (11.1), as the exploration logs do (11.7). The two-tower list appears only in the secondary comparison L1. The response model gives 6% of its gain to the two-tower score (D024), which orders the two-tower list, so L1 leans toward that list by construction; the delivery comparisons hold the list fixed.
+
+### 12.2 Policies
+
+| Id | Policy | Reads |
+|---|---|---|
+| N | No pushes | nothing |
+| R | Each slot independently with probability 1/4 (one a day on average, no daily cap); coins from their own stream | nothing |
+| F | One push a day at the slot with the largest population share of the setting's perturbed policy profile (21:00 at $\Delta = 0$) | population shares of the perturbed profile |
+| T | One push a day at the user's best slot under the perturbed policy profile | policy profile |
+| T½ | T's slot, for a seeded random half of users each day (secondary, separates volume from targeting in H3) | policy profile |
+| S | Response threshold: user-day score $\max_s \hat p(x_{u,d,s})$ | 12.1 |
+| G | Uplift gate, T-learner: user-day score $\hat\tau(x_{u,d,s^*})$ | 12.1 |
+| G2 | Uplift gate, decomposed: user-day score $\hat p(x_{u,d,s^*})\,(1 - \hat\mu_0(x_{u,d,s^*}))$ | 12.1 |
+
+S, G and G2 all send at $s^*_{u,d} = \arg\max_s \hat p(x_{u,d,s})$: the share of organic visits a push can add is the same at every slot of a day, so the slot is chosen by open probability and the three differ only in which user-days they send. G2 assumes an open and an organic visit are independent given $x$, which holds in the simulator by construction; it is labeled as using that assumption.
+
+### 12.3 Gate and response models
+
+**Logs.** For each setting, the exploration policy (11.7, with the setting's perturbed profile) runs over the fit users (12.6) with its own run seed. One row per (user, day, slot) at which the user had not opted out; treatment $t = 1$ if a push was delivered; outcome $y = 1$ if the user visited on day $d$. The send probability depends only on whether $s$ is the user's best slot, which is a feature, so treatment is randomized given $x$.
+
+**Features** $x_{u,d,s}$: slot; perturbed profile share at $s$; whether $s$ is the best slot; $\hat v_u$; score of the next item; day $d$; share of earlier simulated days with a visit; visit on $d - 1$; opens so far; days since the last open and since the last delivery (capped at 28); decayed own delivered volume with a fixed half-life of 7 days (the policy does not know $h_f$).
+
+**Models.** LightGBM with the base model of Section 8 (200 rounds; one thread per process):
+- $\hat\mu_1, \hat\mu_0$: same-day visit on treated and on control rows; $\hat\tau = \hat\mu_1 - \hat\mu_0$ (the T-learner of U1 to U4).
+- $\hat p$: open on treated rows.
+
+The scores target the same-day visit; return, fatigue, annoyance and opt-out act on later days and enter only through the features and the budget. This myopia is a stated limitation. Two biases act on S, G and G2 alike: the logging policy's other pushes on the same day, and histories the logs never contain (for example ten days without a delivery).
+
+**Score diagnostics** (secondary): on 2,000 users drawn from the 12,285 users outside the fit and evaluation sets, an exploration run with the setting's parameters gives the true same-day uplift of each (user, day, slot), $p_{u,d,s}\,(1 - v_{u,d})$ with $p$ from 11.2 and $v$ from 11.4; the report gives the Spearman correlation of each score with it and the share of user-days on which $s^*$ is the true best slot.
+
+### 12.4 Budget and the Lagrange multiplier
+
+**Allocator.** Units $u$ have marginal gains $g_{u,1}, g_{u,2}, \dots$ and the budget is $B$ sends. For $\lambda \ge 0$ let $x_u(\lambda) = \arg\max_x \sum_{j \le x} (g_{u,j} - \lambda)$, the largest maximizer. The allocator takes the smallest $\lambda \ge 0$ with $\sum_u x_u(\lambda) \le B$ and gives any leftover budget to units whose next gain equals $\lambda > 0$, by unit index. With non-increasing gains the allocated total gain equals the brute-force optimum (totals are compared, since ties allow several optimal sets); a test documents an instance with non-monotone gains where it falls short (D009).
+
+**Primary use: per-day budget** (D028). Units are the eligible users of day $d$ (not opted out), each with one gain, its user-day score. Each day S, G and G2 send to the $\lfloor b\,n \rfloor$ eligible users with the highest scores (ties by user index), with no floor at zero, so the three send exactly the same volume. This is the allocator with one multiplier per day. Primary budget $b = 0.5$ pushes per user per day.
+
+**Secondary use: one multiplier.** $\lambda$ is set once per setting as the $(1 - b)$ quantile of the user-day scores on the fit users' exploration logs, floored at 0, with the daily cap $\lfloor b\,n \rfloor$ on top; realized volume and the number of days the cap binds are reported. Total deliveries never exceed $28 \lfloor b\,n \rfloor$ in either use.
+
+### 12.5 Profile misspecification
+
+The policy profile is rebuilt from hourly counts $c_{u,h}$ (04-09 to 04-21, UTC+8) with two perturbations per setting:
+- *Shift* $\Delta \in [-3, 3]$ hours: $c'_{u,h} = (1 - f)\, c_{u, h - \lfloor\Delta\rfloor} + f\, c_{u, h - \lfloor\Delta\rfloor - 1}$ with $f = \Delta - \lfloor\Delta\rfloor$, hours modulo 24, then windowing and smoothing as in 11.1. Three hours moves most of a window into the next one.
+- *Noise* $\xi \in [0, 1]$: $a'_{u,s} \propto a_{u,s}\, e^{\xi z_{u,s}}$ with standard normal $z$ from the setting's seed. At $\xi = 1$ the best slot is close to random.
+
+At $\Delta = \xi = 0$ the profile equals `profile_policy`, which already differs from the simulator profile (best slots agree for 38.8% of users, D024). The exploration policy and every policy of a setting use the same perturbed profile.
+
+### 12.6 Sweep design
+
+- *Users*: policies are evaluated on the 5,000-user quick sample (11); models are fitted on exploration logs of 10,000 of the other 22,285 users, drawn with `default_rng(1)`; score diagnostics use 2,000 of the remaining 12,285, drawn with `default_rng(2)`. The three sets are disjoint.
+- *Main sweep*: 64 settings from a scrambled Latin hypercube over the 11 ranges of 11.5 and $\Delta$, $\xi$ (12.5), uniform on each range.
+- *Annoyance-free sweep*: the same 64 settings with $\epsilon_v = 0$ (D023).
+- *Stress sweep*: the same 64 settings with $\kappa_o = 0.005$, outside the evidence; reported apart and never pooled.
+- *One-at-a-time grid*: from the reference setting with $\Delta = \xi = 0$, each of the 13 parameters at 5 evenly spaced points of its range, endpoints included, others at their reference values; 61 distinct settings.
+- *Fit variability*: at the reference setting, models refitted on 10 exploration run seeds.
+- *Seeds*: per setting a world seed, an exploration run seed, a perturbation seed and evaluation run seeds $1, \dots, R$ with $R = 3$, shared by every policy of the setting so differences are paired on common random numbers. $R$ was set from timing on synthetic inputs of full size: about 2 to 3 hours on 4 processes with $R = 3$, about 3 to 4 with $R = 5$ (D031).
+- *Freezing*: every design point and seed is written to `results/policy_design.json` by the design code and committed and pushed before any policy runs on evaluation users.
+
+### 12.7 Metrics, comparisons and decision rule
+
+**Primary metric**: active days per user over the 28 days, averaged over the $R$ run seeds.
+
+**Primary comparisons** (difference in mean active days, first minus second):
+
+| Id | Comparison | Question |
+|---|---|---|
+| H1 | G against S, $b = 0.5$ | Does the T-learner gate beat the response threshold at equal volume? |
+| H2 | G2 against S, $b = 0.5$ | Does the decomposed gate beat it? |
+| H3 | G at $b = 0.5$ against T | Does the gate keep more users active with half the volume? |
+| H4 | T against F | Does the user's own best slot beat one fixed slot? |
+
+**Secondary** (intervals, no tests): G − N, T − N, F − N; H3 split as (G − T½) + (T½ − T); G2 − T; L1, T on the cascade list against T on the two-tower list; S, G, G2 at $b = 1$ and with one multiplier; opens per user in week 1 and in total; active days in week 4; delivered pushes per user; share opted out by day 28; active days per delivered push; score diagnostics (12.3); fit variability, the SD of each $\Delta_h$ over the 10 refits against its bootstrap SE.
+
+**Bootstrap** (D029). 10,000 resamples of the 5,000 users (seed 0); the same resampled user sets serve every setting. Per setting $j$ and comparison $h$: $\Delta_{h,j}$ is the mean per-user difference, with its percentile interval and the two-sided p-value of the Conventions; this interval is conditional on the setting's fitted models. Sweep average $\bar\Delta_h$, the unweighted mean over the 64 settings: each resample also draws 64 settings with replacement, so its interval covers the choice of settings and, through their different seeds, model-fit and world randomness.
+
+**Decision rule.**
+1. *Per setting*: each of H1 to H4 at level 0.0125 (Bonferroni over the four, so one comparison's verdict does not depend on another's p-value). A win for the first policy if rejected with a positive difference, a loss if negative, otherwise neither. The 64 verdicts share users, draws and resamples and are correlated.
+2. *Sweep level*: Holm across the eight tests of $\bar\Delta_h$ (four comparisons in the main and in the annoyance-free sweep) at family-wise level 0.05.
+3. *Labels*, per comparison and sweep, applied in this order: *beats in most sampled settings* if $\bar\Delta_h$ is rejected positive and there are at least 48 wins of 64; otherwise *depends on the setting* if there are at least 4 wins and at least 4 losses; otherwise *better on average* if $\bar\Delta_h$ is rejected positive; mirror labels for negative; otherwise *no detectable difference*, reported with the median interval half-width. Wins, losses and neither are always reported, and losing settings are listed with their parameters. "Share of settings" means share of 64 points drawn uniformly over the parameter box, not a probability that the real world falls in any region.
+
+The stress sweep gets the same per-setting verdicts and no label. Wherever H2 is reported, the result carries the sentence that G2's assumption holds in the simulator by construction, so part of any H2 win comes from the simulator's structure.
+
+**Flip thresholds** (descriptive), from the one-at-a-time grid: for each parameter and comparison, a flip is reported only where adjacent grid points have intervals that exclude 0 with opposite signs, located by linear interpolation of the estimates, with an interval from the same bootstrap; where estimates cross 0 without that, "not resolved"; otherwise "no flip in range". The same rule applied to F − N along the $\epsilon_v$ grid gives the annoyance elasticity below which one push a day has a net gain in active days; it is reported first among the descriptive results.
+
+**Plausibility band** (11.4): for each main-sweep setting, the relative lift of F over N in mean daily active share, $(\bar a_F - \bar a_N)/\bar a_N$, classified by its interval as below 0.07%, inside 0.07% to 0.5%, above 0.5%, or straddling a bound. The band comes from changes to running notification programs, not from pushing against not pushing, so it is a loose check. Reading fixed now: if most settings lie below the band, the report states that under these ranges one push a day adds less activity than the smallest reported program change, and that conclusions which rely on push benefits are weaker for it; ranges are not changed after results are seen, and settings are never filtered by the band.
+
+**Code.** `policy/` (`profile.py`, `features.py`, `gate.py`, `budget.py`, `rules.py`, `design.py`, `sweep.py`, `compare.py`); `python -m push_lab.policy.design` writes `results/policy_design.json`; `python -m push_lab.policy.sweep` writes per-setting aggregates to `results/runs/` (ignored) and `results/policy.json`. **Tests.** Allocator against brute force on small instances with non-increasing gains, and the documented non-monotone case; deliveries never exceed the cap; S, G and G2 deliver the same volume per day; $\Delta = \xi = 0$ reproduces `profile_policy` and a 24-hour shift is the identity; a policy cannot read outcomes of the current day; two policies give a user the same template at the same (day, slot); Holm, the per-setting verdicts and the labels on hand-made inputs; the two-level bootstrap on synthetic data with a known mean; fixed seeds give identical results.
