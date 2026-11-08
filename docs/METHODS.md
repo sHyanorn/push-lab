@@ -634,12 +634,12 @@ $$
 
 The smallest propensity of one slot-and-template action, $0.075/60 = 0.00125$, does not enter, since templates cancel. The smallest probability of a user-day vector is $0.225 \times 0.075^3 \approx 0.0001$ (the three other slots without the best one); only R can choose it, with weight 123, the largest of any target.
 
-**Truth.** Each target runs online on the same 5,000 users at the same setting with 20 run seeds; its value is the mean reward per user-day, averaged over the seeds, with a t interval.
+**Truth.** Each target runs online on the same 5,000 users at the same setting; its value is the mean reward per user-day. The first run (D043) averaged 20 run seeds shared by every target. The amended run (D044) uses the exact value in the control, where days are independent and templates uniform, so a day with send vector $a$ is visited with probability $1 - (1 - v_u) \prod_{s: a_s = 1} (1 - \bar p_{u,s})$, $\bar p_{u,s}$ the open probability at slot $s$ averaged over templates; at the reference it averages 200 run seeds per target, different for every target, with a t interval. Each log's estimates are kept so that coverage can be recomputed.
 
 **Settings and seeds.**
 - *No-carryover control*: the reference with $\epsilon_f = \epsilon_v = \kappa_o = \kappa_r = \gamma = 0$, and each user's $p_0$ held at the mean of the first 28 items of the list, so neither behaviour nor the list position carries over and a day's reward depends only on that day's context and action; here every estimator but DM should be unbiased, which checks the implementation.
 - *Reference*: the reference setting (11.5) with $\Delta = \xi = 0$. Fatigue, annoyance, opt-out and return carry over across days, so a target's own history differs from the logged one; per-day OPE cannot see this, and the size of the resulting bias is what the check measures.
-- 50 log seeds per setting (run seeds 1,001 to 1,050), world seed 10,100 as in the grid of 12.6, truth run seeds 2,001 to 2,020.
+- 50 log seeds per setting (run seeds 1,001 to 1,050), world seed 10,100 as in the grid of 12.6; truth run seeds 2,001 to 2,020 in the first run, $100{,}000 + 1{,}000\,i + k$ for target $i$ and $k < 200$ in the amended run.
 
 **Validation measures**, per setting, target and estimator, over the 50 log seeds: bias $= \overline{\hat V} - V$ with a 95% interval whose variance adds that of the estimates over log seeds and that of the truth over run seeds, RMSE, and coverage, the share of seeds whose 95% bootstrap interval contains $V$, with a Wilson interval.
 
