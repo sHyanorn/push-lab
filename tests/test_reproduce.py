@@ -9,10 +9,10 @@ def test_differences_skip_timings_and_commits() -> None:
     assert list(reproduce.differences(fresh, reference)) == [".b[1]: rerun 3, committed 2"]
 
 
-def test_missing_keys_ignore_list_lengths() -> None:
-    reference = {"settings": [{"id": 0, "x": 1}, {"id": 1, "x": 2}], "label": "a"}
-    fresh = {"settings": [{"id": 0, "x": 1}]}
-    assert reproduce.missing_keys(fresh, reference) == [".label"]
+def test_missing_keys_are_top_level_and_skip_optional_ones() -> None:
+    reference = {"settings": [{"id": 0}], "label": "a", "post_hoc": {}}
+    fresh: dict[str, object] = {"settings": []}
+    assert reproduce.missing_keys(fresh, reference, {"post_hoc"}) == ["label"]
 
 
 def test_hillstrom_part_drops_criteo_and_holm() -> None:

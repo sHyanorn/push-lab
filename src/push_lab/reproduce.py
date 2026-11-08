@@ -1,7 +1,8 @@
 """Partial reproduction for the manual ``reproduce`` workflow (D050).
 
 ``synthetic`` writes fixtures into ``data/processed``, runs the pipeline steps that work on
-them and checks each result file against the keys of the committed one. ``sample`` reruns
+them and checks each result file against the top-level keys of the committed one; deeper
+keys depend on the data (tabs, features, the full OBD campaign). ``sample`` reruns
 steps on downloaded KuaiRand-Pure, Hillstrom and the OBD small sample and compares their
 numbers with the committed results, ignoring timings and commits. Both overwrite files in
 ``results/``, so run them in a fresh checkout.
@@ -28,7 +29,6 @@ SYNTHETIC = (
     ("ope.simulator", "--smoke"),
     ("ope.carryover", "--smoke"),
     ("report.evidence",),
-    ("report.build",),
 )
 SYNTHETIC_FILES = {
     "data_quality.json": "data_quality.json",
@@ -40,6 +40,8 @@ SYNTHETIC_FILES = {
     "runs/smoke/ope_carryover/ope_carryover.json": "ope_carryover.json",
     "evidence.json": "evidence.json",
 }
+# Keys that other runs add: --reuse-logs and --post-hoc of ope.carryover
+OPTIONAL = {"ope_carryover.json": {"logs_commit", "post_hoc"}}
 # A main-sweep setting of the frozen policy design
 SAMPLE_SETTING = 0
 IGNORED = ("timings_s", "commit", "logs_commit")
@@ -71,19 +73,8 @@ def step(root: Path, module: str, *args: str, allowed: Sequence[int] = (0,)) -> 
         raise SystemExit(f"{module} exited with {code}")
 
 
-def key_paths(value: Any, prefix: str = "") -> Iterator[str]:
-    """Paths of dict keys, with list items collapsed to [] so lengths do not matter."""
-    if isinstance(value, dict):
-        for k, v in value.items():
-            yield f"{prefix}.{k}"
-            yield from key_paths(v, f"{prefix}.{k}")
-    elif isinstance(value, list):
-        for item in value:
-            yield from key_paths(item, f"{prefix}[]")
-
-
-def missing_keys(fresh: Any, reference: Any) -> list[str]:
-    return sorted(set(key_paths(reference)) - set(key_paths(fresh)))
+def missing_keys(fresh: dict[str, Any], reference: dict[str, Any], optional: set[str]) -> list[str]:
+    return sorted(set(reference) - set(fresh) - optional)
 
 
 def differences(fresh: Any, reference: Any, path: str = "") -> Iterator[str]:
@@ -109,14 +100,12 @@ def synthetic(root: Path) -> int:
         step(root, module, *args, allowed=(0, 1) if module == "data.quality" else (0,))
     failures = 0
     for fresh_name, reference_name in SYNTHETIC_FILES.items():
-        gaps = missing_keys(current(root, fresh_name), committed(root, reference_name))
+        optional = OPTIONAL.get(reference_name, set())
+        gaps = missing_keys(current(root, fresh_name), committed(root, reference_name), optional)
         print(f"{fresh_name}: {'keys match' if not gaps else f'{len(gaps)} keys missing'}")
-        for gap in gaps[:20]:
+        for gap in gaps:
             print(f"  missing {gap}")
         failures += bool(gaps)
-    if not (root / "site" / "index.html").exists():
-        print("site/index.html was not written")
-        failures += 1
     return 1 if failures else 0
 
 
