@@ -407,6 +407,574 @@
    "returned": 96,
    "passed": 96,
    "kept": 60
+  },
+  {
+   "id": "OBD-small-DM",
+   "tier": "not validated",
+   "statement": "BTS click rate on OBD Men's campaign estimated by DM from random logs (small sample); on-policy value 0.00690",
+   "source": {
+    "file": "results/ope_obd.json",
+    "path": [
+     "small",
+     "estimates",
+     "DM"
+    ]
+   },
+   "status": "reported",
+   "value": 0.004462208987412252,
+   "ci_low": 0.004370402175711549,
+   "ci_high": 0.004561045284291133
+  },
+  {
+   "id": "OBD-small-IPS",
+   "tier": "B",
+   "statement": "BTS click rate on OBD Men's campaign estimated by IPS from random logs (small sample); on-policy value 0.00690",
+   "source": {
+    "file": "results/ope_obd.json",
+    "path": [
+     "small",
+     "estimates",
+     "IPS"
+    ]
+   },
+   "status": "reported",
+   "value": 0.004540859800000001,
+   "ci_low": 0.00246099174,
+   "ci_high": 0.006929985484999999
+  },
+  {
+   "id": "OBD-small-SNIPS",
+   "tier": "not validated",
+   "statement": "BTS click rate on OBD Men's campaign estimated by SNIPS from random logs (small sample); on-policy value 0.00690",
+   "source": {
+    "file": "results/ope_obd.json",
+    "path": [
+     "small",
+     "estimates",
+     "SNIPS"
+    ]
+   },
+   "status": "reported",
+   "value": 0.0046110727242601405,
+   "ci_low": 0.0024831540675621356,
+   "ci_high": 0.006888060360429144
+  },
+  {
+   "id": "OBD-small-DR",
+   "tier": "B",
+   "statement": "BTS click rate on OBD Men's campaign estimated by DR from random logs (small sample); on-policy value 0.00690",
+   "source": {
+    "file": "results/ope_obd.json",
+    "path": [
+     "small",
+     "estimates",
+     "DR"
+    ]
+   },
+   "status": "reported",
+   "value": 0.004714878761930039,
+   "ci_low": 0.0025785499415178935,
+   "ci_high": 0.0071483153695035
+  },
+  {
+   "id": "OBD-full-DM",
+   "tier": "not validated",
+   "statement": "BTS click rate on OBD Men's campaign estimated by DM from random logs (full sample); on-policy value 0.00674",
+   "source": {
+    "file": "results/ope_obd.json",
+    "path": [
+     "full",
+     "estimates",
+     "DM"
+    ]
+   },
+   "status": "reported",
+   "value": 0.005926567486004195,
+   "ci_low": 0.005908019307783906,
+   "ci_high": 0.00594529501497226
+  },
+  {
+   "id": "OBD-full-IPS",
+   "tier": "not validated",
+   "statement": "BTS click rate on OBD Men's campaign estimated by IPS from random logs (full sample); on-policy value 0.00674",
+   "source": {
+    "file": "results/ope_obd.json",
+    "path": [
+     "full",
+     "estimates",
+     "IPS"
+    ]
+   },
+   "status": "reported",
+   "value": 0.00600730650912136,
+   "ci_low": 0.0055168595979900635,
+   "ci_high": 0.006479463941415038
+  },
+  {
+   "id": "OBD-full-SNIPS",
+   "tier": "not validated",
+   "statement": "BTS click rate on OBD Men's campaign estimated by SNIPS from random logs (full sample); on-policy value 0.00674",
+   "source": {
+    "file": "results/ope_obd.json",
+    "path": [
+     "full",
+     "estimates",
+     "SNIPS"
+    ]
+   },
+   "status": "reported",
+   "value": 0.00612317726372802,
+   "ci_low": 0.0056290289189843135,
+   "ci_high": 0.006615898599104717
+  },
+  {
+   "id": "OBD-full-DR",
+   "tier": "not validated",
+   "statement": "BTS click rate on OBD Men's campaign estimated by DR from random logs (full sample); on-policy value 0.00674",
+   "source": {
+    "file": "results/ope_obd.json",
+    "path": [
+     "full",
+     "estimates",
+     "DR"
+    ]
+   },
+   "status": "reported",
+   "value": 0.006075889040908505,
+   "ci_low": 0.0055999129128126305,
+   "ci_high": 0.006547846555534314
+  },
+  {
+   "id": "OPE-control-T-DR",
+   "tier": "C",
+   "statement": "DR bias against simulator truth for target T, control setting (active-day share): validated",
+   "source": {
+    "file": "results/ope_simulator.json",
+    "path": [
+     "control",
+     "T",
+     "visit",
+     "DR"
+    ]
+   },
+   "status": "reported",
+   "value": 0.0006086660702671054,
+   "ci_low": -6.717472198311959e-05,
+   "ci_high": 0.0012845068625173305
+  },
+  {
+   "id": "OPE-control-T-IPS",
+   "tier": "C",
+   "statement": "IPS bias against simulator truth for target T, control setting (active-day share): validated",
+   "source": {
+    "file": "results/ope_simulator.json",
+    "path": [
+     "control",
+     "T",
+     "visit",
+     "IPS"
+    ]
+   },
+   "status": "reported",
+   "value": 0.0004913542794662273,
+   "ci_low": -0.0002887079641991045,
+   "ci_high": 0.0012714165231315592
+  },
+  {
+   "id": "OPE-control-T_half-DR",
+   "tier": "C",
+   "statement": "DR bias against simulator truth for target T_half, control setting (active-day share): not validated",
+   "source": {
+    "file": "results/ope_simulator.json",
+    "path": [
+     "control",
+     "T_half",
+     "visit",
+     "DR"
+    ]
+   },
+   "status": "reported",
+   "value": 0.0008967683846213825,
+   "ci_low": 0.00020019884339914388,
+   "ci_high": 0.0015933379258436212
+  },
+  {
+   "id": "OPE-control-T_half-IPS",
+   "tier": "C",
+   "statement": "IPS bias against simulator truth for target T_half, control setting (active-day share): not validated",
+   "source": {
+    "file": "results/ope_simulator.json",
+    "path": [
+     "control",
+     "T_half",
+     "visit",
+     "IPS"
+    ]
+   },
+   "status": "reported",
+   "value": 0.0010998299304759707,
+   "ci_low": 0.00024408288204297627,
+   "ci_high": 0.001955576978908965
+  },
+  {
+   "id": "OPE-control-R-DR",
+   "tier": "C",
+   "statement": "DR bias against simulator truth for target R, control setting (active-day share): validated",
+   "source": {
+    "file": "results/ope_simulator.json",
+    "path": [
+     "control",
+     "R",
+     "visit",
+     "DR"
+    ]
+   },
+   "status": "reported",
+   "value": 0.00041593000513007183,
+   "ci_low": -0.0007262876514547774,
+   "ci_high": 0.001558147661714921
+  },
+  {
+   "id": "OPE-control-R-IPS",
+   "tier": "C",
+   "statement": "IPS bias against simulator truth for target R, control setting (active-day share): validated",
+   "source": {
+    "file": "results/ope_simulator.json",
+    "path": [
+     "control",
+     "R",
+     "visit",
+     "IPS"
+    ]
+   },
+   "status": "reported",
+   "value": 0.0004120119744351891,
+   "ci_low": -0.00112591060267232,
+   "ci_high": 0.0019499345515426982
+  },
+  {
+   "id": "OPE-control-N-DR",
+   "tier": "C",
+   "statement": "DR bias against simulator truth for target N, control setting (active-day share): not validated",
+   "source": {
+    "file": "results/ope_simulator.json",
+    "path": [
+     "control",
+     "N",
+     "visit",
+     "DR"
+    ]
+   },
+   "status": "reported",
+   "value": 0.0010884421275468847,
+   "ci_low": 0.00016916780064602237,
+   "ci_high": 0.0020077164544477473
+  },
+  {
+   "id": "OPE-control-N-IPS",
+   "tier": "C",
+   "statement": "IPS bias against simulator truth for target N, control setting (active-day share): not validated",
+   "source": {
+    "file": "results/ope_simulator.json",
+    "path": [
+     "control",
+     "N",
+     "visit",
+     "IPS"
+    ]
+   },
+   "status": "reported",
+   "value": 0.0016118770100640445,
+   "ci_low": 0.00015531619422909566,
+   "ci_high": 0.0030684378258989935
+  },
+  {
+   "id": "OPE-control-F-DR",
+   "tier": "C",
+   "statement": "DR bias against simulator truth for target F, control setting (active-day share): validated",
+   "source": {
+    "file": "results/ope_simulator.json",
+    "path": [
+     "control",
+     "F",
+     "visit",
+     "DR"
+    ]
+   },
+   "status": "reported",
+   "value": 0.00014376862205944807,
+   "ci_low": -0.0017727961561036616,
+   "ci_high": 0.0020603334002225575
+  },
+  {
+   "id": "OPE-control-F-IPS",
+   "tier": "C",
+   "statement": "IPS bias against simulator truth for target F, control setting (active-day share): validated",
+   "source": {
+    "file": "results/ope_simulator.json",
+    "path": [
+     "control",
+     "F",
+     "visit",
+     "IPS"
+    ]
+   },
+   "status": "reported",
+   "value": -0.0002869956732908241,
+   "ci_low": -0.003438585859360068,
+   "ci_high": 0.00286459451277842
+  },
+  {
+   "id": "OPE-control-T2-DR",
+   "tier": "C",
+   "statement": "DR bias against simulator truth for target T2, control setting (active-day share): validated",
+   "source": {
+    "file": "results/ope_simulator.json",
+    "path": [
+     "control",
+     "T2",
+     "visit",
+     "DR"
+    ]
+   },
+   "status": "reported",
+   "value": -0.001059156066745115,
+   "ci_low": -0.0027628302863189945,
+   "ci_high": 0.0006445181528287648
+  },
+  {
+   "id": "OPE-control-T2-IPS",
+   "tier": "C",
+   "statement": "IPS bias against simulator truth for target T2, control setting (active-day share): validated",
+   "source": {
+    "file": "results/ope_simulator.json",
+    "path": [
+     "control",
+     "T2",
+     "visit",
+     "IPS"
+    ]
+   },
+   "status": "reported",
+   "value": -0.0017265091156224432,
+   "ci_low": -0.004226907212201444,
+   "ci_high": 0.0007738889809565572
+  },
+  {
+   "id": "OPE-reference-T-DR",
+   "tier": "C",
+   "statement": "DR bias against simulator truth for target T, reference setting (active-day share): not validated",
+   "source": {
+    "file": "results/ope_simulator.json",
+    "path": [
+     "reference",
+     "T",
+     "visit",
+     "DR"
+    ]
+   },
+   "status": "reported",
+   "value": 0.0006883273617172003,
+   "ci_low": 3.50877119452772e-05,
+   "ci_high": 0.0013415670114891236
+  },
+  {
+   "id": "OPE-reference-T-IPS",
+   "tier": "C",
+   "statement": "IPS bias against simulator truth for target T, reference setting (active-day share): validated",
+   "source": {
+    "file": "results/ope_simulator.json",
+    "path": [
+     "reference",
+     "T",
+     "visit",
+     "IPS"
+    ]
+   },
+   "status": "reported",
+   "value": 0.0005563933070932281,
+   "ci_low": -0.00019551232762753015,
+   "ci_high": 0.0013082989418139864
+  },
+  {
+   "id": "OPE-reference-T_half-DR",
+   "tier": "C",
+   "statement": "DR bias against simulator truth for target T_half, reference setting (active-day share): not validated",
+   "source": {
+    "file": "results/ope_simulator.json",
+    "path": [
+     "reference",
+     "T_half",
+     "visit",
+     "DR"
+    ]
+   },
+   "status": "reported",
+   "value": -0.008802655810944082,
+   "ci_low": -0.009481579879107693,
+   "ci_high": -0.008123731742780471
+  },
+  {
+   "id": "OPE-reference-T_half-IPS",
+   "tier": "C",
+   "statement": "IPS bias against simulator truth for target T_half, reference setting (active-day share): not validated",
+   "source": {
+    "file": "results/ope_simulator.json",
+    "path": [
+     "reference",
+     "T_half",
+     "visit",
+     "IPS"
+    ]
+   },
+   "status": "reported",
+   "value": -0.008600432064131969,
+   "ci_low": -0.009445442209779532,
+   "ci_high": -0.007755421918484405
+  },
+  {
+   "id": "OPE-reference-R-DR",
+   "tier": "C",
+   "statement": "DR bias against simulator truth for target R, reference setting (active-day share): validated",
+   "source": {
+    "file": "results/ope_simulator.json",
+    "path": [
+     "reference",
+     "R",
+     "visit",
+     "DR"
+    ]
+   },
+   "status": "reported",
+   "value": 0.0004441091632612082,
+   "ci_low": -0.0006140716176323182,
+   "ci_high": 0.0015022899441547346
+  },
+  {
+   "id": "OPE-reference-R-IPS",
+   "tier": "C",
+   "statement": "IPS bias against simulator truth for target R, reference setting (active-day share): validated",
+   "source": {
+    "file": "results/ope_simulator.json",
+    "path": [
+     "reference",
+     "R",
+     "visit",
+     "IPS"
+    ]
+   },
+   "status": "reported",
+   "value": 0.00046077362485930085,
+   "ci_low": -0.0010033176467639441,
+   "ci_high": 0.0019248648964825458
+  },
+  {
+   "id": "OPE-reference-N-DR",
+   "tier": "C",
+   "statement": "DR bias against simulator truth for target N, reference setting (active-day share): not validated",
+   "source": {
+    "file": "results/ope_simulator.json",
+    "path": [
+     "reference",
+     "N",
+     "visit",
+     "DR"
+    ]
+   },
+   "status": "reported",
+   "value": -0.01769006755503222,
+   "ci_low": -0.018616213898561277,
+   "ci_high": -0.01676392121150316
+  },
+  {
+   "id": "OPE-reference-N-IPS",
+   "tier": "C",
+   "statement": "IPS bias against simulator truth for target N, reference setting (active-day share): not validated",
+   "source": {
+    "file": "results/ope_simulator.json",
+    "path": [
+     "reference",
+     "N",
+     "visit",
+     "IPS"
+    ]
+   },
+   "status": "reported",
+   "value": -0.017153686006778135,
+   "ci_low": -0.018599107833015605,
+   "ci_high": -0.015708264180540665
+  },
+  {
+   "id": "OPE-reference-F-DR",
+   "tier": "C",
+   "statement": "DR bias against simulator truth for target F, reference setting (active-day share): validated",
+   "source": {
+    "file": "results/ope_simulator.json",
+    "path": [
+     "reference",
+     "F",
+     "visit",
+     "DR"
+    ]
+   },
+   "status": "reported",
+   "value": 0.0008435990020754236,
+   "ci_low": -0.0012425005023560302,
+   "ci_high": 0.0029296985065068774
+  },
+  {
+   "id": "OPE-reference-F-IPS",
+   "tier": "C",
+   "statement": "IPS bias against simulator truth for target F, reference setting (active-day share): validated",
+   "source": {
+    "file": "results/ope_simulator.json",
+    "path": [
+     "reference",
+     "F",
+     "visit",
+     "IPS"
+    ]
+   },
+   "status": "reported",
+   "value": 0.0003956723787585936,
+   "ci_low": -0.0027828275099385366,
+   "ci_high": 0.003574172267455724
+  },
+  {
+   "id": "OPE-reference-T2-DR",
+   "tier": "C",
+   "statement": "DR bias against simulator truth for target T2, reference setting (active-day share): not validated",
+   "source": {
+    "file": "results/ope_simulator.json",
+    "path": [
+     "reference",
+     "T2",
+     "visit",
+     "DR"
+    ]
+   },
+   "status": "reported",
+   "value": 0.018944765496769267,
+   "ci_low": 0.01724616964043976,
+   "ci_high": 0.020643361353098775
+  },
+  {
+   "id": "OPE-reference-T2-IPS",
+   "tier": "C",
+   "statement": "IPS bias against simulator truth for target T2, reference setting (active-day share): not validated",
+   "source": {
+    "file": "results/ope_simulator.json",
+    "path": [
+     "reference",
+     "T2",
+     "visit",
+     "IPS"
+    ]
+   },
+   "status": "reported",
+   "value": 0.018399797591820977,
+   "ci_low": 0.015962800313706664,
+   "ci_high": 0.02083679486993529
   }
  ]
 }
