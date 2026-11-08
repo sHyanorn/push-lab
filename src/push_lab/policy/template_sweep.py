@@ -1,0 +1,209 @@
+"""Run every setting of the frozen template design (METHODS 13.4 and 13.5).
+
+``python -m push_lab.policy.template_sweep`` writes one file pair per setting to
+``results/runs/templates/`` (ignored by git), skips settings finished at the same commit and
+refuses to mix commits, then writes ``results/templates.json`` with ``template_compare``.
+Run it alone: it uses one thread per process.
+"""
+
+import argparse
+import json
+import multiprocessing as mp
+import os
+import sys
+import time
+from collections.abc import Sequence
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+import numpy as np
+import numpy.typing as npt
+from scipy.stats import spearmanr
+
+from push_lab.creative import generate
+from push_lab.creative.families import FAMILIES
+from push_lab.data import paths
+from push_lab.policy import design, profile, sweep, template_design
+from push_lab.policy import templates as tp
+from push_lab.sim import env, inputs, world
+from push_lab.sim.world import DAYS, SLOT_HOURS, SLOTS, Params
+
+FloatArray = npt.NDArray[np.float64]
+IntArray = npt.NDArray[np.int64]
+
+METRICS = ("opens", "active_days", "opens_week1", "delivered", "repeats")
+RUNS = Path("runs") / "templates"
+REPEAT_DAYS = 15.0
+TOP = 10
+
+
+@dataclass(frozen=True)
+class Context:
+    inputs: inputs.Inputs
+    family: IntArray
+
+    def population(self) -> env.Population:
+        i = self.inputs
+        return env.Population(i.visit_rate, i.profile_sim, i.lists["cascade"].p0)
+
+
+def repeats(out: env.Outcome, templates: int, days: float = REPEAT_DAYS) -> FloatArray:
+    """Per user, deliveries whose template had reached the user within ``days`` before."""
+    n = out.delivered.shape[2]
+    last = np.full((n, templates), -np.inf)
+    count = np.zeros(n)
+    for d in range(DAYS):
+        for s in range(SLOTS):
+            users = np.flatnonzero(out.delivered[d, s])
+            k = out.template[d, s, users].astype(np.int64)
+            t = d + SLOT_HOURS[s] / 24
+            count[users] += t - last[users, k] <= days
+            last[users, k] = t
+    return count
+
+
+def user_metrics(out: env.Outcome, templates: int) -> FloatArray:
+    """Per user, in the order of ``METRICS``."""
+    return np.stack(
+        [
+            out.opened.sum(axis=(0, 1)),
+            out.visited.sum(axis=0),
+            out.opened[:7].sum(axis=(0, 1)),
+            out.delivered.sum(axis=(0, 1)),
+            repeats(out, templates),
+        ]
+    ).astype(np.float64)
+
+
+def score_diagnostics(scores: FloatArray, copy: FloatArray) -> dict[str, float | None]:
+    """Agreement of the learned scores with the drawn copy effects (none without a spread)."""
+    if np.ptp(copy) == 0:
+        return {"spearman": None, "top_overlap": None}
+    if np.ptp(scores) == 0:
+        # Full shrinkage: no ranking learned
+        return {"spearman": None, "top_overlap": None}
+    top_true = set(np.argsort(-copy, kind="stable")[:TOP].tolist())
+    top_learned = set(np.argsort(-scores, kind="stable")[:TOP].tolist())
+    return {
+        "spearman": float(spearmanr(scores, np.log(copy)).statistic),
+        "top_overlap": len(top_true & top_learned) / TOP,
+    }
+
+
+def run_setting(ctx: Context, s: dict[str, Any]) -> tuple[FloatArray, dict[str, Any]]:
+    """Per-user metrics [kind, metric, user] averaged over the run seeds, and info."""
+    start = time.perf_counter()
+    v = s["values"]
+    params = Params(**{k: v[k] for k in design.SIM_NAMES})
+    inp = ctx.inputs
+    prof = profile.perturbed(
+        inp.hourly_policy, v["profile_shift"], v["profile_noise"], s["perturb_seed"]
+    )
+    slot = prof.argmax(axis=1)
+    k = len(ctx.family)
+    copy = world.copy_effects(params.copy_spread, s["world_seed"], k, len(FAMILIES))
+    pop = ctx.population()
+    n = pop.users
+    total = np.zeros((len(tp.KINDS), len(METRICS), n))
+    diagnostics: dict[str, list[dict[str, float | None]]] = {kind: [] for kind in tp.LEARNED}
+    family_share = np.zeros(len(FAMILIES))
+    for r in s["eval_seeds"]:
+        run = env.draws(n, r)
+        for i, kind in enumerate(tp.KINDS):
+            policy = tp.Templated(
+                kind,
+                slot,
+                ctx.family,
+                inp.creator_clicks,
+                inp.trend_rank,
+                r,
+                copy=copy,
+                novelty=params.novelty,
+                novelty_half_life=params.novelty_half_life,
+            )
+            out = env.simulate(pop, params, policy, run, s["world_seed"], k)
+            total[i] += user_metrics(out, k)
+            if kind in tp.LEARNED:
+                diagnostics[kind].append(score_diagnostics(policy.scores, copy))
+            if kind == "U":
+                chosen = ctx.family[out.template[out.delivered]]
+                family_share += np.bincount(chosen, minlength=len(FAMILIES)) / len(chosen)
+    info: dict[str, Any] = {
+        "id": s["id"],
+        "kinds": list(tp.KINDS),
+        "score_diagnostics": diagnostics,
+        "uniform_family_share": (family_share / len(s["eval_seeds"])).round(6).tolist(),
+        "timings_s": {"setting": round(time.perf_counter() - start, 1)},
+    }
+    return total / len(s["eval_seeds"]), info
+
+
+def load_context(root: Path) -> Context:
+    inp = inputs.Inputs.load(paths.processed_dir(root, "sim") / inputs.CACHE)
+    catalog = generate.load_catalog(root)
+    family = np.array([t["family"] for t in catalog["templates"]], dtype=np.int64)
+    ids = [t["id"] for t in catalog["templates"]]
+    if ids != list(range(len(ids))) or not (family == np.arange(len(ids)) % len(FAMILIES)).all():
+        raise SystemExit("the catalog must number templates as 6j + f (D036)")
+    return Context(inp, family)
+
+
+_CONTEXT: Context | None = None
+_ROOT: Path | None = None
+_COMMIT = ""
+
+
+def _init(root: Path, commit: str) -> None:
+    global _CONTEXT, _ROOT, _COMMIT
+    _ROOT, _COMMIT = root, commit
+    _CONTEXT = load_context(root)
+
+
+def _work(s: dict[str, Any]) -> tuple[int, float]:
+    assert _CONTEXT is not None and _ROOT is not None
+    start = time.perf_counter()
+    values, info = run_setting(_CONTEXT, s)
+    sweep.write_setting(_ROOT, s["id"], values, info | {"commit": _COMMIT}, RUNS)
+    return s["id"], time.perf_counter() - start
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Run the template sweep and compare.")
+    parser.add_argument("--root", type=Path, default=Path.cwd(), help="repository root")
+    parser.add_argument("--processes", type=int, default=4)
+    parser.add_argument("--ids", type=int, nargs="*", help="only these setting ids")
+    parser.add_argument("--no-compare", action="store_true")
+    args = parser.parse_args(argv)
+    for var in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS"):
+        os.environ[var] = "1"
+    frozen = template_design.load(args.root)
+    commit = sweep.code_commit(args.root)
+    ctx = load_context(args.root)
+    current = template_design.build(args.root, len(ctx.inputs.user_ids))
+    if json.loads(json.dumps(current)) != frozen or len(ctx.family) != frozen["templates"]:
+        raise SystemExit("the design in results/ differs from the code or the catalog")
+    del ctx
+    done = {s["id"] for s in frozen["settings"] if sweep.finished(args.root, s["id"], commit, RUNS)}
+    todo = [
+        s
+        for s in frozen["settings"]
+        if (args.ids is None or s["id"] in args.ids) and s["id"] not in done
+    ]
+    print(f"{len(todo)} settings to run at {commit}", flush=True)
+    start = time.perf_counter()
+    with mp.get_context("spawn").Pool(args.processes, _init, (args.root, commit)) as pool:
+        for count, (sid, seconds) in enumerate(pool.imap_unordered(_work, todo), 1):
+            elapsed = time.perf_counter() - start
+            print(
+                f"{count}/{len(todo)} setting {sid}: {seconds:.0f} s, {elapsed:.0f} s", flush=True
+            )
+    if not args.no_compare and args.ids is None:
+        from push_lab.policy import template_compare
+
+        template_compare.main(["--root", str(args.root)])
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

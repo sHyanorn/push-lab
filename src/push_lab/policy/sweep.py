@@ -200,8 +200,8 @@ def run_setting(ctx: Context, s: dict[str, Any]) -> tuple[FloatArray, dict[str, 
     return total / len(s["eval_seeds"]), info
 
 
-def setting_paths(root: Path, setting_id: int) -> tuple[Path, Path]:
-    base = root / paths.RESULTS / RUNS / f"setting_{setting_id:03d}"
+def setting_paths(root: Path, setting_id: int, runs: Path = RUNS) -> tuple[Path, Path]:
+    base = root / paths.RESULTS / runs / f"setting_{setting_id:03d}"
     return base.with_suffix(".npz"), base.with_suffix(".json")
 
 
@@ -220,19 +220,25 @@ def _work(s: dict[str, Any]) -> tuple[int, float]:
     assert _CONTEXT is not None and _ROOT is not None
     start = time.perf_counter()
     values, info = run_setting(_CONTEXT, s)
-    npz, meta = setting_paths(_ROOT, s["id"])
+    write_setting(_ROOT, s["id"], values, info | {"commit": _COMMIT})
+    return s["id"], time.perf_counter() - start
+
+
+def write_setting(
+    root: Path, setting_id: int, values: FloatArray, info: dict[str, Any], runs: Path = RUNS
+) -> None:
+    npz, meta = setting_paths(root, setting_id, runs)
     npz.parent.mkdir(parents=True, exist_ok=True)
-    meta.write_text(json.dumps(info | {"commit": _COMMIT}, indent=1) + "\n", encoding="utf-8")
+    meta.write_text(json.dumps(info, indent=1) + "\n", encoding="utf-8")
     # The archive marks a finished setting, so it is written last and moved into place whole
     partial = npz.with_name(npz.stem + ".partial.npz")
     np.savez_compressed(partial, metrics=values.astype(np.float32))
     os.replace(partial, npz)
-    return s["id"], time.perf_counter() - start
 
 
-def finished(root: Path, setting_id: int, commit: str) -> bool:
+def finished(root: Path, setting_id: int, commit: str, runs: Path = RUNS) -> bool:
     """A setting is done when both files exist; done under another commit is an error."""
-    npz, meta = setting_paths(root, setting_id)
+    npz, meta = setting_paths(root, setting_id, runs)
     if not (npz.exists() and meta.exists()):
         return False
     ran = json.loads(meta.read_text("utf-8")).get("commit")
