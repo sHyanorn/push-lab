@@ -23,7 +23,7 @@ Each method lists the problem it solves, the formula, the source, where it lives
 | $c_1$ = 04-15 | standard logs 04-09 to 04-14 | features of the fine ranker's training rows |
 | $c_2$ = 04-22 | standard logs 04-09 to 04-21 | retrieval, coarse and fine ranking at evaluation |
 
-The window expands rather than slides: activity in the Pure logs is concentrated on 04-10 to 04-12, so a fixed 7-day window would give the two cutoffs very different amounts of data. Count features are divided by the number of days in the window so that they are on the same scale at both cutoffs.
+The window expands rather than slides: activity in the Pure logs is concentrated on 04-10 to 04-12, so a fixed 7-day window would give the two cutoffs very different amounts of data. Count features are divided by the number of days in the window so that they are on the same scale at both cutoffs. This does not remove all drift: the fine ranker learns from features built on a 6-day window ($c_1$) and is applied to features built on a 13-day window ($c_2$), so smoothed rates are based on more impressions at $c_2$ and are spread further from the window-wide mean. The evaluation reports the 5th, 25th, 50th, 75th and 95th percentiles of the main features (user and item impressions per day, user and item smoothed click rates, two-tower score) at both cutoffs as a diagnostic, without a test.
 
 **Fine-ranker labels.** Standard-log impressions from 04-15 to 04-19 train the fine ranker; 04-20 and 04-21 are its validation set for early stopping. Their features come from cutoff $c_1$.
 
@@ -140,9 +140,11 @@ All are computed on the evaluation half of the random exposures and are Tier A.
 
 - **Recall@K.** $P_u$ is the set of distinct items user $u$ clicked among their random exposures and $R_u^K$ the top $K$ retrieved:
   $$\text{Recall@}K = \frac{1}{|U|} \sum_{u \in U} \frac{|P_u \cap R_u^K|}{|P_u|}, \qquad U = \{u : |P_u| \ge 1\}.$$
-  Random-exposure items are drawn uniformly from the catalog, so $P_u$ is a uniform sample of the items $u$ would click if shown, and the ratio estimates the share of those items within the top $K$. $K \in \{50, 100, 200, 500\}$.
+  $K \in \{50, 100, 200, 500\}$. The interpretation rests on how the random exposures were collected. Gao et al. (2022, Section 3.2) describe it as: "Each time when the recommender system recommends a video list to a user, we decide whether to insert a random item with a fixed probability. If the answer is yes, then we intervene in the recommendation list by randomly selecting one video from this list and replacing it with a random item uniformly sampled from the 7,583 items." The insertion probability is not disclosed, and users with fewer than 10 random exposures were removed. Taking that description as given, the item in each random exposure is independent of the user's preferences, so $P_u$ is a uniform sample of the catalog items $u$ would click if shown and the ratio estimates the share of those items in the top $K$. Two departures would bias it: a pool that differs from the 7,583 catalog items (the Pure random log covers 7,537 of them, consistent with uniform sampling over about 1.18M exposures), and clicks that depend on the item's position in the feed, which the dataset does not record for random exposures. Both are reported as limitations; neither can be checked further with the released data.
 - **GAUC.** The ROC AUC of the score over each user's random exposures, averaged with equal weight over users who have both clicked and non-clicked impressions. The impression-weighted average is reported alongside. Computed for the click label and the long-view label.
 - **NDCG@5.** Each user's random exposures ranked by score, gain 1 for a click, ideal DCG from the best ordering; averaged over users with at least one click.
+
+**Reference.** Gao, C., Li, S., Zhang, Y., Chen, J., Li, B., Lei, W., Jiang, P., He, X. (2022). KuaiRand: An Unbiased Sequential Recommendation Dataset with Randomly Exposed Videos. *CIKM 2022*. https://arxiv.org/abs/2208.08696
 
 **Primary comparisons** (Holm correction across the two):
 
