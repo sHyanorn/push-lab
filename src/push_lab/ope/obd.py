@@ -114,7 +114,8 @@ def _categories(train: pd.DataFrame, x: pd.DataFrame) -> pd.DataFrame:
 def impressions(log: pd.DataFrame) -> IntArray:
     """Impression of each row: OBD has no impression id, so rows in time order with the same
     user features less than ``IMPRESSION_GAP_US`` apart form one. Chains can merge consecutive
-    impressions of a user, which only makes the resampling units coarser."""
+    impressions of a user, which only makes the resampling units coarser; a row of another
+    user in between splits one, which happens about 140 times in the full random logs."""
     t = pd.to_datetime(log["timestamp"], format="ISO8601").astype("int64").to_numpy() // 1000
     order = np.argsort(t, kind="stable")
     user = [c for c in log.columns if c.startswith("user_feature_")]
@@ -219,6 +220,36 @@ def validate(
     }
 
 
+def empirical_target(
+    random_log: pd.DataFrame, bts_log: pd.DataFrame, samples: int = SAMPLES, seed: int = BOOT_SEED
+) -> dict[str, Any]:
+    """Post hoc: IPS with the BTS logs' own (item, position) frequencies as the target, as a
+    ratio to the on-policy value, both resampled by impression as in ``validate``."""
+    dist = np.zeros((len(ALPHA), POSITIONS))
+    position = bts_log["position"].to_numpy(dtype=np.int64) - 1
+    np.add.at(dist, (bts_log["item_id"].to_numpy(dtype=np.int64), position), 1)
+    dist /= dist.sum(axis=0, keepdims=True)
+    item = random_log["item_id"].to_numpy(dtype=np.int64)
+    weight = dist[item, random_log["position"].to_numpy(dtype=np.int64) - 1]
+    weight = weight / random_log["propensity_score"].to_numpy()
+    clicks = random_log["click"].to_numpy(dtype=np.float64)
+    zeros = np.zeros(len(clicks))
+    data = est.Logged(clicks, weight, zeros, zeros, impressions(random_log))
+    ips = est.ESTIMATORS.index("IPS")
+    value = est.point(data)["IPS"]
+    boot = est.bootstrap(data, samples, seed)[:, ips]
+    truth, truth_boot = on_policy(bts_log, samples, seed + 1)
+    ratio = boot / truth_boot
+    return {
+        "note": "Post hoc: IPS against the BTS logs' empirical (item, position) frequencies",
+        "ratio_to_on_policy": {
+            "value": value / truth,
+            "ci_low": float(np.percentile(ratio, 2.5)),
+            "ci_high": float(np.percentile(ratio, 97.5)),
+        },
+    }
+
+
 def run(root: Path) -> dict[str, Any]:
     dist = bts_distribution()
     out: dict[str, Any] = {
@@ -243,11 +274,20 @@ def run(root: Path) -> dict[str, Any]:
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Validate the estimators on OBD.")
     parser.add_argument("--root", type=Path, default=Path.cwd(), help="repository root")
+    parser.add_argument(
+        "--post-hoc", action="store_true", help="add the empirical-target check to the results"
+    )
     args = parser.parse_args(argv)
     from push_lab.policy.sweep import code_commit
 
-    result = {"commit": code_commit(args.root)} | run(args.root)
     target = args.root / paths.RESULTS / "ope_obd.json"
+    if args.post_hoc:
+        result = json.loads(target.read_text("utf-8"))
+        folder = paths.processed_dir(args.root, "obd_full")
+        logs = obd.load(folder, "random"), obd.load(folder, "bts")
+        result["full"]["post_hoc"] = {"commit": code_commit(args.root)} | empirical_target(*logs)
+    else:
+        result = {"commit": code_commit(args.root)} | run(args.root)
     target.write_text(json.dumps(result, indent=1) + "\n", encoding="utf-8", newline="\n")
     print(f"wrote {target}")
     return 0

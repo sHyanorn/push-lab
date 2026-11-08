@@ -62,11 +62,13 @@ def test_summarize_finds_a_flip_along_annoyance() -> None:
 def test_orderings_flag_a_reversed_difference(tmp_path: Any) -> None:
     truth = {"T": 0.50, "N": 0.52, "T_half": 0.51, "T2": 0.49}
     settings = []
+    # Ids differ from list positions, and the second setting also sits on the fatigue grid
     for i, a in enumerate((0.0, 0.1)):
         settings.append(
             {
-                "values": {"annoyance": a},
-                "grid": [["annoyance", i]],
+                "id": 7 - i,
+                "values": {"annoyance": a, "fatigue_elasticity": 0.4},
+                "grid": [["annoyance", i]] + ([["fatigue_elasticity", 0]] if i else []),
                 "targets": {t: {"truth": {"value": v, "se": 0.001}} for t, v in truth.items()},
             }
         )
@@ -77,9 +79,26 @@ def test_orderings_flag_a_reversed_difference(tmp_path: Any) -> None:
                 t: {"visit": {"estimates": {"DR": {"value": v}, "IPS": {"value": v}}}}
                 for t, v in est.items()
             }
-            (tmp_path / f"{i}_{seed}.json").write_text(json.dumps(log), "utf-8")
+            (tmp_path / f"{7 - i}_{seed}.json").write_text(json.dumps(log), "utf-8")
     out = carryover.orderings({"settings": settings, "log_seeds": [1, 2, 3]}, tmp_path)
     pair = out["orderings"]["annoyance"]["N-T"]
     assert pair["reversed"]["DR"] == [False, True]
     assert pair["truth"][0]["value"] == pytest.approx(0.02)
     assert out["orderings"]["opt_out"]["values"] == []
+    assert out["orderings"]["fatigue_elasticity"]["N-T"]["reversed"]["DR"] == [True]
+
+
+def test_bias_resamples_are_paired_across_settings() -> None:
+    rng = np.random.default_rng(1)
+    e, t = rng.standard_normal(10), rng.standard_normal(100)
+    a = carryover.bias_resamples(e, t, carryover.RESAMPLE_SEED)
+    b = carryover.bias_resamples(e + 1, t, carryover.RESAMPLE_SEED)
+    # Same draws of log seeds and truth runs: the difference has no resampling noise
+    np.testing.assert_allclose(b - a, 1)
+
+
+def test_summarize_reports_a_paired_change_along_each_grid() -> None:
+    grid, logs, truths = _fake({"T2": 1.0})
+    change = carryover.summarize(grid, logs, truths)["flips"]["annoyance"]["T2.DR"]["change"]
+    assert change["ci_low"] < 0.1 < change["ci_high"]
+    assert change["ci_high"] - change["ci_low"] < 0.01

@@ -19,6 +19,7 @@ from typing import Any
 
 import numpy as np
 import numpy.typing as npt
+from scipy import stats
 
 from push_lab.data import paths
 from push_lab.ope import simulator as sim
@@ -73,7 +74,9 @@ def _work(job: tuple[str, dict[str, Any], int | str]) -> tuple[str, int, int | s
 
 
 def bias_resamples(estimates: FloatArray, truths: FloatArray, seed: int) -> FloatArray:
-    """Bias over resamples of the log seeds and of the truth runs, independently."""
+    """Bias over resamples of the log seeds and of the truth runs, independently. Every setting
+    shares the log and truth seeds, so one ``seed`` for all settings pairs their resamples, as
+    the rule of METHODS 12.7 requires."""
     rng = np.random.default_rng(seed)
     e = estimates[rng.integers(0, len(estimates), (RESAMPLES, len(estimates)))].mean(axis=1)
     t = truths[rng.integers(0, len(truths), (RESAMPLES, len(truths)))].mean(axis=1)
@@ -90,7 +93,7 @@ def summarize(
     boots: dict[tuple[int, str, str], FloatArray] = {}
     for s in grid:
         sid = s["id"]
-        per_setting[sid] = {"values": s["values"], "grid": s["grid"], "targets": {}}
+        per_setting[sid] = {"id": sid, "values": s["values"], "grid": s["grid"], "targets": {}}
         for target in sim.TARGETS:
             values = np.array(truths[sid][target]["visit"])
             t_value, t_se = float(values.mean()), float(values.std(ddof=1) / np.sqrt(len(values)))
@@ -99,7 +102,7 @@ def summarize(
                 ests = [logs[sid][seed][target]["visit"]["estimates"][name] for seed in LOG_SEEDS]
                 entry[name] = sim.validate(ests, t_value, t_se)
                 points = np.array([e["value"] for e in ests])
-                boots[(sid, target, name)] = bias_resamples(points, values, RESAMPLE_SEED + sid)
+                boots[(sid, target, name)] = bias_resamples(points, values, RESAMPLE_SEED)
             per_setting[sid]["targets"][target] = entry
     flips: dict[str, Any] = {}
     for name in NAMES:
@@ -117,6 +120,8 @@ def summarize(
                 flips[name][f"{target}.{estimator}"] = {
                     "bias": [compare.interval(p, b[:, j]) for j, p in enumerate(pts)],
                     "crossings": crossings,
+                    # Paired change of the bias from the first to the last grid point
+                    "change": compare.interval(pts[-1] - pts[0], b[:, -1] - b[:, 0]),
                     "result": "no flip in range"
                     if not crossings
                     else ("flip" if any(c["resolved"] for c in crossings) else "not resolved"),
@@ -127,8 +132,8 @@ def summarize(
 PAIRS = (("N", "T"), ("T_half", "T"), ("T2", "T"))
 
 
-def _normal(value: float, se: float) -> dict[str, float]:
-    return {"value": value, "ci_low": value - 1.959964 * se, "ci_high": value + 1.959964 * se}
+def _interval(value: float, se: float, q: float) -> dict[str, float]:
+    return {"value": value, "ci_low": value - q * se, "ci_high": value + q * se}
 
 
 def orderings(result: dict[str, Any], folder: Path) -> dict[str, Any]:
@@ -137,16 +142,16 @@ def orderings(result: dict[str, Any], folder: Path) -> dict[str, Any]:
     settings = result["settings"]
     out: dict[str, Any] = {}
     for name in NAMES:
-        members = sorted(
-            (g[1], i) for i, s in enumerate(settings) for g in s["grid"] if g[0] == name
-        )
-        entry: dict[str, Any] = {"values": [settings[i]["values"][name] for _, i in members]}
+        members = sorted((g[1], s["id"]) for s in settings for g in s["grid"] if g[0] == name)
+        by_id = {s["id"]: s for s in settings}
+        entry: dict[str, Any] = {"values": [by_id[i]["values"][name] for _, i in members]}
         for a, b in PAIRS:
             pair: dict[str, Any] = {"truth": []} | {e: [] for e in ("DR", "IPS")}
             pair["reversed"] = {e: [] for e in ("DR", "IPS")}
             for _, i in members:
-                ta, tb = settings[i]["targets"][a]["truth"], settings[i]["targets"][b]["truth"]
-                truth = _normal(ta["value"] - tb["value"], float(np.hypot(ta["se"], tb["se"])))
+                ta, tb = by_id[i]["targets"][a]["truth"], by_id[i]["targets"][b]["truth"]
+                se = float(np.hypot(ta["se"], tb["se"]))
+                truth = _interval(ta["value"] - tb["value"], se, 1.959964)
                 pair["truth"].append(truth)
                 logs = [
                     json.loads((folder / f"{i}_{seed}.json").read_text("utf-8"))
@@ -160,7 +165,8 @@ def orderings(result: dict[str, Any], folder: Path) -> dict[str, Any]:
                             for x in logs
                         ]
                     )
-                    est = _normal(float(d.mean()), float(d.std(ddof=1) / np.sqrt(len(d))))
+                    q = float(stats.t.ppf(0.975, len(d) - 1))
+                    est = _interval(float(d.mean()), float(d.std(ddof=1) / np.sqrt(len(d))), q)
                     pair[e].append(est)
                     pair["reversed"][e].append(
                         bool(
@@ -172,22 +178,31 @@ def orderings(result: dict[str, Any], folder: Path) -> dict[str, Any]:
         out[name] = entry
     return {
         "note": "Post hoc, after the results of D048. Per-day estimate of a difference between "
-        "targets against its truth, active-day share; normal intervals over log seeds and "
-        "truth runs.",
+        "targets against its truth, active-day share; t intervals over the log seeds, normal "
+        "intervals over the truth runs.",
         "orderings": out,
     }
 
 
-def run(root: Path, processes: int) -> dict[str, Any]:
+def run(root: Path, processes: int, reuse_logs: bool = False) -> dict[str, Any]:
+    """Every log and truth job; with ``reuse_logs``, the per-log estimates saved by an earlier
+    run are read back instead of recomputed (they are deterministic)."""
     start = time.perf_counter()
     grid = settings()
-    jobs: list[tuple[str, dict[str, Any], int | str]] = [
-        ("log", s, seed) for s in grid for seed in LOG_SEEDS
-    ] + [("truth", s, t) for s in grid for t in sim.TARGETS]
-    logs: dict[int, dict[int, Any]] = {s["id"]: {} for s in grid}
-    truths: dict[int, dict[str, Any]] = {s["id"]: {} for s in grid}
     folder = root / paths.RESULTS / RUNS
     folder.mkdir(parents=True, exist_ok=True)
+    logs: dict[int, dict[int, Any]] = {s["id"]: {} for s in grid}
+    truths: dict[int, dict[str, Any]] = {s["id"]: {} for s in grid}
+    jobs: list[tuple[str, dict[str, Any], int | str]] = [
+        ("truth", s, t) for s in grid for t in sim.TARGETS
+    ]
+    if reuse_logs:
+        for s in grid:
+            for seed in LOG_SEEDS:
+                path = folder / f"{s['id']}_{seed}.json"
+                logs[s["id"]][seed] = json.loads(path.read_text("utf-8"))
+    else:
+        jobs = [("log", s, seed) for s in grid for seed in LOG_SEEDS] + jobs
     with mp.get_context("spawn").Pool(processes, _init, (root,)) as pool:
         for count, (kind, sid, key, result) in enumerate(pool.imap_unordered(_work, jobs), 1):
             if kind == "log":
@@ -195,6 +210,8 @@ def run(root: Path, processes: int) -> dict[str, Any]:
                 (folder / f"{sid}_{key}.json").write_text(json.dumps(result) + "\n", "utf-8")
             else:
                 truths[sid][str(key)] = result
+                path = folder / f"truth_{sid}_{key}.json"
+                path.write_text(json.dumps(result) + "\n", "utf-8")
             print(f"{count}/{len(jobs)} {kind} setting {sid} {key}", flush=True)
     return {
         "tier": "C",
@@ -213,18 +230,27 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--root", type=Path, default=Path.cwd(), help="repository root")
     parser.add_argument("--processes", type=int, default=4)
     parser.add_argument(
+        "--reuse-logs", action="store_true", help="read the saved per-log estimates back"
+    )
+    parser.add_argument(
         "--post-hoc", action="store_true", help="add the post hoc orderings to existing results"
     )
     args = parser.parse_args(argv)
     target = args.root / paths.RESULTS / RESULTS_FILE
+    commit = sweep.code_commit(args.root)
     if args.post_hoc:
         result = json.loads(target.read_text("utf-8"))
-        result["post_hoc"] = orderings(result, args.root / paths.RESULTS / RUNS)
+        result["post_hoc"] = {"commit": commit} | orderings(
+            result, args.root / paths.RESULTS / RUNS
+        )
     else:
         for var in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS"):
             os.environ[var] = "1"
-        commit = sweep.code_commit(args.root)
-        result = {"commit": commit} | run(args.root, args.processes)
+        result = {"commit": commit}
+        if args.reuse_logs:
+            earlier = json.loads(target.read_text("utf-8"))
+            result |= {"logs_commit": earlier.get("logs_commit", earlier["commit"])}
+        result |= run(args.root, args.processes, args.reuse_logs)
     target.write_text(json.dumps(result, indent=1) + "\n", encoding="utf-8", newline="\n")
     print(f"wrote {target}")
     return 0
