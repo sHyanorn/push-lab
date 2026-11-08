@@ -1,0 +1,302 @@
+{
+  "response_model": {
+    "training_rows": 462401,
+    "validation_rows": 118405,
+    "validation_users": 2700,
+    "best_rounds": 51,
+    "log_loss": {
+      "value": 0.42381,
+      "ci_low": 0.410555,
+      "ci_high": 0.436392,
+      "users": 2700,
+      "tier": "A"
+    },
+    "auc": {
+      "value": 0.69387,
+      "ci_low": 0.682438,
+      "ci_high": 0.70492,
+      "tier": "A"
+    },
+    "gauc": {
+      "value": 0.635158,
+      "ci_low": 0.628093,
+      "ci_high": 0.642834,
+      "users": 2291,
+      "tier": "A"
+    },
+    "click_rate": 0.171158,
+    "mean_predicted": 0.168306,
+    "reliability_by_decile": [
+      {
+        "mean_predicted": 0.05252,
+        "observed": {
+          "value": 0.036061,
+          "ci_low": 0.030096,
+          "ci_high": 0.042304,
+          "users": 511,
+          "tier": "A"
+        }
+      },
+      {
+        "mean_predicted": 0.070376,
+        "observed": {
+          "value": 0.062526,
+          "ci_low": 0.055582,
+          "ci_high": 0.069136,
+          "users": 1004,
+          "tier": "A"
+        }
+      },
+      {
+        "mean_predicted": 0.091831,
+        "observed": {
+          "value": 0.092436,
+          "ci_low": 0.084579,
+          "ci_high": 0.10057,
+          "users": 1470,
+          "tier": "A"
+        }
+      },
+      {
+        "mean_predicted": 0.113662,
+        "observed": {
+          "value": 0.123311,
+          "ci_low": 0.11063,
+          "ci_high": 0.138124,
+          "users": 1716,
+          "tier": "A"
+        }
+      },
+      {
+        "mean_predicted": 0.136756,
+        "observed": {
+          "value": 0.148818,
+          "ci_low": 0.136832,
+          "ci_high": 0.164335,
+          "users": 1845,
+          "tier": "A"
+        }
+      },
+      {
+        "mean_predicted": 0.16251,
+        "observed": {
+          "value": 0.168651,
+          "ci_low": 0.158471,
+          "ci_high": 0.178468,
+          "users": 1821,
+          "tier": "A"
+        }
+      },
+      {
+        "mean_predicted": 0.191957,
+        "observed": {
+          "value": 0.208446,
+          "ci_low": 0.19782,
+          "ci_high": 0.219731,
+          "users": 1777,
+          "tier": "A"
+        }
+      },
+      {
+        "mean_predicted": 0.225985,
+        "observed": {
+          "value": 0.224981,
+          "ci_low": 0.212472,
+          "ci_high": 0.238437,
+          "users": 1614,
+          "tier": "A"
+        }
+      },
+      {
+        "mean_predicted": 0.271591,
+        "observed": {
+          "value": 0.280405,
+          "ci_low": 0.268145,
+          "ci_high": 0.294797,
+          "users": 1456,
+          "tier": "A"
+        }
+      },
+      {
+        "mean_predicted": 0.365856,
+        "observed": {
+          "value": 0.365932,
+          "ci_low": 0.348445,
+          "ci_high": 0.383988,
+          "users": 1132,
+          "tier": "A"
+        }
+      }
+    ]
+  },
+  "inputs": {
+    "users": 27285,
+    "visit_rate": {
+      "p5": 0.271387,
+      "p25": 0.429282,
+      "p50": 0.587177,
+      "p75": 0.745072,
+      "p95": 0.902966,
+      "mean": 0.57818
+    },
+    "slot_shares": {
+      "simulator_profile": [
+        0.205249,
+        0.238768,
+        0.273259,
+        0.282723
+      ],
+      "policy_profile": [
+        0.175071,
+        0.237496,
+        0.272335,
+        0.315097
+      ]
+    },
+    "best_slot_agreement_policy_vs_simulator": {
+      "value": 0.388419,
+      "ci_low": 0.382774,
+      "ci_high": 0.394431,
+      "users": 27285,
+      "tier": "A",
+      "chance": 0.25
+    },
+    "hourly_activity_utc8": [
+      0.033057,
+      0.020379,
+      0.013387,
+      0.009215,
+      0.008319,
+      0.012207,
+      0.023302,
+      0.033016,
+      0.039399,
+      0.043189,
+      0.047307,
+      0.04923,
+      0.052695,
+      0.049749,
+      0.048676,
+      0.05029,
+      0.053645,
+      0.055465,
+      0.058112,
+      0.058769,
+      0.061897,
+      0.063813,
+      0.063756,
+      0.051126
+    ],
+    "lowest_activity_hour_utc8": 4,
+    "timing_eta": {
+      "0.02": 0.033334,
+      "0.1": 0.163659,
+      "0.25": 0.398913
+    },
+    "reference": {
+      "base_rate": 0.06,
+      "timing_lift": 0.1,
+      "copy_spread": 0.05,
+      "fatigue_elasticity": 0.4,
+      "fatigue_half_life": 7.0,
+      "novelty": 0.017,
+      "novelty_half_life": 15.0,
+      "opt_out": 0.0003,
+      "return_boost": 0.03,
+      "return_half_life": 1.0,
+      "annoyance": 0.05,
+      "reference_volume": 9.607116,
+      "fatigue_rate": 0.041636,
+      "annoyance_rate": 0.005204
+    },
+    "ranges": {
+      "base_rate": [
+        0.03,
+        0.2
+      ],
+      "timing_lift": [
+        0.0,
+        0.25
+      ],
+      "copy_spread": [
+        0.0,
+        0.2
+      ],
+      "fatigue_elasticity": [
+        0.0,
+        0.8
+      ],
+      "fatigue_half_life": [
+        3.0,
+        14.0
+      ],
+      "novelty": [
+        0.0,
+        0.05
+      ],
+      "novelty_half_life": [
+        7.0,
+        30.0
+      ],
+      "opt_out": [
+        0.0,
+        0.001
+      ],
+      "return_boost": [
+        0.0,
+        0.1
+      ],
+      "return_half_life": [
+        0.5,
+        3.0
+      ],
+      "annoyance": [
+        0.0,
+        0.1
+      ],
+      "opt_out_stress": 0.005
+    },
+    "candidate_lists": {
+      "cascade": {
+        "p0_first_item": {
+          "p5": 0.080732,
+          "p25": 0.17025,
+          "p50": 0.287313,
+          "p75": 0.376128,
+          "p95": 0.488641
+        },
+        "p0_mean_over_list": 0.276751,
+        "tier": "model-internal"
+      },
+      "two_tower": {
+        "p0_first_item": {
+          "p5": 0.083084,
+          "p25": 0.181191,
+          "p50": 0.305381,
+          "p75": 0.392567,
+          "p95": 0.497463
+        },
+        "p0_mean_over_list": 0.277445,
+        "tier": "model-internal"
+      }
+    }
+  },
+  "exploration": {
+    "epsilon": 0.3,
+    "q": 0.25,
+    "templates": 60,
+    "send_probability_best_slot": 0.775,
+    "send_probability_other_slots": 0.075,
+    "min_propensity": 0.00125
+  },
+  "quick_sample_users": 5000,
+  "timings_s": {
+    "two_tower_fit_s_20220422": 25.89034,
+    "two_tower_fit_s_20220415": 19.29757,
+    "fine_fit_s": 4.0,
+    "response_fit_s": 4.8,
+    "candidates_s": 49.3,
+    "inputs_s": 104.9,
+    "one_run_all_users_s": 0.3
+  }
+}
