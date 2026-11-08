@@ -1,6 +1,6 @@
 # Technical Decisions
 
-Entries are in the order they were made and are not rewritten; a later entry that amends or supersedes an earlier one is noted in a status line at the end of the earlier entry.
+Entries are in the order they were made. Some entries up to D048 were corrected in place soon after they were written; the history of each is in git. A later entry that amends or supersedes an earlier one is noted in a status line at the end of the earlier entry.
 
 | Id | Decision | Status |
 |---|---|---|
@@ -45,7 +45,7 @@ Entries are in the order they were made and are not rewritten; a later entry tha
 | D039 | Template comparisons, pre-registered | Results in D040 |
 | D040 | Template comparisons: cost and results | Active |
 | D041 | Off-policy evaluation: tiers and units | Superseded in part by D046 |
-| D042 | Off-policy checks, pre-registered | Amended by D044 |
+| D042 | Off-policy checks, pre-registered | Amended by D044, D046 |
 | D043 | Off-policy checks: cost and results | Superseded in part by D046, D048 |
 | D044 | Amended simulator check, pre-registered | Results in D045 |
 | D045 | Amended simulator check: results | Superseded in part by D046, D048 |
@@ -53,8 +53,9 @@ Entries are in the order they were made and are not rewritten; a later entry tha
 | D047 | Carryover sweep of the simulator check, pre-registered | Results in D048 |
 | D048 | Carryover sweep: results | Active |
 | D049 | Report and README are generated from the results | Active |
-| D050 | Scope of the reproduce workflow | Active |
+| D050 | Scope of the reproduce workflow | Amended by D052 |
 | D051 | The notebook is checked against its committed outputs | Active |
+| D052 | Reproduce workflow as built, and its first runs | Active |
 
 ## D001 Python only, static report
 - Date: 2026-11-08
@@ -90,7 +91,6 @@ Entries are in the order they were made and are not rewritten; a later entry tha
 ## D007 faiss-cpu for ANN
 - Date: 2026-11-08
 - Rationale: wheels for CPython 3.10 to 3.14, MIT. hnswlib 0.8.0 on PyPI is source-only and needs a compiler in CI. With 7.5k items exact search is cheap, so HNSW recall is measured against it; the index matters at KuaiRand-1K scale (optional)
-- See also: D018 (HNSW search breadth)
 
 ## D008 LightGBM for fine ranking, two-tower score for coarse ranking
 - Date: 2026-11-08
@@ -388,7 +388,7 @@ Entries are in the order they were made and are not rewritten; a later entry tha
 - Decision rules, estimators, targets and rewards as in METHODS 14.1 to 14.4: on OBD, an estimator is validated if its 95% interval contains the BTS click rate and its median relative error is below 0.5, on the small sample (primary) and the full campaign (secondary); in the simulator, a (setting, target, estimator) is validated if the Wilson interval of coverage over 50 log seeds contains 0.95 and the bias interval contains 0. The primary results are DR and IPS at the reference setting, reported after the no-carryover control; if DR or IPS fails the control for T, T½ or N, the simulator results count as an implementation failure. Every verdict is reported
 - Design, fixed in `ope/simulator.py` at the commit that runs it: the 5,000 evaluation users of M5, world seed 10,100, log seeds 1,001 to 1,050, truth run seeds 2,001 to 2,020, the control and reference settings, the policy profile without perturbation; 1,000 bootstrap resamples per estimate (seed equal to the log seed); BTS probabilities from $10^6$ prior draws with seed 0
 - Cost on synthetic inputs of full size: about 51 s per log on one process (two outcome models with 2-fold cross-fitting dominate), so about 22 minutes on 4 processes; 0.4 s for the six truth runs of one seed; peak memory 0.6 GB per process
-- Status: Amended by D044 (how the truth is computed); results in D043 and D045
+- Status: Amended by D044 (how the truth is computed) and D046 (OBD resampling unit and tiers); results in D043, D045 and D046
 
 ## D043 Off-policy checks: cost and results
 - Date: 2026-11-08
@@ -408,7 +408,7 @@ Entries are in the order they were made and are not rewritten; a later entry tha
 - Post hoc reading of the reference, given that diagnosis: per-day OPE does not see carryover, and its bias is 22 to 37 times its standard error for the targets whose volume differs most from the logs. It underestimates no pushes by 3.1% and overestimates two pushes a day by 3.4% at the reference setting; D046 narrows this reading
 - Two readings of the Tier B result, both kept. Registered: the small-sample IPS and DR estimates of the BTS value are the Tier B results, since they pass the rule. Stronger: on the full campaign, a check on real logs against a known answer, IPS and DR estimate the BTS click rate at 0.89 and 0.90 of its on-policy value with intervals that exclude it, a shortfall the small sample has too little power to show. They do not conflict: the registered definition names the estimate, and the second states how accurate such an estimate was found to be. The evidence matrix lists the shortfall first and each small-sample estimate under it with its outcome on both samples
 - Post hoc on OBD: the deployed BTS was not the fixed prior (its logged propensities vary from 0.0002 to 0.73 across rows of the small sample and from 0.000001 to 0.73 in the full campaign). Using the empirical (item, position) frequencies of the BTS logs as the target moves the full-campaign IPS estimate from 0.89 to 0.92 (0.84 to 0.98) of the on-policy value, with the interval still excluding 1, so the drift explains part of the underestimate and the rest stays unexplained here
-- Status: Superseded in part by D046: the OBD numbers above come from the row-level run, and the OBD tier readings are replaced. The registered simulator verdict stands, with the amended run in D045. The post hoc reading of the reference is narrowed by D046 and replaced by D048
+- Status: Superseded in part by D046: the OBD numbers above come from the row-level run, and the OBD tier readings are replaced. The registered simulator verdict stands, with the amended run in D045. The post hoc reading of the reference is superseded by the amended run in D045 and narrowed by D046 and D048
 
 ## D044 Amended simulator check, pre-registered
 - Date: 2026-11-08
@@ -446,7 +446,7 @@ Entries are in the order they were made and are not rewritten; a later entry tha
 - OBD resampling: the rows of OBD are the positions of one impression (the full random logs have 452,949 rows, about 151,000 impressions of three positions), and METHODS 14.1 names impressions as the resampling unit. The code first resampled rows and split folds by row; it now groups rows into resampling units (consecutive rows with the same user features less than a second apart; 136,474 units in the full random logs, some holding two or three impressions, which only coarsens them) for folds, bootstrap and the on-policy interval. Rerun at commit 3f26e5d: the small-sample intervals widen and SNIPS now also passes (IPS, SNIPS and DR pass, DM fails); on the full campaign no estimator passes, with IPS at 0.891 (0.810 to 0.969) and DR at 0.896 (0.816 to 0.968) of the on-policy value. The OBD numbers in D043 and D045 are those of the row-level run; `results/ope_obd.json` now holds the impression-level run and records its commit
 - Estimates whose intervals do not overlap are now flagged inconclusive (SPEC Section 5); no OBD estimate is
 - Tiers on OBD, replacing the readings of D043: the full-campaign ratios (IPS 0.891, DR 0.896 of the on-policy value) use randomized real data to measure the estimators themselves, so they are Tier A results about the estimators, not policy values. Each ratio mixes estimator error with a target mismatch: the target is BTS with its fixed production prior, and the deployed BTS was not that; post hoc, re-weighting to the BTS logs' own frequencies moves IPS to 0.92 (0.84 to 0.98; `full.post_hoc` in `results/ope_obd.json`). No estimator passed on the full campaign, so the small-sample passes are kept only as the record of a registered verdict, and the project has no Tier B result
-- Status: Superseded in part by D048: in the sweep, annoyance alone sets the direction of the bias
+- Status: Superseded in part by D048: in the sweep, annoyance alone sets the direction of the bias, and the evidence matrix reports the simulator OPE results with the sweep
 
 ## D047 Carryover sweep of the simulator check, pre-registered
 - Date: 2026-11-08
@@ -490,7 +490,15 @@ Entries are in the order they were made and are not rewritten; a later entry tha
   - `synthetic`: every pipeline step on synthetic fixtures in a temporary root, with the OPE simulator steps in a smoke mode of fewer log seeds and truth runs. It checks that each step exits cleanly, that each result file has the keys of the committed one and that the report builds; it checks no number
   - `sample`: downloads KuaiRand-Pure, Hillstrom and the OBD small sample with their checksums (no Criteo, no full OBD), reruns ranking, the simulator inputs, the Hillstrom half of the uplift evaluation and one main-sweep setting, and compares their numbers with the committed results, ignoring timings and commits. The first comparison is exact; any difference across machines is recorded in a new decision before a tolerance is set
 - `uplift.evaluate --only hillstrom` skips Criteo and reports no Holm decisions, which need all four comparisons; the OPE simulator modules gain `--smoke`. Without the flags both produce what they did before, which tests check
+- Status: Amended by D052
 
 ## D051 The notebook is checked against its committed outputs
 - Date: 2026-11-08
 - `notebooks/demo.ipynb` reads only `results/*.json`, recomputes some summary numbers from per-setting values and asserts they equal the recorded ones, and is committed with its outputs so it reads on GitHub. A test reruns it with nbclient and compares every code cell's text and SVG outputs with the committed ones, ignoring execution counts and metadata; it runs on Linux only, since line endings and paths differ on Windows
+
+## D052 Reproduce workflow as built, and its first runs
+- Date: 2026-11-08
+- Narrows D050. The synthetic mode writes fixtures into `data/processed` and results into `results/` of the checkout it runs in, so it belongs in a fresh checkout, never next to real data. It runs data quality, ranking, uplift, the simulator inputs, the OBD check, both OPE simulator checks with two log seeds (truth runs unchanged) and the evidence matrix, and checks each result file's top-level keys against the committed one; deeper keys depend on the data. The policy and template sweeps are left out: their frozen designs need 17,000 and 27,285 users, far more than the fixtures hold, and their logic runs on synthetic inputs in the test suite. The report is not built in this mode, since it needs the full OBD campaign; CI builds it from the committed results
+- The sample mode reruns ranking, the Hillstrom half of the uplift evaluation, the simulator inputs and main-sweep setting 0 of the policy sweep, and compares them with the committed results, ignoring timings and commits. It downloads KuaiRand-Pure and Hillstrom
+- No test runs the default path of the OPE modules end to end; their only change on that path is that the carryover summary sorts the log seeds it is given, which equals the registered order, and a unit test covers it
+- First runs at commit f51595f in the container of D015, sharing the cores with other jobs: sample mode in 483 s, with every compared number identical to the committed results; synthetic mode in 119 s with every key check passing. Before this, a full default rerun of the uplift evaluation on Hillstrom and Criteo reproduced `results/uplift.json` apart from timings
