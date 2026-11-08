@@ -109,6 +109,8 @@ def test_length_uses_the_longest_value() -> None:
         ("Hurry up", "Fine body text here.", PICK, "hurry"),
         ("A pick", "Don't miss this one, it is good.", PICK, "don't miss"),
         ("A free pick", "Fine body text here.", PICK, "free"),
+        ("Claim your rewards", "Fine body text here.", PICK, "reward"),
+        ("Prizes inside", "Fine body text here.", PICK, "prize"),
         ("A pick", "You won't believe this video.", PICK, "you won't believe"),
         ("We miss you", "Fine body text here.", PICK, "miss you"),
         ("A new one", "From a creator you watched {creator_videos} of.", CREATOR, "new"),

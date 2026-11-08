@@ -69,7 +69,8 @@ BANNED = URGENCY + INDUCEMENT + CLICKBAIT + GUILT
 
 
 def _phrase(words: str) -> re.Pattern[str]:
-    return re.compile(rf"(?<![a-z]){re.escape(words)}(?![a-z])", re.IGNORECASE)
+    # Whole words, plurals included ("rewards" as well as "reward")
+    return re.compile(rf"(?<![a-z]){re.escape(words)}s?(?![a-z])", re.IGNORECASE)
 
 
 _BANNED = {w: _phrase(w) for w in BANNED}
