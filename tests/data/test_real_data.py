@@ -40,7 +40,7 @@ def test_real_processed_tables_match_schemas(key: tuple[str, str]) -> None:
     assert pq.read_schema(path).remove_metadata().equals(schemas.to_arrow(fixtures.SCHEMAS[key]))
 
 
-def test_kuairand_activity_is_lowest_overnight_in_utc8() -> None:
+def test_kuairand_time_zone_is_utc8() -> None:
     from push_lab.data import kuairand
     from push_lab.sim import inputs
 
@@ -49,3 +49,5 @@ def test_kuairand_activity_is_lowest_overnight_in_utc8() -> None:
         pytest.skip("KuaiRand is not prepared")
     log = kuairand.load(processed, "log_random")
     assert int(inputs.hourly_shares(log).argmin()) < 6
+    agreement = inputs.date_agreement(log, offsets=tuple(range(-12, 15)))
+    assert max(agreement, key=lambda h: agreement[h]) == inputs.UTC_OFFSET_HOURS
