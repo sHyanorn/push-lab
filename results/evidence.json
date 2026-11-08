@@ -354,6 +354,44 @@
    "ci_high": 0.016697
   },
   {
+   "id": "OPE-flip-T_half-DR",
+   "tier": "C",
+   "statement": "Per-day DR overestimates half the push volume below this annoyance elasticity and underestimates it above (one-at-a-time grid; fatigue, opt-out, return and novelty change no direction)",
+   "source": {
+    "file": "results/ope_carryover.json",
+    "path": [
+     "flips",
+     "annoyance",
+     "T_half.DR",
+     "crossings",
+     "0"
+    ]
+   },
+   "status": "reported",
+   "value": 0.005807,
+   "ci_low": 0.001748,
+   "ci_high": 0.009238
+  },
+  {
+   "id": "OPE-flip-N-DR",
+   "tier": "C",
+   "statement": "Per-day DR overestimates no pushes below this annoyance elasticity and underestimates it above (one-at-a-time grid; fatigue, opt-out, return and novelty change no direction)",
+   "source": {
+    "file": "results/ope_carryover.json",
+    "path": [
+     "flips",
+     "annoyance",
+     "N.DR",
+     "crossings",
+     "0"
+    ]
+   },
+   "status": "reported",
+   "value": 0.007365,
+   "ci_low": 0.004326,
+   "ci_high": 0.010147
+  },
+  {
    "id": "B1",
    "tier": "C",
    "statement": "Recovering difference softmax against uniform templates (difference in opens per user over 28 days)",
@@ -541,7 +579,7 @@
      "DR"
     ]
    },
-   "status": "awaiting sweep",
+   "status": "reported",
    "value": 0.0001782652094372006,
    "ci_low": -0.000273572725210048,
    "ci_high": 0.0006301031440844491
@@ -559,7 +597,7 @@
      "IPS"
     ]
    },
-   "status": "awaiting sweep",
+   "status": "reported",
    "value": 6.095341863632253e-05,
    "ci_low": -0.0005356149736784824,
    "ci_high": 0.0006575218109511274
@@ -577,7 +615,7 @@
      "DR"
     ]
    },
-   "status": "awaiting sweep",
+   "status": "reported",
    "value": 0.00041135007876891283,
    "ci_low": -6.337655695998375e-05,
    "ci_high": 0.0008860767144978094
@@ -595,7 +633,7 @@
      "IPS"
     ]
    },
-   "status": "awaiting sweep",
+   "status": "reported",
    "value": 0.000614411624623501,
    "ci_low": -7.2945097765753e-05,
    "ci_high": 0.001301768347012755
@@ -613,7 +651,7 @@
      "DR"
     ]
    },
-   "status": "awaiting sweep",
+   "status": "reported",
    "value": -4.930114344203762e-05,
    "ci_low": -0.0010788436980415114,
    "ci_high": 0.0009802414111574362
@@ -631,7 +669,7 @@
      "IPS"
     ]
    },
-   "status": "awaiting sweep",
+   "status": "reported",
    "value": -5.3219174136920344e-05,
    "ci_low": -0.0015094137181089911,
    "ci_high": 0.0014029753698351505
@@ -649,7 +687,7 @@
      "DR"
     ]
    },
-   "status": "awaiting sweep",
+   "status": "reported",
    "value": 0.000644434948100292,
    "ci_low": -0.00014107456140520958,
    "ci_high": 0.0014299444576057936
@@ -667,7 +705,7 @@
      "IPS"
     ]
    },
-   "status": "awaiting sweep",
+   "status": "reported",
    "value": 0.0011678698306174518,
    "ci_low": -0.00020818587743012297,
    "ci_high": 0.0025439255386650265
@@ -685,7 +723,7 @@
      "DR"
     ]
    },
-   "status": "awaiting sweep",
+   "status": "reported",
    "value": -0.00034970489893348944,
    "ci_low": -0.0021967984817011614,
    "ci_high": 0.0014973886838341827
@@ -703,7 +741,7 @@
      "IPS"
     ]
    },
-   "status": "awaiting sweep",
+   "status": "reported",
    "value": -0.0007804691942837616,
    "ci_low": -0.0038903011600873926,
    "ci_high": 0.0023293627715198694
@@ -721,7 +759,7 @@
      "DR"
     ]
    },
-   "status": "awaiting sweep",
+   "status": "reported",
    "value": -0.001483998264266262,
    "ci_low": -0.003107020989439247,
    "ci_high": 0.0001390244609067229
@@ -739,7 +777,7 @@
      "IPS"
     ]
    },
-   "status": "awaiting sweep",
+   "status": "reported",
    "value": -0.00215135131314359,
    "ci_low": -0.004597509027062127,
    "ci_high": 0.00029480640077494697
@@ -757,10 +795,11 @@
      "DR"
     ]
    },
-   "status": "awaiting sweep",
+   "status": "reported",
    "value": 0.0002910773617171847,
    "ci_low": -0.00017311176954899635,
-   "ci_high": 0.0007552664929833657
+   "ci_high": 0.0007552664929833657,
+   "sweep_validated": "24 of 24 settings"
   },
   {
    "id": "OPE-reference-T-IPS",
@@ -775,10 +814,11 @@
      "IPS"
     ]
    },
-   "status": "awaiting sweep",
+   "status": "reported",
    "value": 0.00015914330709321245,
    "ci_low": -0.0004359294557487221,
-   "ci_high": 0.000754216069935147
+   "ci_high": 0.000754216069935147,
+   "sweep_validated": "24 of 24 settings"
   },
   {
    "id": "OPE-reference-T_half-DR",
@@ -793,10 +833,11 @@
      "DR"
     ]
    },
-   "status": "awaiting sweep",
+   "status": "reported",
    "value": -0.009127620096658351,
    "ci_low": -0.009645216200051288,
-   "ci_high": -0.008610023993265414
+   "ci_high": -0.008610023993265414,
+   "sweep_validated": "0 of 24 settings"
   },
   {
    "id": "OPE-reference-T_half-IPS",
@@ -811,10 +852,11 @@
      "IPS"
     ]
    },
-   "status": "awaiting sweep",
+   "status": "reported",
    "value": -0.008925396349846237,
    "ci_low": -0.009647206561857014,
-   "ci_high": -0.00820358613783546
+   "ci_high": -0.00820358613783546,
+   "sweep_validated": "1 of 24 settings"
   },
   {
    "id": "OPE-reference-R-DR",
@@ -829,10 +871,11 @@
      "DR"
     ]
    },
-   "status": "awaiting sweep",
+   "status": "reported",
    "value": -0.00014124797959602642,
    "ci_low": -0.0010917710634606058,
-   "ci_high": 0.000809275104268553
+   "ci_high": 0.000809275104268553,
+   "sweep_validated": "24 of 24 settings"
   },
   {
    "id": "OPE-reference-R-IPS",
@@ -847,10 +890,11 @@
      "IPS"
     ]
    },
-   "status": "awaiting sweep",
+   "status": "reported",
    "value": -0.00012458351799793377,
    "ci_low": -0.0015128597223428642,
-   "ci_high": 0.0012636926863469967
+   "ci_high": 0.0012636926863469967,
+   "sweep_validated": "24 of 24 settings"
   },
   {
    "id": "OPE-reference-N-DR",
@@ -865,10 +909,11 @@
      "DR"
     ]
    },
-   "status": "awaiting sweep",
+   "status": "reported",
    "value": -0.0180783889836037,
    "ci_low": -0.01888943746362267,
-   "ci_high": -0.01726734050358473
+   "ci_high": -0.01726734050358473,
+   "sweep_validated": "0 of 24 settings"
   },
   {
    "id": "OPE-reference-N-IPS",
@@ -883,10 +928,11 @@
      "IPS"
     ]
    },
-   "status": "awaiting sweep",
+   "status": "reported",
    "value": -0.017542007435349616,
    "ci_low": -0.018916524384343877,
-   "ci_high": -0.016167490486355355
+   "ci_high": -0.016167490486355355,
+   "sweep_validated": "1 of 24 settings"
   },
   {
    "id": "OPE-reference-F-DR",
@@ -901,10 +947,11 @@
      "DR"
     ]
    },
-   "status": "awaiting sweep",
+   "status": "reported",
    "value": 0.000294134716361083,
    "ci_low": -0.0017383856917860831,
-   "ci_high": 0.002326655124508249
+   "ci_high": 0.002326655124508249,
+   "sweep_validated": "24 of 24 settings"
   },
   {
    "id": "OPE-reference-F-IPS",
@@ -919,10 +966,11 @@
      "IPS"
     ]
    },
-   "status": "awaiting sweep",
+   "status": "reported",
    "value": -0.00015379190695574696,
    "ci_low": -0.00329738692056568,
-   "ci_high": 0.002989803106654186
+   "ci_high": 0.002989803106654186,
+   "sweep_validated": "24 of 24 settings"
   },
   {
    "id": "OPE-reference-T2-DR",
@@ -937,10 +985,11 @@
      "DR"
     ]
    },
-   "status": "awaiting sweep",
+   "status": "reported",
    "value": 0.018244301211054914,
    "ci_low": 0.01661041537721693,
-   "ci_high": 0.019878187044892897
+   "ci_high": 0.019878187044892897,
+   "sweep_validated": "1 of 24 settings"
   },
   {
    "id": "OPE-reference-T2-IPS",
@@ -955,10 +1004,63 @@
      "IPS"
     ]
    },
-   "status": "awaiting sweep",
+   "status": "reported",
    "value": 0.017699333306106624,
    "ci_low": 0.015306989106704449,
-   "ci_high": 0.0200916775055088
+   "ci_high": 0.0200916775055088,
+   "sweep_validated": "1 of 24 settings"
+  },
+  {
+   "id": "OPE-order-N-T-DR",
+   "tier": "C",
+   "statement": "Post hoc: per-day DR estimate of no pushes minus one a day (active-day share) at the reference, against the simulator truth; an ordering is reversed where both intervals exclude 0 with opposite signs",
+   "source": {
+    "file": "results/ope_carryover.json",
+    "path": [
+     "post_hoc",
+     "orderings",
+     "annoyance",
+     "N-T",
+     "DR",
+     "2"
+    ]
+   },
+   "status": "reported",
+   "truth": {
+    "value": 0.012893142857142825,
+    "ci_low": 0.01253395932767692,
+    "ci_high": 0.013252326386608731
+   },
+   "reversed_settings": "23 of 24",
+   "value": -0.004367721443829265,
+   "ci_low": -0.006177985900679854,
+   "ci_high": -0.002557456986978675
+  },
+  {
+   "id": "OPE-order-T2-T-DR",
+   "tier": "C",
+   "statement": "Post hoc: per-day DR estimate of two a day minus one (active-day share) at the reference, against the simulator truth; an ordering is reversed where both intervals exclude 0 with opposite signs",
+   "source": {
+    "file": "results/ope_carryover.json",
+    "path": [
+     "post_hoc",
+     "orderings",
+     "annoyance",
+     "T2-T",
+     "DR",
+     "2"
+    ]
+   },
+   "status": "reported",
+   "truth": {
+    "value": -0.014709714285714215,
+    "ci_low": -0.0150565127189378,
+    "ci_high": -0.01436291585249063
+   },
+   "reversed_settings": "23 of 24",
+   "value": 0.004498410028678656,
+   "ci_low": 0.0019294977310388038,
+   "ci_high": 0.007067322326318509
   }
  ]
 }

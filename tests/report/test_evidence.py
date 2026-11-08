@@ -33,3 +33,16 @@ def test_missing_results_are_pending(tmp_path: Path) -> None:
     (tmp_path / "results").mkdir()
     out = evidence.build(tmp_path)
     assert all(c["status"] == "pending" for c in out["claims"])
+
+
+def test_simulator_ope_entries_carry_the_sweep() -> None:
+    out = {c["id"]: c for c in evidence.build(ROOT)["claims"]}
+    sweep = json.loads((ROOT / "results" / "ope_carryover.json").read_text("utf-8"))
+    flip = sweep["flips"]["annoyance"]["N.DR"]["crossings"][0]
+    assert out["OPE-flip-N-DR"]["value"] == flip["at"]
+    assert out["OPE-reference-T-DR"]["sweep_validated"] == "24 of 24 settings"
+    assert "sweep_validated" not in out["OPE-control-T-DR"]
+    order = out["OPE-order-N-T-DR"]
+    assert order["truth"]["value"] > 0 > order["ci_high"]
+    assert order["reversed_settings"] == "23 of 24"
+    assert not [c for c in out.values() if c.get("status") == "awaiting sweep"]

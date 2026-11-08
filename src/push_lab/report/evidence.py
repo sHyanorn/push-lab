@@ -131,6 +131,18 @@ CLAIMS = (
         "policy.json",
         ("flips", "annoyance", "F-N", "crossings", "0"),
     ),
+    *(
+        Claim(
+            f"OPE-flip-{target}-DR",
+            "C",
+            f"Per-day DR overestimates {text} below this annoyance elasticity and underestimates "
+            "it above (one-at-a-time grid; fatigue, opt-out, return and novelty change no "
+            "direction)",
+            "ope_carryover.json",
+            ("flips", "annoyance", f"{target}.DR", "crossings", "0"),
+        )
+        for target, text in (("T_half", "half the push volume"), ("N", "no pushes"))
+    ),
     Claim(
         "B1",
         "C",
@@ -215,7 +227,7 @@ def _randomness(data: dict[str, Any], claim: Claim) -> dict[str, Any]:
 
 
 def ope_entries(root: Path) -> list[dict[str, Any]]:
-    """The Tier B estimate for each estimator validated on OBD, and the simulator verdicts."""
+    """The OBD estimator checks, the simulator verdicts and the post hoc orderings."""
     out: list[dict[str, Any]] = []
     obd_file = root / paths.RESULTS / "ope_obd.json"
     if obd_file.exists():
@@ -252,11 +264,65 @@ def ope_entries(root: Path) -> list[dict[str, Any]]:
                                 "file": "results/ope_simulator_amended.json",
                                 "path": [setting, target, "visit", name],
                             },
-                            # Simulator results need the sweep before they are shown (D046)
-                            "status": "awaiting sweep",
+                            "status": "reported",
                         }
                         | check["bias"]
+                        | _sweep_share(root, setting, target, name)
                     )
+    out += _ordering_entries(root)
+    return out
+
+
+def _carryover(root: Path) -> dict[str, Any] | None:
+    path = root / paths.RESULTS / "ope_carryover.json"
+    return json.loads(path.read_text("utf-8")) if path.exists() else None
+
+
+def _sweep_share(root: Path, setting: str, target: str, name: str) -> dict[str, Any]:
+    """For the reference setting, the share of the 24 sweep settings where the same estimator
+    and target are validated."""
+    data = _carryover(root)
+    if setting != "reference" or data is None:
+        return {}
+    verdicts = [s["targets"][target][name]["verdict"] for s in data["settings"]]
+    return {"sweep_validated": f"{verdicts.count('validated')} of {len(verdicts)} settings"}
+
+
+def _ordering_entries(root: Path) -> list[dict[str, Any]]:
+    """Post hoc: at the reference, the per-day DR estimate of a difference between targets
+    against its truth, and how many sweep settings reverse the ordering."""
+    data = _carryover(root)
+    if data is None or "post_hoc" not in data:
+        return []
+    out: list[dict[str, Any]] = []
+    grid = data["post_hoc"]["orderings"]["annoyance"]
+    reference = grid["values"].index(0.05)
+    for pair, text in (("N-T", "no pushes minus one a day"), ("T2-T", "two a day minus one")):
+        found = grid[pair]
+        reversed_at = {
+            sid
+            for name, entry in data["post_hoc"]["orderings"].items()
+            for sid, s in enumerate(data["settings"])
+            for g in s["grid"]
+            if g[0] == name and entry[pair]["reversed"]["DR"][g[1]]
+        }
+        out.append(
+            {
+                "id": f"OPE-order-{pair}-DR",
+                "tier": "C",
+                "statement": f"Post hoc: per-day DR estimate of {text} (active-day share) at the "
+                "reference, against the simulator truth; an ordering is reversed where both "
+                "intervals exclude 0 with opposite signs",
+                "source": {
+                    "file": "results/ope_carryover.json",
+                    "path": ["post_hoc", "orderings", "annoyance", pair, "DR", str(reference)],
+                },
+                "status": "reported",
+                "truth": found["truth"][reference],
+                "reversed_settings": f"{len(reversed_at)} of {len(data['settings'])}",
+            }
+            | found["DR"][reference]
+        )
     return out
 
 
