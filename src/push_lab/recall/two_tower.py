@@ -37,8 +37,9 @@ class Config:
 
 
 def item_side_features(videos: pd.DataFrame) -> pd.DataFrame:
-    """Static item features: first tag and duration decile bucket."""
-    out = videos[["video_id", "author_id", "upload_type", "video_type"]].copy()
+    """Static item features, adding the first tag and the duration decile bucket."""
+    columns = ["video_id", "author_id", "upload_type", "video_type", "video_duration", "upload_dt"]
+    out = videos[columns].copy()
     out["first_tag"] = videos["tag"].fillna("").str.split(",").str[0]
     duration = videos["video_duration"]
     edges = np.nanquantile(duration, np.linspace(0.1, 0.9, 9))
