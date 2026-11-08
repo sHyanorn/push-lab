@@ -64,8 +64,7 @@ def test_fit_is_deterministic(
     x, t, y, x_test, _ = trial
     first = LEARNERS[name](x[:5_000], t[:5_000], y[:5_000]).effect(x_test)
     second = LEARNERS[name](x[:5_000], t[:5_000], y[:5_000]).effect(x_test)
-    # The forest averages trees across threads, so the summation order can differ in the last bit
-    np.testing.assert_allclose(first, second, rtol=0, atol=1e-12)
+    np.testing.assert_array_equal(first, second)
 
 
 def test_t_learner_response_is_the_treated_model(

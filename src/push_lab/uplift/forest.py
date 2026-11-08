@@ -13,6 +13,7 @@ from push_lab.uplift.learners import PARAMS, ROUNDS, FloatArray, Labels
 TREES = 100
 # Rows drawn from the Criteo training sample for the forest (SPEC Section 10)
 CRITEO_FOREST_ROWS = 200_000
+ROUND_DECIMALS = 12
 
 
 def _outcome_model() -> lgb.LGBMRegressor:
@@ -54,4 +55,7 @@ class CausalForest:
 
     def effect(self, x: FloatArray) -> FloatArray:
         out: FloatArray = np.asarray(self.model.effect(x), dtype=np.float64).ravel()
-        return out
+        # Trees are averaged across threads, so the last bit can differ between runs; rounding
+        # keeps bin membership, and with it every bootstrap draw, reproducible
+        rounded: FloatArray = np.round(out, ROUND_DECIMALS)
+        return rounded
