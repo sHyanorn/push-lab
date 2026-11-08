@@ -604,7 +604,7 @@ $$
 
 ### 14.2 Validation on the Open Bandit Dataset (real data)
 
-- Data: the committed small sample, Men's campaign, 10,000 impressions logged by uniform random (`random_men`, propensity $1/34$ per item and position) and 10,000 by Bernoulli Thompson sampling (`bts_men`). Each row is an item shown at one of three positions with a click label; the rows of one impression share user features and fall within a second of each other. Folds of the outcome model split impressions.
+- Data: the committed small sample, Men's campaign, 10,000 rows logged by uniform random (`random_men`, propensity $1/34$ per item and position) and 10,000 by Bernoulli Thompson sampling (`bts_men`). Each row is an item shown at one of three positions with a click label; the rows of one impression share user features and fall within a second of each other. Folds of the outcome model split impressions.
 - Target: the BTS policy. Its probability of each (item, position) is computed as in the Open Bandit Pipeline at the pinned commit (Saito et al. 2021): $10^6$ draws from the production Beta prior of the Men's campaign, each ranking the 34 items by their draws and placing the top three at positions 1 to 3. The policy is context-free, so the probabilities are the same in every round. The prior values are copied from the pinned file, whose sha256 is in the code; CI does not download it, so a test checks only their sums and one entry.
 - Known answer: the on-policy value, the click rate of the BTS logs, with a bootstrap interval.
 - Estimates: DM, IPS, SNIPS and DR of the BTS value from the random logs; $\hat q$ uses the user features, user-item affinities, item features and position.
