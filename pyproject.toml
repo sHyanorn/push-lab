@@ -50,6 +50,11 @@ select = ["E", "F", "W", "I", "UP", "B", "SIM", "NPY", "PD", "RUF"]
 strict = true
 files = ["src", "tests"]
 
+# No type information is published for these packages
+[[tool.mypy.overrides]]
+module = ["econml.*", "sklearn.*", "sklift.*"]
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-m 'not network' --strict-markers"
