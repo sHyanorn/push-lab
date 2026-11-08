@@ -123,7 +123,7 @@ def test_cell_bootstrap_matches_row_bootstrap() -> None:
     np.testing.assert_allclose(
         np.percentile(by_cell, [2.5, 50, 97.5]),
         np.percentile(by_row_binned, [2.5, 50, 97.5]),
-        atol=0.03,
+        atol=0.015,
     )
     # Exact rows as cells reproduce the row bootstrap too
     exact = curves.cells([groups], t, y)
@@ -134,7 +134,7 @@ def test_cell_bootstrap_matches_row_bootstrap() -> None:
     np.testing.assert_allclose(
         np.percentile(by_exact_cell, [2.5, 50, 97.5]),
         np.percentile(by_row, [2.5, 50, 97.5]),
-        atol=0.03,
+        atol=0.015,
     )
 
 
@@ -150,3 +150,16 @@ def test_denominator_is_recomputed_per_resample() -> None:
     assert curves.qini_coefficient(c) == pytest.approx(
         sk.qini_auc_score(cell.y[rows], -cell.groups[0][rows].astype(float), cell.t[rows])
     )
+
+
+def test_cells_with_two_groupings_preserve_counts() -> None:
+    rng = np.random.default_rng(11)
+    a, b = rng.integers(0, 777, 20_000), rng.integers(0, 913, 20_000)
+    t, y = rng.integers(0, 2, 20_000), rng.integers(0, 2, 20_000)
+    cell = curves.cells([a, b], t, y)
+    assert cell.count.sum() == 20_000
+    for rows, groups in ((a, cell.groups[0]), (b, cell.groups[1])):
+        np.testing.assert_array_equal(
+            curves.counts(groups, cell.t, cell.y, cell.count, 913).y_c,
+            curves.counts(rows, t, y, None, 913).y_c,
+        )

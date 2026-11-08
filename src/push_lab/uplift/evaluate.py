@@ -42,6 +42,8 @@ HILLSTROM_CATEGORIES = {
 CRITEO_FEATURES = tuple(f"f{i}" for i in range(12))
 CRITEO_COLUMNS = [*CRITEO_FEATURES, "treatment", *OUTCOMES]
 QINI_GRID_POINTS = 101
+DECILES = 10
+CRITEO_BATCH_ROWS = 1 << 20
 
 CURVES = {
     "qini": "joint Qini curve (Radcliffe 2007), coefficient normalized as scikit-uplift "
@@ -55,6 +57,7 @@ class Settings:
     bootstrap_samples: int = metrics.BOOTSTRAP_SAMPLES
     criteo_bins: int = curves.CRITEO_BINS
     forest_rows: int = CRITEO_FOREST_ROWS
+    batch_rows: int = CRITEO_BATCH_ROWS
 
 
 @dataclass(frozen=True)
@@ -81,16 +84,27 @@ def _p_value(boot: FloatArray) -> float:
 
 
 # Statistics of one method's counts: Qini, AUUC, then per budget the incremental responders per
-# 1,000 rows and the share of the treat-everyone effect, then the treat-everyone effect per 1,000
+# 1,000 rows and the share of the treat-everyone effect, then the treat-everyone effect per 1,000,
+# then the Qini curve on the grid
 def _statistics(c: curves.Counts) -> FloatArray:
     at = curves.uplift_at(c, np.r_[BUDGETS, 1.0])
     full = at[-1]
     share = at[:-1] / full if full != 0 else np.full(len(BUDGETS), np.nan)
     per_1000 = at / c.n * 1000
+    _, grid = curves.qini_on_grid(c, QINI_GRID_POINTS)
     out: FloatArray = np.r_[
-        curves.qini_coefficient(c), curves.auuc(c), per_1000[:-1], share, per_1000[-1]
+        curves.qini_coefficient(c), curves.auuc(c), per_1000[:-1], share, per_1000[-1], grid
     ]
     return out
+
+
+def _band(point: FloatArray, boot: FloatArray) -> dict[str, list[float]]:
+    low, high = np.nanpercentile(boot, [2.5, 97.5], axis=0)
+    return {
+        "value": [_round(v) for v in point],
+        "ci_low": [_round(v) for v in low],
+        "ci_high": [_round(v) for v in high],
+    }
 
 
 def _bootstrap(
@@ -135,9 +149,15 @@ def _assess(
     t: IntArray, y: IntArray, scores: dict[str, FloatArray], bins: int | None, samples: int
 ) -> tuple[dict[str, Any], dict[str, FloatArray]]:
     """Every method's metrics with intervals; also returns the bootstrap Qini coefficients."""
-    out: dict[str, Any] = {"methods": {}, "budget": {}, "qini_curve": {}}
+    grid = np.linspace(0.0, 1.0, QINI_GRID_POINTS)
+    out: dict[str, Any] = {
+        "methods": {},
+        "budget": {},
+        "qini_curve": {"tier": "A", "share": [_round(v) for v in grid], "methods": {}},
+    }
     boot_qini: dict[str, FloatArray] = {}
     k = len(BUDGETS)
+    full = 2 + 2 * k
     for name, score in scores.items():
         groups = _groups(score, bins)
         point = _statistics(curves.counts(groups, t, y))
@@ -147,18 +167,20 @@ def _assess(
             "qini": _interval(point[0], boot[:, 0]),
             "auuc": _interval(point[1], boot[:, 1]),
         }
+        everyone = _interval(point[full], boot[:, full])
+        # A share of an effect that may be zero is not defined; it is left out then
+        share_defined = everyone["ci_low"] > 0 or everyone["ci_high"] < 0
         out["budget"][name] = {
             str(b): {
                 "per_1000": _interval(point[2 + i], boot[:, 2 + i]),
-                "share_of_full_effect": _interval(point[2 + k + i], boot[:, 2 + k + i]),
+                "share_of_full_effect": _interval(point[2 + k + i], boot[:, 2 + k + i])
+                if share_defined
+                else None,
             }
             for i, b in enumerate(BUDGETS)
         }
-        if name == "random":
-            out["treat_everyone_per_1000"] = _interval(point[-1], boot[:, -1])
-        share, values = curves.qini_on_grid(curves.counts(groups, t, y), QINI_GRID_POINTS)
-        out["qini_curve"]["share"] = [_round(s) for s in share]
-        out["qini_curve"][name] = [_round(v) for v in values]
+        out["treat_everyone_per_1000"] = everyone
+        out["qini_curve"]["methods"][name] = _band(point[full + 1 :], boot[:, full + 1 :])
         if bins is not None:
             out.setdefault("control_rows_per_bin", {})[name] = _control_per_bin(groups, t)
     return out, boot_qini
@@ -180,19 +202,38 @@ def _paired_qini(
     return _interval(point, boot) | {"p_value": _round(_p_value(boot))}
 
 
+def _by_decile(t: IntArray, y: IntArray, score: FloatArray, samples: int) -> dict[str, Any]:
+    """Response rates and uplift per 1,000 rows by score decile, highest scores first."""
+    groups = curves.quantile_groups(score, DECILES)
+
+    def stat(c: list[curves.Counts]) -> FloatArray:
+        n_t, n_c = c[0].n_t, c[0].n_c
+        treated = np.divide(c[0].y_t, n_t, out=np.full_like(n_t, np.nan), where=n_t > 0)
+        control = np.divide(c[0].y_c, n_c, out=np.full_like(n_c, np.nan), where=n_c > 0)
+        out: FloatArray = np.r_[treated, control, treated - control] * 1000
+        return out
+
+    cell = curves.cells([groups], t, y)
+    point = stat([curves.counts(groups, t, y)])
+    boot = _bootstrap(cell, stat, samples)
+    n = int(groups.max()) + 1
+    parts = {"treated_per_1000": 0, "control_per_1000": n, "uplift_per_1000": 2 * n}
+    return {"tier": "A"} | {
+        name: _band(point[i : i + n], boot[:, i : i + n]) for name, i in parts.items()
+    }
+
+
 def _against_zero(est: dict[str, Any], boot: FloatArray) -> dict[str, Any]:
     return est | {"p_value": _round(_p_value(boot))}
 
 
-def _fit_scores(
-    x: FloatArray,
-    t: IntArray,
-    y: IntArray,
-    score: Callable[[Callable[[FloatArray], FloatArray]], FloatArray],
-    forest_rows: IntArray,
-    timings: dict[str, float],
-) -> dict[str, FloatArray]:
-    """Fit every learner on the training rows and score the test rows with ``score``."""
+Effect = Callable[[FloatArray], FloatArray]
+
+
+def _fit(
+    x: FloatArray, t: IntArray, y: IntArray, forest_rows: IntArray, timings: dict[str, float]
+) -> dict[str, Effect]:
+    """Fit every learner on the training rows; returns each method's scoring function."""
 
     def timed(name: str, fit: Callable[[], Any]) -> Any:
         start = time.perf_counter()
@@ -205,16 +246,13 @@ def _fit_scores(
     xl = timed("x_learner_stage2", lambda: XLearner.fit(x, t, y, stage1=tl))
     fx, ft, fy = x[forest_rows], t[forest_rows], y[forest_rows]
     forest = timed("causal_forest", lambda: CausalForest.fit(fx, ft, fy))
-    start = time.perf_counter()
-    out = {
-        "s_learner": score(s.effect),
-        "t_learner": score(tl.effect),
-        "x_learner": score(xl.effect),
-        "causal_forest": score(forest.effect),
-        "response": score(tl.response),
+    return {
+        "s_learner": s.effect,
+        "t_learner": tl.effect,
+        "x_learner": xl.effect,
+        "causal_forest": forest.effect,
+        "response": tl.response,
     }
-    timings["scoring"] = round(time.perf_counter() - start, 1)
-    return out
 
 
 def hillstrom_features(df: pd.DataFrame) -> FloatArray:
@@ -239,14 +277,8 @@ def run_hillstrom(root: Path, timings: dict[str, Any]) -> tuple[Trial, dict[str,
         y_all = df[outcome].to_numpy(dtype=np.int64)
         outcomes[outcome] = y_all[test]
         timings[outcome] = {}
-        scores[outcome] = _fit_scores(
-            x[train],
-            t,
-            y_all[train],
-            lambda effect: effect(x[test]),
-            np.arange(len(train)),
-            timings[outcome],
-        )
+        models = _fit(x[train], t, y_all[train], np.arange(len(train)), timings[outcome])
+        scores[outcome] = {name: effect(x[test]) for name, effect in models.items()}
         scores[outcome]["random"] = np.random.default_rng(SEED).random(len(test))
     setup = {
         "contrast": f"{uplift_trials.HILLSTROM_TREATED} against {uplift_trials.HILLSTROM_CONTROL}",
@@ -259,17 +291,33 @@ def run_hillstrom(root: Path, timings: dict[str, Any]) -> tuple[Trial, dict[str,
     return Trial(t_test, outcomes, scores), setup
 
 
-def _criteo_batches(path: Path) -> Any:
-    return pq.ParquetFile(path).iter_batches(batch_size=1 << 20, columns=[*CRITEO_COLUMNS, "train"])
-
-
-def _score_criteo(path: Path, effect: Callable[[FloatArray], FloatArray]) -> FloatArray:
-    parts = []
-    for batch in _criteo_batches(path):
+def score_criteo_test(
+    path: Path, models: dict[str, dict[str, Effect]], batch_rows: int
+) -> tuple[IntArray, dict[str, IntArray], dict[str, dict[str, FloatArray]]]:
+    """Score the rows outside the training sample in one pass, reading labels from the same
+    batches as the features so that scores and labels line up by construction."""
+    t_parts: list[IntArray] = []
+    y_parts: dict[str, list[IntArray]] = {o: [] for o in models}
+    s_parts: dict[str, dict[str, list[FloatArray]]] = {
+        o: {name: [] for name in m} for o, m in models.items()
+    }
+    batches = pq.ParquetFile(path).iter_batches(
+        batch_size=batch_rows, columns=[*CRITEO_COLUMNS, "train"]
+    )
+    for batch in batches:
         frame = batch.to_pandas()
         frame = frame[~frame["train"]]
-        parts.append(effect(frame[list(CRITEO_FEATURES)].to_numpy(dtype=np.float64)))
-    return np.concatenate(parts)
+        x = frame[list(CRITEO_FEATURES)].to_numpy(dtype=np.float64)
+        t_parts.append(frame["treatment"].to_numpy(dtype=np.int64))
+        for outcome, methods in models.items():
+            y_parts[outcome].append(frame[outcome].to_numpy(dtype=np.int64))
+            for name, effect in methods.items():
+                s_parts[outcome][name].append(effect(x))
+    return (
+        np.concatenate(t_parts),
+        {o: np.concatenate(p) for o, p in y_parts.items()},
+        {o: {n: np.concatenate(p) for n, p in m.items()} for o, m in s_parts.items()},
+    )
 
 
 def run_criteo(
@@ -279,24 +327,18 @@ def run_criteo(
     train = pq.read_table(path, columns=CRITEO_COLUMNS, filters=[("train", "==", True)])
     x = np.column_stack([train[c].to_numpy().astype(np.float64) for c in CRITEO_FEATURES])
     t = train["treatment"].to_numpy().astype(np.int64)
-    test = pq.read_table(path, columns=["treatment", *OUTCOMES], filters=[("train", "==", False)])
-    t_test = test["treatment"].to_numpy().astype(np.int64)
     rng = np.random.default_rng(SEED)
     forest_rows = np.sort(rng.choice(len(t), size=min(settings.forest_rows, len(t)), replace=False))
-    scores: dict[str, dict[str, FloatArray]] = {}
-    outcomes: dict[str, IntArray] = {}
+    models: dict[str, dict[str, Effect]] = {}
     for outcome in OUTCOMES:
         y = train[outcome].to_numpy().astype(np.int64)
-        outcomes[outcome] = test[outcome].to_numpy().astype(np.int64)
         timings[outcome] = {}
-        scores[outcome] = _fit_scores(
-            x,
-            t,
-            y,
-            lambda effect: _score_criteo(path, effect),
-            forest_rows,
-            timings[outcome],
-        )
+        models[outcome] = _fit(x, t, y, forest_rows, timings[outcome])
+    del train, x
+    start = time.perf_counter()
+    t_test, outcomes, scores = score_criteo_test(path, models, settings.batch_rows)
+    timings["scoring"] = round(time.perf_counter() - start, 1)
+    for outcome in OUTCOMES:
         scores[outcome]["random"] = np.random.default_rng(SEED).random(len(t_test))
     setup = {
         "contrast": "treatment == 1 (assigned to ads) against treatment == 0, intention to treat",
@@ -312,7 +354,12 @@ def run_criteo(
 
 def _sklift_difference(trial: Trial) -> float:
     """Largest absolute difference from scikit-uplift over every Hillstrom method and outcome."""
-    from sklift import metrics as sk
+    try:
+        from sklift import metrics as sk
+    except ImportError as err:
+        raise RuntimeError(
+            "the scikit-uplift cross-check needs the development dependencies (uv sync)"
+        ) from err
 
     worst = 0.0
     for outcome, y in trial.outcomes.items():
@@ -370,6 +417,10 @@ def run(root: Path, settings: Settings | None = None) -> dict[str, Any]:
     primary["U4_criteo_t_learner_vs_response_qini"] = _paired_qini(
         crit.t, y, scores["t_learner"], scores["response"], s.criteo_bins, s.bootstrap_samples
     )
+    crit_metrics[PRIMARY_OUTCOME]["deciles_post_hoc"] = {
+        name: _by_decile(crit.t, y, scores[name], s.bootstrap_samples)
+        for name in ("t_learner", "response")
+    }
     timings["criteo"]["bootstrap"] = round(time.perf_counter() - start, 1)
     result["criteo"] = {"setup": crit_setup, **crit_metrics}
 
