@@ -7,7 +7,6 @@ from typing import IO
 
 import pandas as pd
 import pyarrow as pa
-import pyarrow.csv as pacsv
 import pyarrow.parquet as pq
 
 from push_lab.data import schemas
@@ -17,13 +16,7 @@ POSITIONS = (1, 2, 3)
 
 
 def _read(csv: Path | IO[bytes], raw: schemas.Schema, processed: schemas.Schema) -> pd.DataFrame:
-    table = pacsv.read_csv(
-        csv, convert_options=pacsv.ConvertOptions(column_types=schemas.to_arrow(raw))
-    )
-    if table.column_names != list(raw):
-        name = getattr(csv, "name", "csv")
-        raise ValueError(f"{name}: columns {table.column_names} do not match the schema")
-    table = table.drop_columns([""]).rename_columns(list(processed))
+    table = schemas.read_csv(csv, raw).drop_columns([""]).rename_columns(list(processed))
     df: pd.DataFrame = table.to_pandas()
     return df
 

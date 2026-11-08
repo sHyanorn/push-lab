@@ -4,7 +4,11 @@ Converters read raw files with these types and synthetic fixtures are generated 
 so the two cannot drift apart.
 """
 
+from pathlib import Path
+from typing import IO
+
 import pyarrow as pa
+import pyarrow.csv as pacsv
 
 Schema = dict[str, pa.DataType]
 
@@ -188,3 +192,18 @@ OBD_ITEMS: Schema = {name: dtype for name, dtype in OBD_ITEMS_RAW.items() if nam
 
 def to_arrow(schema: Schema) -> pa.Schema:
     return pa.schema(list(schema.items()))
+
+
+def check_columns(names: list[str], schema: Schema, source: Path | IO[bytes]) -> None:
+    if names != list(schema):
+        name = getattr(source, "name", "csv")
+        raise ValueError(f"{name}: columns {names} do not match the schema")
+
+
+def read_csv(source: Path | IO[bytes], schema: Schema) -> pa.Table:
+    """A CSV file read with the schema's types; its columns must be the schema's."""
+    table = pacsv.read_csv(
+        source, convert_options=pacsv.ConvertOptions(column_types=to_arrow(schema))
+    )
+    check_columns(table.column_names, schema, source)
+    return table

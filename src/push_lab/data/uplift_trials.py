@@ -21,18 +21,8 @@ CRITEO_BLOCK_BYTES = 16 << 20
 CRITEO_ROW_GROUP = 1 << 20
 
 
-def _check_columns(names: list[str], schema: schemas.Schema, source: Path) -> None:
-    if names != list(schema):
-        raise ValueError(f"{source.name}: columns {names} do not match the schema")
-
-
 def convert_hillstrom(csv: Path, out: Path) -> Path:
-    table = pacsv.read_csv(
-        csv,
-        convert_options=pacsv.ConvertOptions(column_types=schemas.to_arrow(schemas.HILLSTROM)),
-    )
-    _check_columns(table.column_names, schemas.HILLSTROM, csv)
-    df = table.to_pandas()
+    df = schemas.read_csv(csv, schemas.HILLSTROM).to_pandas()
     df = df[df["segment"].isin([HILLSTROM_TREATED, HILLSTROM_CONTROL])].reset_index(drop=True)
     df["treatment"] = (df["segment"] == HILLSTROM_TREATED).astype("int64")
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -62,7 +52,7 @@ def convert_criteo(
         read_options=pacsv.ReadOptions(block_size=block_bytes),
         convert_options=pacsv.ConvertOptions(column_types=schemas.to_arrow(schemas.CRITEO)),
     )
-    _check_columns(reader.schema.names, schemas.CRITEO, csv_gz)
+    schemas.check_columns(reader.schema.names, schemas.CRITEO, csv_gz)
     pending: list[pa.RecordBatch] = []
     with pq.ParquetWriter(out, target) as writer:
         for batch in reader:

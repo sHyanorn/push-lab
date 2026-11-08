@@ -8,7 +8,6 @@ import tarfile
 from pathlib import Path
 
 import pandas as pd
-import pyarrow.csv as pacsv
 import pyarrow.parquet as pq
 
 from push_lab.data import schemas
@@ -46,13 +45,7 @@ def convert(archive: Path, work_dir: Path, out_dir: Path) -> list[Path]:
     written = []
     for name, (filename, schema) in TABLES.items():
         target = out_dir / f"{name}.parquet"
-        table = pacsv.read_csv(
-            csv_dir / filename,
-            convert_options=pacsv.ConvertOptions(column_types=schemas.to_arrow(schema)),
-        )
-        if table.column_names != list(schema):
-            raise ValueError(f"{filename}: columns {table.column_names} do not match the schema")
-        pq.write_table(table, target)
+        pq.write_table(schemas.read_csv(csv_dir / filename, schema), target)
         written.append(target)
     return written
 
