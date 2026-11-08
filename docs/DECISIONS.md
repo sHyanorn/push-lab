@@ -160,3 +160,15 @@
 - Annoyance: recent push volume lowers organic visits, with elasticity $\epsilon_v \in [0, 0.1]$ at one push a day (METHODS Section 11.4). Without it no volume can lower activity below the organic level, so losses could come only from opt-outs. Evidence goes both ways (LinkedIn WAU fell with more volume, Twitter DAU rose), so zero is in the range and M5 reports its conclusions at $\epsilon_v = 0$ as well as over the full sweep
 - Active hours come from `time_ms` in UTC+8 instead of `hourmin`, which is a whole-hour bucket off by up to an hour; the time zone is an assumption checked by the overnight low in activity
 - Send slots are fixed at 08:00, 12:00, 17:00 and 21:00, each with a three-hour response window; activity outside the windows does not enter the profiles
+
+## D024 Simulator inputs: cost and checks
+- Date: 2026-11-08
+- Measured in the same container as D015, run alone: `python -m push_lab.sim.build` takes 132 s with a peak of 2.0 GB, of which the two towers take 45 s, the fine ranker 4 s, the response model 5 s and both candidate lists for 27,285 users 49 s. One 28-day run of the exploration policy over all users takes 0.3 s, so the M5 sweep is bounded by policy fitting, not by the simulator
+- Response model, on the 20% of simulator-half users held out (118,405 rows, 2,700 users; Tier A): AUC 0.694 (95% CI 0.682 to 0.705), GAUC 0.635 (0.628 to 0.643), log loss 0.424 (0.411 to 0.436); mean prediction 0.168 against a click rate of 0.171. Observed rates fall inside or near the intervals of every decile except the lowest, where the model predicts 0.053 and users click 0.036 (CI 0.030 to 0.042). Early stopping chose 51 rounds
+- The response model ranks random exposures within users better than the fine ranker did (GAUC 0.635 against 0.545, D020) because it learns from random exposures rather than the recommender's impressions; the simulator's truth is therefore not the ranker's own score
+- Organic visit rate: median 0.59 (5th to 95th percentile 0.27 to 0.90)
+- Hourly activity in UTC+8 is lowest at 04:00, as expected for a Chinese app, which supports the assumed time zone
+- The best slot under the policy profile (04-09 to 04-21) equals the best slot under the simulator profile (04-22 to 05-08) for 38.8% of users (CI 38.3 to 39.4; chance 25%), so a send-time policy has a real but limited signal before any added misspecification
+- Timing exponents: $\eta$ = 0.033, 0.164 and 0.399 for timing lifts of 0.02, 0.10 and 0.25
+- Exploration: $K = 60$ templates until M6, send probability 0.775 at the best slot and 0.075 elsewhere, smallest propensity 0.00125
+

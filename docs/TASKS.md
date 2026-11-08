@@ -43,12 +43,12 @@ Hour estimates are for planning; the required core is about 85 hours. If behind,
 
 ## M4 Push simulator (12 h)
 - [x] METHODS.md: simulator equations, every parameter with its source and range
-- [ ] Response model fitted on the simulator half of the random exposures, with a base-rate factor
-- [ ] Hourly activity profiles from organic logs, mapped to send slots
-- [ ] Fatigue, opt-out, return and copy-effect models
-- [ ] Vectorized environment: users x days x slots, seeded, scores precomputed per user and day
-- [ ] Epsilon-greedy exploration policy over send or skip, slot and template, with logged propensities
-- [ ] Invariant tests (SPEC Section 11)
+- [x] Response model fitted on the simulator half of the random exposures, with a base-rate factor
+- [x] Hourly activity profiles from organic logs, mapped to send slots
+- [x] Fatigue, opt-out, return and copy-effect models
+- [x] Vectorized environment: users x days x slots, seeded, scores precomputed per user and day
+- [x] Epsilon-greedy exploration policy over send or skip, slot and template, with logged propensities
+- [x] Invariant tests (SPEC Section 11)
 
 ## M5 Delivery policies (14 h)
 - [ ] Pre-register sweep ranges, policy pairs and decision rules in DECISIONS.md and push them before running any comparison
