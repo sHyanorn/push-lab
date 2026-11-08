@@ -1,5 +1,61 @@
 # Technical Decisions
 
+Entries are in the order they were made and are not rewritten; a later entry that amends or supersedes an earlier one is noted in a status line at the end of the earlier entry.
+
+| Id | Decision | Status |
+|---|---|---|
+| D001 | Python only, static report | Active |
+| D002 | Offline only, with evidence tiers | Active |
+| D003 | Raw data is not committed | Active |
+| D004 | Datasets | Active |
+| D005 | Python 3.14 without causalml | Active |
+| D006 | Own OPE estimators | Active |
+| D007 | faiss-cpu for ANN | Active |
+| D008 | LightGBM for fine ranking, two-tower score for coarse ranking | Active |
+| D009 | Volume control is separate from ranking | Active |
+| D010 | Duolingo data is optional | Active |
+| D011 | Copy generated once with the Claude API and committed | Active |
+| D012 | Statistics conventions | Amended by D029 |
+| D013 | Simulator uplift gate is learned inside the simulator | Active |
+| D014 | Send-time policy does not read the simulator's profile | Amended by D025 |
+| D015 | Data layout, sources and measured cost | Active |
+| D016 | Data quality checks | Active |
+| D017 | CPU-only torch | Active |
+| D018 | HNSW search breadth | Active |
+| D019 | Model-internal truncation measures on a user sample | Active |
+| D020 | Ranking evaluation cost and first results | Active |
+| D021 | Uplift evaluation cost and first results | Amended by D022 |
+| D022 | Changes to the uplift evaluation after review | Active |
+| D023 | Simulator components added or changed against SPEC Section 6 | Active |
+| D024 | Simulator inputs: cost and checks | Active |
+| D025 | Simulator data choices after review | Active |
+| D026 | Delivery policies push from the cascade list | Active |
+| D027 | What policies observe | Active |
+| D028 | Per-day budget in the primary analysis | Active |
+| D029 | Statistics for the policy comparisons | Active |
+| D030 | Design choices made after a synthetic replica | Active |
+| D031 | Sweep design, users and cost | Amended by D033 |
+| D032 | Random streams keyed by purpose | Active |
+| D033 | Changes to the design before it was frozen | Active |
+| D034 | Policy sweep: cost and results | Active |
+| D035 | Copy language and placeholders | Active |
+| D036 | Eligible templates and template numbering | Active |
+| D037 | Template bandit design | Results in D040 |
+| D038 | Generated copy | Active |
+| D039 | Template comparisons, pre-registered | Results in D040 |
+| D040 | Template comparisons: cost and results | Active |
+| D041 | Off-policy evaluation: tiers and units | Superseded in part by D046 |
+| D042 | Off-policy checks, pre-registered | Amended by D044 |
+| D043 | Off-policy checks: cost and results | Superseded in part by D046, D048 |
+| D044 | Amended simulator check, pre-registered | Results in D045 |
+| D045 | Amended simulator check: results | Superseded in part by D046, D048 |
+| D046 | Corrections after the M7 results | Superseded in part by D048 |
+| D047 | Carryover sweep of the simulator check, pre-registered | Results in D048 |
+| D048 | Carryover sweep: results | Active |
+| D049 | Report and README are generated from the results | Active |
+| D050 | Scope of the reproduce workflow | Active |
+| D051 | The notebook is checked against its committed outputs | Active |
+
 ## D001 Python only, static report
 - Date: 2026-11-08
 - Rationale: the work is modeling and evaluation; a notebook and a static HTML report show it without a server
@@ -34,6 +90,7 @@
 ## D007 faiss-cpu for ANN
 - Date: 2026-11-08
 - Rationale: wheels for CPython 3.10 to 3.14, MIT. hnswlib 0.8.0 on PyPI is source-only and needs a compiler in CI. With 7.5k items exact search is cheap, so HNSW recall is measured against it; the index matters at KuaiRand-1K scale (optional)
+- See also: D018 (HNSW search breadth)
 
 ## D008 LightGBM for fine ranking, two-tower score for coarse ranking
 - Date: 2026-11-08
@@ -57,6 +114,7 @@
 ## D012 Statistics conventions
 - Date: 2026-11-08
 - Bootstrap over users, 1,000 resamples, 95% percentile intervals; Holm correction across policy comparisons; every random process takes an explicit seed
+- Status: Amended by D029 for the policy comparisons: 10,000 resamples and a per-setting test level
 
 ## D013 Simulator uplift gate is learned inside the simulator
 - Date: 2026-11-08
@@ -65,6 +123,7 @@
 ## D014 Send-time policy does not read the simulator's profile
 - Date: 2026-11-08
 - Rationale: if one activity profile drove both the policy and the simulator, the policy would win by construction. The simulator uses profiles from 04-22 to 05-08, the policy estimates its own from 04-08 to 04-21, and the sweep adds a shift and noise on top
+- Status: Amended by D025: the policy profile starts on 04-09
 
 ## D015 Data layout, sources and measured cost
 - Date: 2026-11-08
@@ -146,6 +205,7 @@
 - Secondary, untested (Criteo visits, Qini coefficient): S-learner 0.087 (CI 0.084 to 0.090), response model 0.084 (0.081 to 0.087), X-learner 0.079 (0.076 to 0.082), T-learner 0.076 (0.073 to 0.079), causal forest 0.069 (0.065 to 0.072, fitted on 200k rows)
 - Reading U4, with the post hoc decile diagnostic (D022). By response-score decile, uplift falls steadily from 51.2 visits per 1,000 (CI 48.7 to 53.6) in the top decile to 0.1 (-0.1 to 0.2) in the bottom one, so on this trial predicted visits order uplift well. By T-learner decile the top decile is higher, 56.6 (54.4 to 58.7), but the bottom decile has 8.0 (6.6 to 9.5), more than any of deciles 3 to 9, and a control visit rate of 88.4 per 1,000 (87.2 to 89.7): the T-learner ranks last a group of frequent visitors who do respond to the ads. In the budget table this shows as a lead at 10% (5.7 visits per 1,000, CI 5.5 to 5.9, against 5.1, CI 4.9 to 5.4) and a deficit at 50% (9.1, CI 8.9 to 9.4, against 9.8, CI 9.5 to 10.1); these are separate intervals, not a paired test. The T-learner's control model sees only the 15% control share of the training rows (210k), so its difference of two models is noisier than one response model; this cause is consistent with the numbers but not tested
 - Lesson for the delivery policies: where uplift grows with the baseline response, a response-score threshold is a strong baseline, and the uplift gate (M5) has to beat it, not only random sending
+- Status: Amended by D022: Criteo rows read with the scores, causal forest threads, METHODS wording; the first results were not affected
 
 ## D022 Changes to the uplift evaluation after review
 - Date: 2026-11-08
@@ -217,6 +277,7 @@
 - Settings: 64 main (Latin hypercube over 13 parameters), the same 64 with $\epsilon_v = 0$, the same 64 with the opt-out stress value, 61 one-at-a-time points and 10 refits at the reference, 263 in all. Three evaluation run seeds per setting
 - Cost measured on synthetic inputs of full size, 4 processes with one thread each: fitting the three LightGBM models takes about 20 s per setting and one model predicts 28 days for 5,000 users in about 3.5 s, so the sweep takes about 2 to 3 hours (3 to 4 with five seeds). This replaces the 40-minute estimate in SPEC Section 10, which assumed no fitted policies
 - Design points and seeds are frozen in `results/policy_design.json` and pushed before any policy runs on evaluation users. A later change needs a new decision with its reason, and results before and after the change are both reported
+- Status: Amended by D033 before the design was frozen: run seeds and the dropped budget
 
 ## D032 Random streams keyed by purpose
 - Date: 2026-11-08
@@ -274,6 +335,7 @@
 - The recovering difference softmax of Yancey and Settles (2020, Eq. 1 to 4) with their production recency penalty ($\gamma_b = 0.017$, $h_b = 15$ days) and probability threshold ($\theta = 0.005$). The bandit does not know the simulator's novelty parameters, which the sweep varies
 - Reward: whether the push was opened, observed after the day ends; scores are updated once a day from all earlier rounds of the run, pooled over users, as in the paper's daily batch job
 - Departures from the paper: the prior strength is set each day by the method of moments, since no arm here has the large sample the paper estimated it from; the softmax temperature is 0.005 instead of 0.0025, because each arm sees tens of thousands of rounds instead of millions; arm histories are not truncated, since the 28-day run is shorter than the paper's one to five weeks of history. All three are fixed before any run
+- Status: Results in D040
 
 ## D038 Generated copy
 - Date: 2026-11-08
@@ -292,6 +354,7 @@
 - Cost on synthetic inputs of full size: about 43 s per setting on one process, so about 17 minutes on 4 processes; the comparison holds 1.1 GB of bootstrap weights, about 2 s per setting, peak memory 2.5 GB
 - The comparisons are equal-volume: every policy sends one push a day at the same slot, so annoyance and opt-out act alike on both sides. The report states the M5 background with them: at the reference setting one push a day lowers active days by 2.3% against no pushes, and a daily push has a net loss above an annoyance elasticity of about 0.016 (D034)
 - Blind rating by one rater (METHODS 13.3), counts in `results/copy.json`: of the 60 kept templates, 60 were rated clear, 54 fitting for a short-video push and none misleading; of the 20 that passed but were not kept, 19, 15 and none. None of the templates listed above as making unbackable claims was rated misleading; one rater cannot show that such claims do not mislead readers. The rater may have seen the catalog before rating, so the rating may not have been blind to which items were kept
+- Status: Results in D040
 
 ## D040 Template comparisons: cost and results
 - Date: 2026-11-08
@@ -317,6 +380,7 @@
 - The BTS target probabilities follow the Open Bandit Pipeline at the commit pinned for the data (`sources.py`): Monte Carlo draws from the production Beta prior of the Men's campaign, top three items in order. The pipeline itself is not a dependency (D006)
 - In the simulator a round is a user-day and its action the vector of four slot send decisions; templates are uniform in the logs and in every target, so their probabilities cancel. The smallest propensity of one slot-and-template action (0.00125) therefore does not bound the weights; the largest weight of any target is 123
 - No clipping or switching: every weight is used, and each estimate reports its effective sample size and largest weight
+- Status: Superseded in part by D046: OBD gives no Tier B result
 
 ## D042 Off-policy checks, pre-registered
 - Date: 2026-11-08
@@ -324,6 +388,7 @@
 - Decision rules, estimators, targets and rewards as in METHODS 14.1 to 14.4: on OBD, an estimator is validated if its 95% interval contains the BTS click rate and its median relative error is below 0.5, on the small sample (primary) and the full campaign (secondary); in the simulator, a (setting, target, estimator) is validated if the Wilson interval of coverage over 50 log seeds contains 0.95 and the bias interval contains 0. The primary results are DR and IPS at the reference setting, reported after the no-carryover control; if DR or IPS fails the control for T, T½ or N, the simulator results count as an implementation failure. Every verdict is reported
 - Design, fixed in `ope/simulator.py` at the commit that runs it: the 5,000 evaluation users of M5, world seed 10,100, log seeds 1,001 to 1,050, truth run seeds 2,001 to 2,020, the control and reference settings, the policy profile without perturbation; 1,000 bootstrap resamples per estimate (seed equal to the log seed); BTS probabilities from $10^6$ prior draws with seed 0
 - Cost on synthetic inputs of full size: about 51 s per log on one process (two outcome models with 2-fold cross-fitting dominate), so about 22 minutes on 4 processes; 0.4 s for the six truth runs of one seed; peak memory 0.6 GB per process
+- Status: Amended by D044 (how the truth is computed); results in D043 and D045
 
 ## D043 Off-policy checks: cost and results
 - Date: 2026-11-08
@@ -343,6 +408,7 @@
 - Post hoc reading of the reference, given that diagnosis: per-day OPE does not see carryover, and its bias is 22 to 37 times its standard error for the targets whose volume differs most from the logs. It underestimates no pushes by 3.1% and overestimates two pushes a day by 3.4% at the reference setting; D046 narrows this reading
 - Two readings of the Tier B result, both kept. Registered: the small-sample IPS and DR estimates of the BTS value are the Tier B results, since they pass the rule. Stronger: on the full campaign, a check on real logs against a known answer, IPS and DR estimate the BTS click rate at 0.89 and 0.90 of its on-policy value with intervals that exclude it, a shortfall the small sample has too little power to show. They do not conflict: the registered definition names the estimate, and the second states how accurate such an estimate was found to be. The evidence matrix lists the shortfall first and each small-sample estimate under it with its outcome on both samples
 - Post hoc on OBD: the deployed BTS was not the fixed prior (its logged propensities vary from 0.0002 to 0.73 across rows of the small sample and from 0.000001 to 0.73 in the full campaign). Using the empirical (item, position) frequencies of the BTS logs as the target moves the full-campaign IPS estimate from 0.89 to 0.92 (0.84 to 0.98) of the on-policy value, with the interval still excluding 1, so the drift explains part of the underestimate and the rest stays unexplained here
+- Status: Superseded in part by D046: the OBD numbers above come from the row-level run, and the OBD tier readings are replaced. The registered simulator verdict stands, with the amended run in D045. The post hoc reading of the reference is narrowed by D046 and replaced by D048
 
 ## D044 Amended simulator check, pre-registered
 - Date: 2026-11-08
@@ -351,6 +417,7 @@
 - Unchanged: the estimators, outcome models, targets, rewards, users, world seed, log seeds 1,001 to 1,050, bootstrap, settings and the decision rule of METHODS 14.4, including that a failure of DR or IPS in the control for T, T½ or N makes the run an implementation failure
 - The OBD check is rerun only to add each estimate's ratio to the on-policy value with its paired-resample interval; every other OBD number must come out unchanged, which the rerun checks
 - Cost: about 22 minutes for the logs as before, plus about 1 minute for the 1,200 truth runs
+- Status: Results in D045
 
 ## D045 Amended simulator check: results
 - Date: 2026-11-08
@@ -370,6 +437,7 @@
 - Reading, at the reference setting only: per-day OPE is accurate for the targets that send about one push a day, as the logs do (T, R, F, even with weights up to 123), and biased for those whose volume differs. DR underestimates half the volume by 1.60% (1.51% to 1.69%) and no pushes by 3.13% (2.99% to 3.27%), and overestimates two pushes a day by 3.32% (3.02% to 3.61%); IPS is within 0.1 points. The expectation stated before the run named N and T2 as biased and T and T½ as close; T½ is biased too. The direction of the bias depends on which carryover dominates and is not a general property of per-day OPE (D046)
 - Secondary reward, opens per user-day at the reference: DR is validated for T, R, N and F and not for T½ and T2 (bias +0.0057 opens per user-day for T2)
 - Both runs are reported: the first run's registered verdict (D043), an implementation failure caused by a truth estimate shared across targets, stands; the amended run passes its implementation check and gives the results above
+- Status: Superseded in part by D046: the OBD ratios above come from the row-level run. The reading of the bias direction is narrowed by D046 and replaced by D048
 
 ## D046 Corrections after the M7 results
 - Date: 2026-11-08
@@ -378,12 +446,14 @@
 - OBD resampling: the rows of OBD are the positions of one impression (the full random logs have 452,949 rows, about 151,000 impressions of three positions), and METHODS 14.1 names impressions as the resampling unit. The code first resampled rows and split folds by row; it now groups rows into resampling units (consecutive rows with the same user features less than a second apart; 136,474 units in the full random logs, some holding two or three impressions, which only coarsens them) for folds, bootstrap and the on-policy interval. Rerun at commit 3f26e5d: the small-sample intervals widen and SNIPS now also passes (IPS, SNIPS and DR pass, DM fails); on the full campaign no estimator passes, with IPS at 0.891 (0.810 to 0.969) and DR at 0.896 (0.816 to 0.968) of the on-policy value. The OBD numbers in D043 and D045 are those of the row-level run; `results/ope_obd.json` now holds the impression-level run and records its commit
 - Estimates whose intervals do not overlap are now flagged inconclusive (SPEC Section 5); no OBD estimate is
 - Tiers on OBD, replacing the readings of D043: the full-campaign ratios (IPS 0.891, DR 0.896 of the on-policy value) use randomized real data to measure the estimators themselves, so they are Tier A results about the estimators, not policy values. Each ratio mixes estimator error with a target mismatch: the target is BTS with its fixed production prior, and the deployed BTS was not that; post hoc, re-weighting to the BTS logs' own frequencies moves IPS to 0.92 (0.84 to 0.98; `full.post_hoc` in `results/ope_obd.json`). No estimator passed on the full campaign, so the small-sample passes are kept only as the record of a registered verdict, and the project has no Tier B result
+- Status: Superseded in part by D048: in the sweep, annoyance alone sets the direction of the bias
 
 ## D047 Carryover sweep of the simulator check, pre-registered
 - Date: 2026-11-08
 - Made after the results of D043 and D045, to meet the rule that simulator results are shown only with a sweep and to find where the direction of the per-day bias changes. Design, measures and reading as in METHODS 14.6: 24 settings on one-at-a-time grids of annoyance, fatigue, opt-out, return and novelty; 10 fresh log seeds per setting; 100 independent truth runs per target; flips of the DR and IPS bias of T½, N and T2 by the rule of 12.7
 - Estimators, outcome models, targets, users and world seed as in 14.3. Until these results exist, the simulator OPE results of D043 and D045 stay out of the conclusions; afterwards, statements about the direction of the bias are made only with the ranges where the sweep shows it
 - Cost: 240 logs at about 51 s each and 144 truth jobs of 100 runs, about 55 minutes on 4 processes
+- Status: Results in D048
 
 ## D048 Carryover sweep: results
 - Date: 2026-11-08
