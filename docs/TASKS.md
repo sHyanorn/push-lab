@@ -68,8 +68,8 @@ Hour estimates are for planning; the required core is about 85 hours. If behind,
 - [x] Recovering bandit against uniform and greedy without the penalty, in the simulator with the copy-spread sweep
 
 ## M7 Off-policy evaluation (8 h)
-- [ ] METHODS.md: DM, IPS, SNIPS, DR
-- [ ] Estimators with effective sample size and largest weight, tested on synthetic bandit data
+- [x] METHODS.md: DM, IPS, SNIPS, DR
+- [x] Estimators with effective sample size and largest weight, tested on synthetic bandit data
 - [ ] Validation on Open Bandit Dataset (Men's campaign): random logs to BTS value, RMSE against the on-policy mean over bootstrap
 - [ ] Validation in the simulator: estimates from exploration logs against simulator truth, for policies near and far from the logging policy
 - [ ] Evidence matrix: each claim with its tier
