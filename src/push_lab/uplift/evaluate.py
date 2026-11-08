@@ -387,9 +387,10 @@ def _evaluate(trial: Trial, bins: int | None, samples: int) -> tuple[dict[str, A
     return out, boot_t
 
 
-def run(root: Path, settings: Settings | None = None) -> dict[str, Any]:
+def run(root: Path, settings: Settings | None = None, criteo: bool = True) -> dict[str, Any]:
+    """Both trials; with ``criteo=False`` Hillstrom only, without Holm decisions (D050)."""
     s = settings or Settings()
-    timings: dict[str, Any] = {"hillstrom": {}, "criteo": {}}
+    timings: dict[str, Any] = {"hillstrom": {}, "criteo": {}} if criteo else {"hillstrom": {}}
     primary: dict[str, Any] = {}
     result: dict[str, Any] = {"curves": CURVES}
 
@@ -405,6 +406,10 @@ def run(root: Path, settings: Settings | None = None) -> dict[str, Any]:
     )
     hill_setup["scikit_uplift_max_abs_difference"] = float(f"{_sklift_difference(hill):.3g}")
     result["hillstrom"] = {"setup": hill_setup, **hill_metrics}
+    if not criteo:
+        result["primary"] = primary
+        result["timings_s"] = timings
+        return result
 
     crit, crit_setup = run_criteo(root, s, timings["criteo"])
     start = time.perf_counter()
@@ -436,9 +441,15 @@ def run(root: Path, settings: Settings | None = None) -> dict[str, Any]:
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Evaluate uplift methods on Hillstrom and Criteo.")
     parser.add_argument("--root", type=Path, default=Path.cwd(), help="repository root")
+    parser.add_argument(
+        "--only",
+        choices=["hillstrom"],
+        help="skip Criteo and Holm; writes results/runs/uplift_hillstrom.json",
+    )
     args = parser.parse_args(argv)
-    result = run(args.root)
-    out = args.root / paths.RESULTS / "uplift.json"
+    result = run(args.root, criteo=args.only is None)
+    name = "uplift.json" if args.only is None else "runs/uplift_hillstrom.json"
+    out = args.root / paths.RESULTS / name
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8", newline="\n")
     print(f"wrote {out}")

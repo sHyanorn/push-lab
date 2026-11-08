@@ -67,3 +67,22 @@ def test_criteo_scores_and_labels_come_from_the_same_rows(tmp_path: Path) -> Non
         np.testing.assert_array_equal(t, test["treatment"].to_numpy())
         np.testing.assert_array_equal(scores["visit"]["probe"], test["f0"].to_numpy())
         np.testing.assert_array_equal(outcomes["visit"], test["visit"].to_numpy())
+
+
+def test_hillstrom_only_matches_the_full_run(tmp_path: Path) -> None:
+    fixtures.write_processed(tmp_path, n=3_000)
+    settings = evaluate.Settings(
+        bootstrap_samples=50, criteo_bins=20, forest_rows=300, batch_rows=700
+    )
+    full = evaluate.run(tmp_path, settings)
+    only = evaluate.run(tmp_path, settings, criteo=False)
+    assert "criteo" not in only
+    assert only["hillstrom"] == full["hillstrom"]
+    for name, entry in only["primary"].items():
+        assert "holm_rejected" not in entry
+        expected = {
+            k: v
+            for k, v in full["primary"][name].items()
+            if not k.startswith(("holm", "p_value_res"))
+        }
+        assert entry == expected
