@@ -1,0 +1,360 @@
+"""Recall and ranking evaluation on the random-exposure evaluation half (METHODS Sections 1-6).
+
+Writes ``results/ranking.json``. Every metric is Tier A except the model-internal
+truncation measures, which are labeled as such.
+"""
+
+import argparse
+import json
+import sys
+import time
+from collections.abc import Sequence
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any
+
+import numpy as np
+import numpy.typing as npt
+import pandas as pd
+
+from push_lab.data import kuairand, paths
+from push_lab.rank import cascade, fine, metrics, splits, truncation
+from push_lab.rank.features import FeatureBuilder
+from push_lab.recall import popularity, two_tower
+from push_lab.recall.index import ItemIndex, overlap
+
+RECALL_K = (50, 100, 200, 500)
+TRUNCATION_N = (50, 100, 200, 500)
+FUSION_GRID = (0.0, 0.25, 0.5, 0.75, 1.0)
+DRIFT_FEATURES = (
+    "user_per_day",
+    "item_per_day",
+    "user_click_rate",
+    "item_click_rate",
+    "tower_score",
+)
+QUANTILES = (0.05, 0.25, 0.5, 0.75, 0.95)
+SAMPLE_USERS = 1000
+LATENCY_USERS = 200
+SCORE_CHUNK_USERS = 50
+
+IntArray = npt.NDArray[np.int64]
+FloatArray = npt.NDArray[np.float64]
+
+
+@dataclass
+class Settings:
+    tower: two_tower.Config = field(default_factory=two_tower.Config)
+    fine_params: dict[str, Any] = field(default_factory=dict)
+    sample_users: int = SAMPLE_USERS
+    latency_users: int = LATENCY_USERS
+    bootstrap_samples: int = metrics.BOOTSTRAP_SAMPLES
+
+
+def _round(x: float) -> float:
+    return round(float(x), 6)
+
+
+def _est(e: metrics.Estimate) -> dict[str, float]:
+    return {k: _round(v) if isinstance(v, float) else v for k, v in e.as_dict().items()}
+
+
+def _fit_cutoff(
+    standard: pd.DataFrame,
+    cutoff: int,
+    users: pd.DataFrame,
+    items: pd.DataFrame,
+    config: two_tower.Config,
+    timings: dict[str, float],
+) -> tuple[pd.DataFrame, FeatureBuilder]:
+    window = splits.window(standard, cutoff)
+    start = time.perf_counter()
+    tower = two_tower.TwoTower(users, items, window, config)
+    tower.fit()
+    timings[f"two_tower_fit_s_{cutoff}"] = _round(time.perf_counter() - start)
+    return window, FeatureBuilder(window, cutoff, users, items, tower)
+
+
+def _scores_by_user(
+    builder: FeatureBuilder,
+    ranker: fine.FineRanker,
+    user_ids: IntArray,
+    item_ids: IntArray,
+) -> FloatArray:
+    """Fused fine scores of every item in ``item_ids`` for each user, one row per user."""
+    out = np.empty((len(user_ids), len(item_ids)))
+    for start in range(0, len(user_ids), SCORE_CHUNK_USERS):
+        block = user_ids[start : start + SCORE_CHUNK_USERS]
+        x = builder.build(np.repeat(block, len(item_ids)), np.tile(item_ids, len(block)))
+        fused = fine.fuse(ranker.predict(x))
+        out[start : start + len(block)] = fused.reshape(len(block), len(item_ids))
+    return out
+
+
+def _latency(
+    builder: FeatureBuilder, ranker: fine.FineRanker, user_ids: IntArray, kept: IntArray
+) -> float:
+    """Milliseconds per user to build features for and score the kept candidates."""
+    valid = kept != cascade.PAD
+    users = np.repeat(user_ids, valid.sum(axis=1))
+    start = time.perf_counter()
+    ranker.predict(builder.build(users, kept[valid]))
+    return 1000 * (time.perf_counter() - start) / len(user_ids)
+
+
+def _quantiles(values: pd.Series) -> dict[str, float]:
+    q = values.quantile(list(QUANTILES))
+    return {f"p{round(100 * p)}": _round(v) for p, v in zip(QUANTILES, q, strict=True)}
+
+
+def run(root: Path, settings: Settings | None = None) -> dict[str, Any]:
+    s = settings or Settings()
+    processed = paths.processed_dir(root, "kuairand")
+    standard = kuairand.load(processed, "log_standard_early")
+    random_log = kuairand.load(processed, "log_random")
+    users = kuairand.load(processed, "users")
+    items = two_tower.item_side_features(kuairand.load(processed, "videos_basic"))
+    catalog = items["video_id"].to_numpy(dtype=np.int64)
+    timings: dict[str, float] = {}
+
+    eval_users, _ = splits.user_halves(random_log)
+    rows = random_log[random_log["user_id"].isin(eval_users)].reset_index(drop=True)
+    clicked = rows[rows["is_click"] == 1].groupby("user_id")["video_id"].agg(set)
+    positives: list[set[int]] = [set(clicked.get(u, set())) for u in eval_users]
+    idx = metrics.resample_indices(len(eval_users), samples=s.bootstrap_samples)
+
+    # Cutoff c2: retrieval, coarse and fine ranking at evaluation
+    window2, builder2 = _fit_cutoff(standard, splits.CUTOFF_EVAL, users, items, s.tower, timings)
+    tower2 = builder2.tower
+    user_vecs = tower2.user_vectors(eval_users)
+    item_vecs = tower2.item_vectors(catalog)
+    k_max = min(max(RECALL_K), len(catalog))
+    start = time.perf_counter()
+    personal = ItemIndex(catalog, item_vecs).search(user_vecs, k_max)
+    timings["hnsw_search_s"] = _round(time.perf_counter() - start)
+    start = time.perf_counter()
+    exact = ItemIndex(catalog, item_vecs, exact=True).search(user_vecs, k_max)
+    timings["exact_search_s"] = _round(time.perf_counter() - start)
+
+    popular = popularity.popularity(window2)
+    trending = popularity.trending(window2, splits.CUTOFF_EVAL)
+    sources = {
+        "two_tower": personal,
+        "popularity": np.tile(popular[:k_max], (len(eval_users), 1)),
+        "trending": np.tile(trending[:k_max], (len(eval_users), 1)),
+    }
+    recall_values = {
+        name: {k: metrics.recall_at_k(r, positives, k) for k in RECALL_K if k <= r.shape[1]}
+        for name, r in sources.items()
+    }
+    pool = cascade.build_pool(personal[:, : cascade.PERSONAL_K], trending[: cascade.TRENDING_K])
+    pool_recall = metrics.recall_at_k(pool, positives, pool.shape[1])
+
+    # Cutoff c1: fine-ranker training rows
+    window1, builder1 = _fit_cutoff(standard, splits.CUTOFF_TRAIN, users, items, s.tower, timings)
+    train_rows = splits.between(standard, *splits.LABELS_TRAIN)
+    valid_rows = splits.between(standard, *splits.LABELS_VALID)
+    start = time.perf_counter()
+    ranker = fine.FineRanker.fit(builder1, train_rows, valid_rows, s.fine_params)
+    timings["fine_fit_s"] = _round(time.perf_counter() - start)
+
+    x_eval = builder2.build(
+        rows["user_id"].to_numpy(dtype=np.int64), rows["video_id"].to_numpy(dtype=np.int64)
+    )
+    pred = ranker.predict(x_eval)
+    u = rows["user_id"].to_numpy(dtype=np.int64)
+    scorers: dict[str, FloatArray] = {
+        "fused": fine.fuse(pred),
+        "click_head": pred["is_click"],
+        "long_view_head": pred["long_view"],
+        "two_tower": x_eval["tower_score"].to_numpy(dtype=np.float64),
+        "popularity": -x_eval["popularity_rank"].to_numpy(dtype=np.float64),
+    }
+    weights = metrics.impressions(u, eval_users)
+    ranking: dict[str, dict[str, FloatArray]] = {}
+    for name, score in scorers.items():
+        ranking[name] = {
+            "gauc_click": metrics.user_auc(u, score, rows["is_click"].to_numpy(float), eval_users),
+            "gauc_long_view": metrics.user_auc(
+                u, score, rows["long_view"].to_numpy(float), eval_users
+            ),
+            "ndcg5_click": metrics.user_ndcg(
+                u, score, rows["is_click"].to_numpy(float), eval_users
+            ),
+        }
+
+    fusion = {}
+    for w in FUSION_GRID:
+        score = fine.fuse(pred, w)
+        fusion[str(w)] = {
+            "gauc_click": _est(
+                metrics.estimate(
+                    metrics.user_auc(u, score, rows["is_click"].to_numpy(float), eval_users), idx
+                )
+            ),
+            "gauc_long_view": _est(
+                metrics.estimate(
+                    metrics.user_auc(u, score, rows["long_view"].to_numpy(float), eval_users), idx
+                )
+            ),
+            "ndcg5_click": _est(
+                metrics.estimate(
+                    metrics.user_ndcg(u, score, rows["is_click"].to_numpy(float), eval_users), idx
+                )
+            ),
+        }
+
+    # Truncation study
+    rng = np.random.default_rng(splits.SPLIT_SEED)
+    sample = np.sort(
+        rng.choice(len(eval_users), min(s.sample_users, len(eval_users)), replace=False)
+    )
+    start = time.perf_counter()
+    catalog_scores = _scores_by_user(builder2, ranker, eval_users[sample], catalog)
+    timings["catalog_scoring_s"] = _round(time.perf_counter() - start)
+    sizes = [n for n in TRUNCATION_N if n < pool.shape[1]] + [pool.shape[1]]
+    study = truncation.study(
+        pool, user_vecs, catalog, item_vecs, positives, sample, catalog_scores, sizes
+    )
+    sample_idx = metrics.resample_indices(len(sample), samples=s.bootstrap_samples)
+    lat_users = eval_users[sample[: s.latency_users]]
+    truncation_out = []
+    for result in study:
+        kept = cascade.coarse(
+            pool[sample[: s.latency_users]],
+            user_vecs[sample[: s.latency_users]],
+            catalog,
+            item_vecs,
+            result.n,
+        )
+        truncation_out.append(
+            {
+                "n": result.n,
+                "survival": _est(metrics.estimate(result.survival, idx)) | {"tier": "A"},
+                "top1_agreement": _est(metrics.estimate(result.agreement, sample_idx))
+                | {"tier": "model-internal"},
+                "score_regret": _est(metrics.estimate(result.regret, sample_idx))
+                | {"tier": "model-internal"},
+                "fine_ms_per_user": _round(_latency(builder2, ranker, lat_users, kept)),
+            }
+        )
+    catalog_latency = _latency(builder2, ranker, lat_users, np.tile(catalog, (len(lat_users), 1)))
+
+    # Primary comparisons
+    c1 = metrics.compare(recall_values["two_tower"][200], recall_values["popularity"][200], idx)
+    c2 = metrics.compare(ranking["fused"]["gauc_click"], ranking["two_tower"]["gauc_click"], idx)
+    rejected = metrics.holm({"C1": c1.p_value, "C2": c2.p_value})
+
+    # The same scorers on the fine ranker's own validation rows (standard logs, not random)
+    x_valid = builder1.build(
+        valid_rows["user_id"].to_numpy(dtype=np.int64),
+        valid_rows["video_id"].to_numpy(dtype=np.int64),
+    )
+    pred_valid = ranker.predict(x_valid)
+    v_users = valid_rows["user_id"].to_numpy(dtype=np.int64)
+    v_order = np.unique(v_users)
+    v_idx = metrics.resample_indices(len(v_order), samples=s.bootstrap_samples)
+    in_distribution = {
+        name: _est(
+            metrics.estimate(
+                metrics.user_auc(v_users, score, valid_rows["is_click"].to_numpy(float), v_order),
+                v_idx,
+            )
+        )
+        for name, score in {
+            "fused": fine.fuse(pred_valid),
+            "click_head": pred_valid["is_click"],
+            "two_tower": x_valid["tower_score"].to_numpy(dtype=np.float64),
+            "popularity": -x_valid["popularity_rank"].to_numpy(dtype=np.float64),
+        }.items()
+    }
+    importance = {
+        target: dict(
+            sorted(
+                zip(
+                    x_valid.columns,
+                    (round(float(g), 1) for g in booster.feature_importance("gain")),
+                    strict=True,
+                ),
+                key=lambda kv: -kv[1],
+            )[:10]
+        )
+        for target, booster in ranker.boosters.items()
+    }
+
+    # Feature drift between the two cutoffs
+    x_train = builder1.build(
+        train_rows["user_id"].to_numpy(dtype=np.int64),
+        train_rows["video_id"].to_numpy(dtype=np.int64),
+    )
+    drift = {
+        f: {"c1_training_rows": _quantiles(x_train[f]), "c2_evaluation_rows": _quantiles(x_eval[f])}
+        for f in DRIFT_FEATURES
+    }
+
+    return {
+        "setup": {
+            "evaluation_users": len(eval_users),
+            "evaluation_impressions": len(rows),
+            "users_with_a_click": int(sum(1 for p in positives if p)),
+            "catalog_items": len(catalog),
+            "window_rows": {"c1": len(window1), "c2": len(window2)},
+            "fine_training_rows": len(train_rows),
+            "fine_validation_rows": len(valid_rows),
+            "fine_best_rounds": ranker.best_rounds,
+            "truncation_sample_users": len(sample),
+        },
+        "ann": {
+            "overlap_at_200": _round(overlap(personal[:, :200], exact[:, :200])),
+            "overlap_at_500": _round(overlap(personal, exact)),
+        },
+        "recall": {
+            name: {str(k): _est(metrics.estimate(v, idx)) | {"tier": "A"} for k, v in by_k.items()}
+            for name, by_k in recall_values.items()
+        }
+        | {"pool": {str(pool.shape[1]): _est(metrics.estimate(pool_recall, idx)) | {"tier": "A"}}},
+        "ranking": {
+            name: {
+                "gauc_click": _est(metrics.estimate(m["gauc_click"], idx)),
+                "gauc_click_impression_weighted": _est(
+                    metrics.estimate(m["gauc_click"], idx, weights)
+                ),
+                "gauc_long_view": _est(metrics.estimate(m["gauc_long_view"], idx)),
+                "ndcg5_click": _est(metrics.estimate(m["ndcg5_click"], idx)),
+                "tier": "A",
+            }
+            for name, m in ranking.items()
+        },
+        "fusion_weight": fusion,
+        "truncation": truncation_out,
+        "catalog_fine_ms_per_user": _round(catalog_latency),
+        "primary": {
+            "C1_two_tower_vs_popularity_recall200": _est(c1.difference)
+            | {"p_value": _round(c1.p_value), "holm_rejected": rejected["C1"]},
+            "C2_fused_vs_two_tower_gauc_click": _est(c2.difference)
+            | {"p_value": _round(c2.p_value), "holm_rejected": rejected["C2"]},
+        },
+        "diagnostics": {
+            "gauc_click_on_fine_validation_rows": in_distribution
+            | {"tier": "not unbiased: standard-log impressions"},
+            "fine_feature_gain_top10": importance,
+        },
+        "feature_drift": drift,
+        "timings_s": timings,
+    }
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Evaluate recall and ranking.")
+    parser.add_argument("--root", type=Path, default=Path.cwd(), help="repository root")
+    args = parser.parse_args(argv)
+    result = run(args.root)
+    out = args.root / paths.RESULTS / "ranking.json"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8", newline="\n")
+    print(f"wrote {out}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

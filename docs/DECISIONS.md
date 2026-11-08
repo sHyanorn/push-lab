@@ -122,3 +122,12 @@
 - Date: 2026-11-08
 - Top-1 agreement, score regret and latency need the fine ranker's score for every catalog item. For all 13,500 evaluation users that is about 102M feature rows, beyond the memory budget. They are computed for 1,000 evaluation users drawn with `numpy.random.default_rng(0)`; survival needs no fine scores and covers every evaluation user
 - METHODS Section 4 says "per evaluation user"; this narrows the model-internal measures only, which carry no significance claims
+
+## D020 Ranking evaluation cost and first results
+- Date: 2026-11-08
+- Measured in the same container as D015: the whole evaluation (`python -m push_lab.rank.evaluate`) takes about 100 s with a peak of 3.3 GB. Two-tower fits take 22 s (cutoff 04-22, 442k clicked pairs) and 15 s (04-15); the fine ranker 3.6 s (both heads stop early at 70 rounds); fine scoring of the whole catalog for 1,000 users 25 s, or 24 ms per user
+- Pre-registered results (METHODS Section 6), reported as they came out:
+  - C1: two-tower Recall@200 exceeds popularity by 0.47 points (95% CI 0.24 to 0.70; 4.7% against 4.2%); rejected under Holm
+  - C2: the fused fine ranker's click GAUC is 5.3 points *below* the two-tower score's (0.545 against 0.598; CI -5.8 to -4.9); rejected under Holm, in the direction opposite to the expected one
+- On its own validation rows (standard logs 04-20 and 04-21) the fine ranker beats the two-tower score (0.567 against 0.515), so the reversal comes from the shift from the production recommender's impressions to random exposures, not from a broken model. Its largest gains are user-level features (user click rate, `onehot_feat3`, `onehot_feat8`), which are constant within a user and cannot rank items for that user; its item statistics come from impressions the recommender chose. The drift diagnostics show the shift: the median item impressions per day are 43 on the training rows and 1.8 on the random exposures
+- This is the main lesson M2 hands to the simulator: a ranker fitted on logged impressions can rank random candidates worse than the retrieval score it was meant to refine. Hyperparameters stay as pre-registered; any change to the fine ranker is a new, separately reported variant

@@ -18,8 +18,8 @@ from push_lab.data import kuairand, paths, schemas
 Columns = dict[str, list[Any] | npt.NDArray[Any]]
 
 N_USERS = 50
-N_VIDEOS = 80
-N_AUTHORS = 20
+N_VIDEOS = 600
+N_AUTHORS = 60
 
 
 def _fill(schema: schemas.Schema, rng: np.random.Generator, n: int) -> Columns:
@@ -43,12 +43,20 @@ def _frame(schema: schemas.Schema, columns: Columns) -> pd.DataFrame:
     return df
 
 
-def kuairand_log(rng: np.random.Generator, n: int, *, random_exposure: bool) -> pd.DataFrame:
+_EARLY_DATES = [20220409 + d for d in range(13)]
+_LATE_DATES = [*range(20220422, 20220431), *range(20220501, 20220509)]
+
+
+def kuairand_log(
+    rng: np.random.Generator, n: int, *, random_exposure: bool, early: bool = False
+) -> pd.DataFrame:
+    """A log table; ``early`` uses the 04-09 to 04-21 dates of the first standard log."""
+    dates = _EARLY_DATES if early else _LATE_DATES
     cols = _fill(schemas.KUAIRAND_LOG, rng, n)
     cols.update(
         user_id=rng.integers(0, N_USERS, size=n),
         video_id=rng.integers(0, N_VIDEOS, size=n),
-        date=rng.choice([20220422, 20220423, 20220424], size=n),
+        date=rng.choice(dates, size=n),
         hourmin=rng.integers(0, 24, size=n) * 100,
         time_ms=np.sort(rng.integers(1_650_000_000_000, 1_651_000_000_000, size=n)),
         is_click=(rng.random(n) < 0.2).astype(np.int64),
@@ -136,7 +144,7 @@ def processed_tables(seed: int = 0, n: int = 500) -> dict[tuple[str, str], pd.Da
     """Every processed table, keyed by (dataset, table name)."""
     rng = np.random.default_rng(seed)
     return {
-        ("kuairand", "log_standard_early"): kuairand_log(rng, n, random_exposure=False),
+        ("kuairand", "log_standard_early"): kuairand_log(rng, n, random_exposure=False, early=True),
         ("kuairand", "log_standard_late"): kuairand_log(rng, n, random_exposure=False),
         ("kuairand", "log_random"): kuairand_log(rng, n, random_exposure=True),
         ("kuairand", "users"): kuairand_users(rng),
