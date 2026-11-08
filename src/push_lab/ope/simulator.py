@@ -45,6 +45,9 @@ LOG_SEEDS = tuple(range(1_001, 1_051))
 TRUTH_RUNS, TRUTH_BASE = 200, 100_000
 RESULTS_FILE = "ope_simulator_amended.json"
 RUNS = Path("runs") / "ope"
+# Two log seeds, outputs apart from the registered runs (D050)
+SMOKE = Path("runs") / "smoke" / "ope"
+SMOKE_HELP = "two log seeds; writes under results/runs/smoke for pipeline checks only"
 WORLD_SEED = 10_100
 FOLDS = 2
 PER_SLOT = 1 / SLOTS
@@ -386,14 +389,16 @@ def _log_work(job: tuple[str, int]) -> tuple[str, int, dict[str, dict[str, Any]]
     return setting, seed, estimate_log(_CONTEXTS[setting], SETTINGS[setting], seed)
 
 
-def run(root: Path, processes: int, log_seeds: Sequence[int] = LOG_SEEDS) -> dict[str, Any]:
+def run(
+    root: Path, processes: int, log_seeds: Sequence[int] = LOG_SEEDS, runs: Path = RUNS
+) -> dict[str, Any]:
     start = time.perf_counter()
     jobs = [(s, seed) for s in SETTINGS for seed in log_seeds]
     logs: dict[str, dict[int, dict[str, dict[str, Any]]]] = {s: {} for s in SETTINGS}
     with mp.get_context("spawn").Pool(processes, _init, (root,)) as pool:
         for count, (setting, seed, result) in enumerate(pool.imap_unordered(_log_work, jobs), 1):
             logs[setting][seed] = result
-            saved = root / paths.RESULTS / RUNS / f"{setting}_{seed}.json"
+            saved = root / paths.RESULTS / runs / f"{setting}_{seed}.json"
             saved.parent.mkdir(parents=True, exist_ok=True)
             saved.write_text(json.dumps(result) + "\n", encoding="utf-8")
             print(f"{count}/{len(jobs)} {setting} log {seed}", flush=True)
@@ -420,12 +425,17 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Check OPE on simulator logs against truth.")
     parser.add_argument("--root", type=Path, default=Path.cwd(), help="repository root")
     parser.add_argument("--processes", type=int, default=4)
+    parser.add_argument("--smoke", action="store_true", help=SMOKE_HELP)
     args = parser.parse_args(argv)
     for var in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS"):
         os.environ[var] = "1"
     commit = sweep.code_commit(args.root)
-    result = {"commit": commit} | run(args.root, args.processes)
-    target = args.root / paths.RESULTS / RESULTS_FILE
+    if args.smoke:
+        result = {"commit": commit} | run(args.root, args.processes, LOG_SEEDS[:2], SMOKE)
+        target = args.root / paths.RESULTS / SMOKE / RESULTS_FILE
+    else:
+        result = {"commit": commit} | run(args.root, args.processes)
+        target = args.root / paths.RESULTS / RESULTS_FILE
     target.write_text(json.dumps(result, indent=1) + "\n", encoding="utf-8", newline="\n")
     print(f"wrote {target}")
     return 0

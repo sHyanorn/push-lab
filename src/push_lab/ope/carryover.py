@@ -36,6 +36,9 @@ FOCUS = ("T_half", "N", "T2")
 RESAMPLES, RESAMPLE_SEED = 10_000, 0
 RESULTS_FILE = "ope_carryover.json"
 RUNS = Path("runs") / "ope_carryover"
+# Two log seeds, outputs apart from the registered runs (D050)
+SMOKE = Path("runs") / "smoke" / "ope_carryover"
+SMOKE_HELP = "two log seeds; writes under results/runs/smoke for pipeline checks only"
 
 
 def settings() -> list[dict[str, Any]]:
@@ -99,7 +102,8 @@ def summarize(
             t_value, t_se = float(values.mean()), float(values.std(ddof=1) / np.sqrt(len(values)))
             entry: dict[str, Any] = {"truth": {"value": t_value, "se": t_se}}
             for name in ("IPS", "DR"):
-                ests = [logs[sid][seed][target]["visit"]["estimates"][name] for seed in LOG_SEEDS]
+                seeds = sorted(logs[sid])
+                ests = [logs[sid][seed][target]["visit"]["estimates"][name] for seed in seeds]
                 entry[name] = sim.validate(ests, t_value, t_se)
                 points = np.array([e["value"] for e in ests])
                 boots[(sid, target, name)] = bias_resamples(points, values, RESAMPLE_SEED)
@@ -184,12 +188,18 @@ def orderings(result: dict[str, Any], folder: Path) -> dict[str, Any]:
     }
 
 
-def run(root: Path, processes: int, reuse_logs: bool = False) -> dict[str, Any]:
+def run(
+    root: Path,
+    processes: int,
+    reuse_logs: bool = False,
+    log_seeds: Sequence[int] = LOG_SEEDS,
+    runs: Path = RUNS,
+) -> dict[str, Any]:
     """Every log and truth job; with ``reuse_logs``, the per-log estimates saved by an earlier
     run are read back instead of recomputed (they are deterministic)."""
     start = time.perf_counter()
     grid = settings()
-    folder = root / paths.RESULTS / RUNS
+    folder = root / paths.RESULTS / runs
     folder.mkdir(parents=True, exist_ok=True)
     logs: dict[int, dict[int, Any]] = {s["id"]: {} for s in grid}
     truths: dict[int, dict[str, Any]] = {s["id"]: {} for s in grid}
@@ -198,11 +208,11 @@ def run(root: Path, processes: int, reuse_logs: bool = False) -> dict[str, Any]:
     ]
     if reuse_logs:
         for s in grid:
-            for seed in LOG_SEEDS:
+            for seed in log_seeds:
                 path = folder / f"{s['id']}_{seed}.json"
                 logs[s["id"]][seed] = json.loads(path.read_text("utf-8"))
     else:
-        jobs = [("log", s, seed) for s in grid for seed in LOG_SEEDS] + jobs
+        jobs = [("log", s, seed) for s in grid for seed in log_seeds] + jobs
     with mp.get_context("spawn").Pool(processes, _init, (root,)) as pool:
         for count, (kind, sid, key, result) in enumerate(pool.imap_unordered(_work, jobs), 1):
             if kind == "log":
@@ -217,7 +227,7 @@ def run(root: Path, processes: int, reuse_logs: bool = False) -> dict[str, Any]:
         "tier": "C",
         "note": "Bias of per-day OPE against simulator truth along one-at-a-time grids of the "
         "carryover parameters; other parameters at the reference.",
-        "log_seeds": list(LOG_SEEDS),
+        "log_seeds": list(log_seeds),
         "truth_runs": TRUTH_RUNS,
         "world_seed": sim.WORLD_SEED,
         **summarize(grid, logs, truths),
@@ -235,10 +245,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument(
         "--post-hoc", action="store_true", help="add the post hoc orderings to existing results"
     )
+    parser.add_argument("--smoke", action="store_true", help=SMOKE_HELP)
     args = parser.parse_args(argv)
     target = args.root / paths.RESULTS / RESULTS_FILE
     commit = sweep.code_commit(args.root)
-    if args.post_hoc:
+    if args.smoke:
+        for var in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS"):
+            os.environ[var] = "1"
+        result = {"commit": commit} | run(args.root, args.processes, False, LOG_SEEDS[:2], SMOKE)
+        target = args.root / paths.RESULTS / SMOKE / RESULTS_FILE
+    elif args.post_hoc:
         result = json.loads(target.read_text("utf-8"))
         result["post_hoc"] = {"commit": commit} | orderings(
             result, args.root / paths.RESULTS / RUNS

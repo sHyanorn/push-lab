@@ -102,3 +102,9 @@ def test_summarize_reports_a_paired_change_along_each_grid() -> None:
     change = carryover.summarize(grid, logs, truths)["flips"]["annoyance"]["T2.DR"]["change"]
     assert change["ci_low"] < 0.1 < change["ci_high"]
     assert change["ci_high"] - change["ci_low"] < 0.01
+
+
+def test_summarize_reads_logs_in_seed_order_whatever_order_they_finished() -> None:
+    grid, logs, truths = _fake({"T2": 1.0})
+    shuffled = {sid: dict(reversed(list(per_seed.items()))) for sid, per_seed in logs.items()}
+    assert carryover.summarize(grid, shuffled, truths) == carryover.summarize(grid, logs, truths)
