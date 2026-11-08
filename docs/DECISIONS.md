@@ -97,3 +97,23 @@
 - Errors (the command exits with status 1): a missing processed table; a Parquet schema that differs from the shared schema; a row count that differs from the published figure (KuaiRand-Pure logs 1,141,112, 295,497 and 1,186,059 rows, 27,285 users; Criteo 13,979,592 rows); `is_rand` not 1 on every random-exposure row or not 0 on every standard-log row; Criteo treatment share more than 0.005 from the published 0.85; Criteo training share more than 0.01 from 0.1; Hillstrom treatment share outside 0.45 to 0.55; an OBD propensity outside (0, 1], or a random-policy propensity that is not 1/34
 - Reported without a threshold: missing shares per column (from Parquet statistics), KuaiRand click rate by tab, visit and conversion rates by arm, OBD click rates and propensity ranges
 - The report goes to `results/data_quality.json` and is committed; it has no timestamp, so it changes only when the data or the checks do
+
+## D017 CPU-only torch
+- Date: 2026-11-08
+- torch comes from the PyTorch CPU index (`[tool.uv.sources]` in `pyproject.toml`); the PyPI build pulls CUDA libraries on Linux, which a CPU-only project never uses. The lock resolves `2.15.0+cpu` on Linux and Windows and `2.15.0` on macOS, with no CUDA packages
+- faiss-cpu 1.15.1 ships its own type information, so mypy checks it without an override
+
+## D018 HNSW search breadth
+- Date: 2026-11-08
+- METHODS first set `efSearch = 128`. faiss HNSW keeps at most `efSearch` candidates while searching, so with K = 200 the result can only partly agree with exact search. Measured at cutoff 04-22 on the 13,500 evaluation users and 7,583 items:
+
+| efSearch | Overlap@200 | Overlap@500 | Search time, 13,500 users, K = 200 |
+|---|---|---|---|
+| 128 | 0.869 | 0.784 | 0.3 s |
+| 256 | 0.963 | 0.925 | 0.6 s |
+| 512 | 0.994 | 0.985 | 0.9 s |
+| 1024 | 1.000 | 0.999 | 2.1 s |
+
+- `efSearch = 1024` meets the 0.99 requirement at both K. Ties do not explain the gap: 7,231 of the 7,583 item vectors are distinct and a tie-aware overlap gives the same numbers
+- At this catalog size exact search is faster (0.2 s). HNSW stays in the pipeline because it is what scales to KuaiRand-1K (optional); the evaluation reports both
+

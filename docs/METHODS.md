@@ -70,7 +70,7 @@ $$
 
 **Fixed hyperparameters** (no tuning, to keep the comparisons pre-registered): $\tau = 0.05$, Adam with learning rate $10^{-3}$, batch 1,024, 5 epochs, seed 0, 4 threads.
 
-**Index.** Item vectors go into a faiss HNSW index with inner-product metric (`M = 32`, `efConstruction = 200`, `efSearch = 128`). Exact search (`IndexFlatIP`) is the reference.
+**Index.** Item vectors go into a faiss HNSW index with inner-product metric (`M = 32`, `efConstruction = 200`, `efSearch = 1024`; raised from 128, see D018). Exact search (`IndexFlatIP`) is the reference.
 
 **Reference.** Yi, X., Yang, J., Hong, L., Cheng, D. Z., Heldt, L., Kumthekar, A., Zhao, Z., Wei, L., Chi, E. (2019). Sampling-Bias-Corrected Neural Modeling for Large Corpus Item Recommendations. *RecSys 2019*. https://doi.org/10.1145/3298689.3346996
 
