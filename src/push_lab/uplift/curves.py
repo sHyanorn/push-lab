@@ -173,12 +173,24 @@ class Cells:
 
 def cells(groups: list[IntArray], t: npt.NDArray[np.integer], y: npt.NDArray[np.integer]) -> Cells:
     """Collapse rows into cells; a statistic of the rows is the same statistic of the cells."""
-    columns = np.column_stack([*groups, t.astype(np.int64), y.astype(np.int64)])
-    unique, count = np.unique(columns, axis=0, return_counts=True)
+    # One integer key per row in mixed radix: (groups..., t, y), so a 1-D unique suffices
+    columns = [*groups, t.astype(np.int64), y.astype(np.int64)]
+    sizes = [int(c.max()) + 1 for c in columns]
+    if np.prod(np.array(sizes, dtype=np.float64)) >= 2.0**62:
+        raise ValueError("too many cells for an int64 key")
+    key = np.zeros(len(t), dtype=np.int64)
+    for column, size in zip(columns, sizes, strict=True):
+        key = key * size + column
+    unique, count = np.unique(key, return_counts=True)
+    decoded = []
+    for size in reversed(sizes):
+        decoded.append(unique % size)
+        unique = unique // size
+    decoded.reverse()
     return Cells(
-        groups=[unique[:, i] for i in range(len(groups))],
-        t=unique[:, -2],
-        y=unique[:, -1],
+        groups=decoded[: len(groups)],
+        t=decoded[-2],
+        y=decoded[-1],
         count=count.astype(np.float64),
     )
 
