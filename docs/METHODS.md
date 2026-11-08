@@ -259,3 +259,107 @@ The p-values follow the Conventions (twice the smaller tail share at zero). U1 a
 **Results** go to `results/uplift.json`: setup (row counts, treated shares, test-set sizes), every metric with its interval and tier A, the four comparisons with p-values and Holm decisions, the budget table, Qini curves at 101 points with 95% bands for the report, the scikit-uplift cross-check and fit times. One diagnostic was added after U4 came out (D022) and is labeled post hoc: on Criteo visits, the treated and control response rates and their difference per score decile of the T-learner and of the response model.
 
 **Code.** `uplift/evaluate.py` (`python -m push_lab.uplift.evaluate`). Criteo is read by column and scored in one pass over 1M-row batches (D015); treatment and outcomes are read from the same batches as the features.
+
+---
+
+## 11. Push simulator
+
+**Problem.** No public data links push sends to later behavior (SPEC Section 12), so delivery policies are compared in a simulator. Every component below is an assumption with a stated source and a swept range that includes no effect; any result that depends on the simulator is Tier C and is reported only with the sweep (M5). M4 builds the simulator and checks its fitted inputs; it reports no policy outcomes.
+
+**Population and time.** All 27,285 KuaiRand-Pure users, 28 simulated days, four send slots a day at 08:00, 12:00, 17:00 and 21:00 (local time, UTC+8). Simulated days are not calendar days; every user starts with no push history. A 5,000-user sample drawn with `numpy.random.default_rng(0)` serves quick runs.
+
+**Decisions.** At each (user, day, slot) a policy either skips or sends one item with one copy template $k$. Users who opted out receive nothing; a send to them is dropped and logged as not delivered.
+
+### 11.1 Inputs fitted on KuaiRand
+
+- **Response model** $p_0(u, i)$: the probability that user $u$ clicks item $i$ when it is shown at random in the feed. A LightGBM click classifier with the fine ranker's features at cutoff $c_2$ (Section 5) and its fixed hyperparameters, fitted on the random exposures of the *simulator half* (Section 1, tab 1 only). The simulator half's users are split 80/20 by user with `numpy.random.default_rng(0)`; the 20% drive early stopping and the reported validation (log loss, AUC, GAUC, and a reliability table in 10 bins of predicted probability). No row of the evaluation half is used. These checks are Tier A because they are measured on held-out random exposures.
+- **Candidate items.** For each user, the top 30 items of the M2 cascade at $c_2$ (pool, coarse top 200 by two-tower score, fused fine score), and separately the top 30 by two-tower score alone, since C2 found the two-tower score ranks random exposures better (D020). $p_0$ is computed for the union. A policy pushes the highest-ranked item of its chosen list that it has not pushed to that user before.
+- **Organic visit rate** $v_u$: the share of the 17 days from 04-22 to 05-08 on which the user has any tab-1 row in the standard or random log, smoothed as $(n_u + 2\bar v)/(17 + 2)$ with $\bar v$ the population mean. Random exposures are inserted while a user browses, so they mark activity as well as standard impressions do.
+- **Activity profiles.** A push sent at slot $s$ is assumed to be opened, if at all, within the following three hours: windows $[8, 11)$, $[12, 15)$, $[17, 20)$ and $[21, 24)$. The hour comes from `time_ms` converted to UTC+8; `hourmin` is a coarse bucket that differs from `time_ms` by up to an hour (KuaiRand documents it as "HHSS"; the values are whole hours). The time zone is an assumption: KuaiRand does not state it. It rests on the data being from a Chinese app and on the hourly activity of all users being lowest between 00:00 and 06:00 in that time zone, which a test checks. The *simulator profile* counts each user's tab-1 rows in each window from 04-22 to 05-08 (standard and random logs); the *policy profile* uses standard logs from 04-09 to 04-21 (D014). Shares are smoothed toward the population shares $\pi_s$: $a_{u,s} = (n_{u,s} + 10\,\pi_s) / (n_u + 10)$.
+
+### 11.2 Open probability
+
+A push of item $i$ with template $k$ delivered to user $u$ at slot $s$ of day $d$ is opened with probability
+
+$$
+p = \min\!\Big(1,\; r \cdot p_0(u, i) \cdot m_{u,s} \cdot c_k \cdot e^{-\phi F^-_{u}} \cdot \big(1 - \gamma\, 0.5^{\Delta_{u,k}/h}\big)\Big)
+$$
+
+- **Base rate** $r$: push opens are far rarer than in-feed clicks on random items (17.7%, D020). Airship's 2024 benchmarks (industry, not peer reviewed) put median direct open rates at 3.4% (Android) and 3.1% (iOS), 10th to 90th percentile about 0.7% to 10.7%; Kuaishou push CTRs shown in Bie et al. (2026) are about 0.8% to 1.2%. $r \in [0.03, 0.2]$ gives mean open rates of about 0.5% to 3.5%.
+- **Send time** $m_{u,s} = a_{u,s}^\eta / \tfrac14 \sum_{s'} a_{u,s'}^\eta$, so sending at a uniformly random slot gives multiplier 1 on average. $\eta \ge 0$ is set by the swept *timing lift* $L = \mathbb E_u[\max_s m_{u,s}] - 1$, the gain from always sending at each user's true best slot, solved by bisection. Evidence: personalized timing raised CTR by 1.22% at Kuaishou (Ji et al. 2024) and engagement by a risk ratio of 1.025 to 1.118 by time and day in a micro-randomized trial (Bidargaddi et al. 2018); vendor claims reach about 23% (not peer reviewed). $L \in [0, 0.25]$.
+- **Copy effect** $c_k = \exp(\sigma z_k - \sigma^2/2)$ with $z_k = \sqrt{0.5}\, z_{\text{family}(k)} + \sqrt{0.5}\, z'_k$ and standard normal $z$ drawn once per world from a separate seed, so $\mathbb E[c_k] = 1$. Duolingo template scores imply a spread of about 2% (Yancey and Settles 2020, Fig. 3); LLM-written copy raised Kuaishou CTR by 4% to 14% (Bie et al. 2026); a personalized e-mail subject raised opens by 20% (Sahni et al. 2018). $\sigma \in [0, 0.2]$. The effect is drawn at random for each world and is not derived from the text (SPEC Section 7): the simulator cannot tell which copy is well written, and the template bandit (M6) is tested only on whether it finds the templates with the largest drawn effects. The number of templates $K$ and of families comes from the committed copy (M6); until then $K = 60$ in 6 families.
+- **Volume fatigue** $e^{-\phi F^-_u}$, where $F^-_u = \sum_j 0.5^{(t - t_j)/h_f}$ sums over the user's earlier deliveries $j$, with times in days (slot hours as fractions of a day). $\phi = \epsilon_f / F_{\text{ref}}$, where $F_{\text{ref}} = 1/(2^{1/h_f} - 1)$ is $F^-$ just before a push under one push a day, so $\epsilon_f$ is the elasticity of the open rate with respect to recent volume at that volume. Online tests found volume elasticities of the open rate of about $-0.7$ to $-1.3$: Twitter, +16.8% sends and −12.0% open rate (O'Brien et al. 2022, Table 1, preprint); LinkedIn, +7.7% volume and −7.8% CTR (Prabhakar et al. 2022, Table 1), and −3.5% volume and +4.5% CTR (Yuan et al. 2022). These also include weaker marginal sends, so they bound pure fatigue from above. $\epsilon_f \in [0, 0.8]$; $h_f \in [3, 14]$ days is an assumption, as no source reports a memory length.
+- **Template novelty** $1 - \gamma\, 0.5^{\Delta_{u,k}/h}$, where $\Delta_{u,k}$ is the number of days since template $k$ was last delivered to $u$ (the term is 1 if never). This is the recency penalty of Yancey and Settles (2020, Eq. 3), applied as a relative change, with their production values $\gamma = 0.017$ and $h = 15$ days as the reference. $\gamma \in [0, 0.05]$, $h \in [7, 30]$ days.
+
+### 11.3 Opt-out
+
+Each delivered push makes the user opt out with probability $\lambda = \kappa_o \cdot F^+_u / (F_{\text{ref}} + 1)$, where $F^+_u$ includes the current push, so $\lambda = \kappa_o$ under one push a day and grows with recent volume. Opted-out users receive no further pushes; their organic visits continue. Evidence: at Tencent, the share of new users with push enabled fell from 97% to 91% over 14 days at 15 pushes a day, at most about 0.03% per push, with part of the fall seen at every volume (Zhang et al. 2023, Fig. 3); switch-off rates did not change detectably in Twitter's and Kuaishou's tests. $\kappa_o \in [0, 0.001]$, with $0.005$ as a stress value outside the evidence.
+
+### 11.4 Visits
+
+User $u$ visits on day $d$ if an organic draw succeeds or any push that day is opened (an open is an app visit). The organic probability is
+
+$$
+v_{u,d} = \min\!\Big(1,\; v_u\, e^{-\delta F_{u,d}} + \kappa_r R_{u,d}\Big), \qquad R_{u,d} = \sum_{j:\, d_j < d} 0.5^{(d - d_j - 1)/h_r},
+$$
+
+with $F_{u,d}$ the decayed volume at the start of the day and the sum over the days $d_j$ of earlier opens.
+
+- **Return effect** $\kappa_r R$: an opened push raises the chance of visiting on following days, decaying with half-life $h_r$. KuaiSim raises a user's return probability with immediate feedback (Zhao et al. 2023, Algorithm 1) and Accordion adds an exponentially decaying intensity after each interaction (McInerney et al. 2021, Eq. 1–2); neither reports fitted magnitudes for push. A micro-randomized trial found a risk ratio of 1.039 for engagement within 24 hours of a send (Bidargaddi et al. 2018). $\kappa_r \in [0, 0.1]$, $h_r \in [0.5, 3]$ days, both assumptions.
+- **Annoyance** $e^{-\delta F}$ with $\delta = \epsilon_v / F_{\text{ref}}$: recent volume lowers organic visits, with elasticity $-\epsilon_v$ at one push a day. LinkedIn saw WAU fall 0.69% with 7.7% more volume (Prabhakar et al. 2022), while Twitter saw DAU rise 0.41% with 16.8% more sends (O'Brien et al. 2022); both net effects include visits caused by pushes. $\epsilon_v \in [0, 0.1]$. SPEC Section 6 does not list this component; it is added because without it no volume can lower activity below the organic level (D023).
+- **Plausibility band.** Reported program-level DAU lifts from notification changes are 0.07% to 0.5% (Duolingo, Twitter, LinkedIn, Kuaishou). M5 reports the share of sweep settings whose simulated lift of a once-a-day policy over no pushes falls in, below and above that band; the band is a check, not a target.
+
+### 11.5 Parameters
+
+| Parameter | Symbol | Range | Reference |
+|---|---|---|---|
+| Base-rate factor | $r$ | 0.03 to 0.2 | 0.06 |
+| Timing lift | $L$ | 0 to 0.25 | 0.10 |
+| Copy spread | $\sigma$ | 0 to 0.2 | 0.05 |
+| Fatigue elasticity, half-life (days) | $\epsilon_f$, $h_f$ | 0 to 0.8, 3 to 14 | 0.4, 7 |
+| Novelty penalty, half-life (days) | $\gamma$, $h$ | 0 to 0.05, 7 to 30 | 0.017, 15 |
+| Opt-out per push at one a day | $\kappa_o$ | 0 to 0.001 (stress 0.005) | 0.0003 |
+| Return boost, half-life (days) | $\kappa_r$, $h_r$ | 0 to 0.1, 0.5 to 3 | 0.03, 1 |
+| Annoyance elasticity | $\epsilon_v$ | 0 to 0.1 | 0.05 |
+
+The reference setting serves tests, the exploration logs used to build M5 and the examples in the report; the sweep design (Latin hypercube over these ranges, with profile misspecification) is pre-registered in M5.
+
+### 11.6 Randomness and implementation
+
+The simulator is vectorized over users and steps through 28 × 4 slots. Two seeds define a run: a *world seed* for the copy effects and a *run seed* for uniform draws for every (user, day, slot) open and opt-out event and every (user, day) organic visit. The draws are generated before the run and shared by every policy run with the same seed, so policies are compared on common random numbers and their differences are paired.
+
+### 11.7 Exploration policy
+
+The logging policy for the uplift gate (D013) and off-policy evaluation (M7) is epsilon-greedy around a default of one push a day at the user's best slot under the *policy* profile:
+
+$$
+P(\text{send} \mid u, s) = (1 - \varepsilon)\, \mathbb 1[s = \hat s_u] + \varepsilon\, q, \qquad P(k \mid \text{send}) = 1/K,
+$$
+
+with $\varepsilon = 0.3$ and $q = 1/4$, so the send probability is 0.775 at $\hat s_u$ and 0.075 at the other slots, and the expected volume is one push a day. The smallest propensity of a send, $0.075/K$, is recorded with $K$ in `results/simulator.json` for off-policy evaluation (M7). Items follow the cascade list. Each logged decision records the user, day, slot, action, template, item, the propensity of the action taken, whether the push was delivered and opened, and whether the user opted out; daily visits are logged per user.
+
+**References.**
+- Yancey, K. P., Settles, B. (2020). A Sleeping, Recovering Bandit Algorithm for Optimizing Recurring Notifications. *KDD 2020*. https://doi.org/10.1145/3394486.3403351
+- O'Brien, C., Wu, H., Zhai, S., Guo, D., Shi, W., Hunt, J. J. (2022). Should I send this notification? Optimizing push notifications decision making by modeling the future. arXiv:2202.08812 (not peer reviewed).
+- Prabhakar, P., Yuan, Y., Yang, G., Sun, W., Muralidharan, A. (2022). Multi-objective Optimization of Notifications Using Offline Reinforcement Learning. *KDD 2022*. https://doi.org/10.1145/3534678.3539193
+- Yuan, Y., Muralidharan, A., Nandy, P., Cheng, M., Prabhakar, P. (2022). Offline Reinforcement Learning for Mobile Notifications. *CIKM 2022*. https://doi.org/10.1145/3511808.3557083
+- Zhang, Y., Zhao, M., Li, C., Tou, W., Chen, H., Niu, D., Yin, C., He, Y., Guo, F. (2023). Online Volume Optimization for Notifications via Long Short-Term Value Modeling. *PAKDD 2023*. https://doi.org/10.1007/978-3-031-33380-4_2
+- Ji, H., Yang, H., Li, L., Zhang, S., Zhang, C., Li, X., Ou, W. (2024). TIM: Temporal Interaction Model in Notification System. *ICMR 2024*. https://doi.org/10.1145/3652583.3657614
+- Bie, S., Cao, J., Luo, Z., Zou, Y., Liang, L., Zhang, L., Chen, L., Liu, Z., Li, X., et al. (2026). PushGen: Push Notifications Generation with LLM. *WSDM 2026*. https://doi.org/10.1145/3773966.3779373
+- Bidargaddi, N., Almirall, D., Murphy, S., Nahum-Shani, I., Kovalcik, M., Pituch, T., Maaieh, H., Strecher, V. (2018). To Prompt or Not to Prompt? A Microrandomized Trial of Time-Varying Push Notifications to Increase Proximal Engagement With a Mobile Health App. *JMIR mHealth and uHealth* 6(11), e10123. https://doi.org/10.2196/10123
+- Sahni, N. S., Wheeler, S. C., Chintagunta, P. (2018). Personalization in Email Marketing: The Role of Noninformative Advertising Content. *Marketing Science* 37(2), 236–258. https://doi.org/10.1287/mksc.2017.1066
+- Zhao, K., Liu, S., Cai, Q., Zhao, X., Liu, Z., Zheng, D., Jiang, P., Gai, K. (2023). KuaiSim: A Comprehensive Simulator for Recommender Systems. *NeurIPS 2023 Datasets and Benchmarks*. https://doi.org/10.52202/075280-1945
+- McInerney, J., Elahi, E., Basilico, J., Raimond, Y., Jebara, T. (2021). Accordion: A Trainable Simulator for Long-Term Interactive Systems. *RecSys 2021*. https://doi.org/10.1145/3460231.3474259
+- Airship (2025). Mobile Engagement Benchmarks (industry report, not peer reviewed).
+
+**Code.** `sim/inputs.py` (response model, candidates, visit rates, profiles), `sim/world.py` (parameters and derived constants), `sim/env.py` (environment), `sim/explore.py` (exploration policy), `sim/build.py` (`python -m push_lab.sim.build`, writes `results/simulator.json` with the input checks; per-user inputs are cached under `data/processed/sim/` and not committed).
+
+**Tests** (SPEC Section 11, on synthetic inputs):
+- With no sends, fatigue stays 0, nobody opts out and visits equal the organic draws.
+- With $\epsilon_f = \epsilon_v = \gamma = \kappa_o = 0$ and the item fixed per (user, day, slot), adding sends never lowers opens or visits on the same random numbers. (With the default item rule an extra send moves later pushes down the user's list, which can lower $p_0$, so the invariant is tested with fixed items.)
+- With $\sigma = \gamma = 0$, the choice of template does not change any outcome.
+- Fixed seeds give identical outputs; policies run with the same run seed see the same draws.
+- $\eta$ reproduces the target timing lift; $\phi$, $\delta$ and $\lambda$ give the stated elasticities and hazard at one push a day.
+- The exploration policy's logged propensities match the formula, and its empirical send and template frequencies match them within sampling error.
+- Response-model features use no data on or after $c_2$ (Section 5 tests).
+- The hourly activity of all users, by `time_ms` in UTC+8, is lowest at an hour between 00:00 and 06:00.

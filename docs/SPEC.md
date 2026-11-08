@@ -113,6 +113,7 @@ Rules:
 | Opt-out hazard | Increases with recent volume; shape after Zhao et al. (2018) | Swept, including zero |
 | Return after a push | Visit probability raised by the response, decays over days | Swept |
 | Copy effect | Each template gets a latent multiplier on response: family effect plus template noise | Spread swept, including zero (then no copy policy should beat uniform) |
+| Annoyance (added in M4, D023) | Recent volume lowers organic visits | Elasticity swept, including zero; conclusions also reported at zero |
 
 All parameter ranges and their sources are in `docs/METHODS.md`.
 

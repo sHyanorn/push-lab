@@ -42,7 +42,7 @@ Hour estimates are for planning; the required core is about 85 hours. If behind,
 - [x] Budget-constrained targeting: uplift against response ranking and random
 
 ## M4 Push simulator (12 h)
-- [ ] METHODS.md: simulator equations, every parameter with its source and range
+- [x] METHODS.md: simulator equations, every parameter with its source and range
 - [ ] Response model fitted on the simulator half of the random exposures, with a base-rate factor
 - [ ] Hourly activity profiles from organic logs, mapped to send slots
 - [ ] Fatigue, opt-out, return and copy-effect models

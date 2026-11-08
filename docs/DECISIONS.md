@@ -154,3 +154,9 @@
 - METHODS Section 9 now describes the bootstrap as implemented: multinomial draws over (score group, $t$, $y$) cells on both datasets, which equals row resampling, with Criteo bin edges fixed at their full-sample values. Section 10 describes the budget boundary as $U(bn)$ with linear interpolation instead of the top $\lceil bn \rceil$ rows
 - Added so that every reported number has an interval: 95% bands for the Qini curves, and the budget share left out when the treat-everyone effect's interval contains 0
 - Added after U4 was known, and labeled post hoc in the results: response rates and uplift per score decile of the T-learner and the response model on Criteo visits. It explains U4 and is not a pre-registered comparison
+
+## D023 Simulator components added or changed against SPEC Section 6
+- Date: 2026-11-08
+- Annoyance: recent push volume lowers organic visits, with elasticity $\epsilon_v \in [0, 0.1]$ at one push a day (METHODS Section 11.4). Without it no volume can lower activity below the organic level, so losses could come only from opt-outs. Evidence goes both ways (LinkedIn WAU fell with more volume, Twitter DAU rose), so zero is in the range and M5 reports its conclusions at $\epsilon_v = 0$ as well as over the full sweep
+- Active hours come from `time_ms` in UTC+8 instead of `hourmin`, which is a whole-hour bucket off by up to an hour; the time zone is an assumption checked by the overnight low in activity
+- Send slots are fixed at 08:00, 12:00, 17:00 and 21:00, each with a three-hour response window; activity outside the windows does not enter the profiles
