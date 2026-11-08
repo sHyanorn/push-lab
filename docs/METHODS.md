@@ -519,11 +519,13 @@ Fixed before generation and applied in this order; a variant is dropped at its f
    - more than one `!` in title and body together, or a word of three or more letters in capitals.
 6. *Near-duplicates*: the text `title | body`, lowercased, each placeholder replaced by one symbol and whitespace collapsed, is compared by character 4-gram Jaccard with every earlier variant that passed all rules, in all families (families in id order, variants in returned order); at 0.5 or above it is dropped.
 
+Every run also applies the filters to hand-made violations of the rules (`filters.VIOLATIONS`) and records how many were rejected as expected, so a run where every variant passes can be told apart from filters that do not work.
+
 The first 10 survivors of each family form the catalog. A family with fewer than 10 keeps all of them, $K$ falls below 60 and the family of each template is read from the catalog; this is recorded and nothing is regenerated.
 
 **Checks outside the simulator** (descriptive, no tests):
 - Pass rates per rule and family.
-- A blind rating by one rater of the 60 kept templates and 20 variants drawn with `default_rng(0)` from those that passed every filter but were not kept (no variant was rejected, D038), shuffled together with `default_rng(0)`, with placeholders filled from synthetic values and no sign of the filter verdict. Three yes or no questions per item: *clear* (easy to understand at a glance), *fits* (reads like a push from a short-video app), *misleading* (misleads or pressures the reader: false urgency, invented facts, rewards, guilt). Only counts are committed: per question, the number of yes among the kept and among the other variants. A template rated misleading is a miss of the filters.
+- A blind rating by one rater of the 60 kept templates and 20 variants drawn with `default_rng(0)` from those that passed every filter but were not kept (no variant was rejected, D038), shuffled together with `default_rng(0)`, with placeholders filled from synthetic values and no sign of the filter verdict. Three yes or no questions per item: *clear* (easy to understand at a glance), *fits* (reads like a push from a short-video app), *misleading* (misleads or pressures the reader: false urgency, invented facts, rewards, guilt). Only counts are committed: per question, the number of yes among the kept and among the other variants. A template rated misleading is a miss of the filters. No variant was rejected, so the agreement between the rater and the filters cannot be estimated: the prompt listed the limits and banned phrasings, and every variant kept to them (D038).
 
 ### 13.4 Template policies
 

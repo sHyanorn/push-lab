@@ -217,7 +217,12 @@ def build(
         "counts": selection.counts(),
         "banned_matches": _banned_counts(selection),
         "usage": usage,
-        "note": "Descriptive counts of one generation run; no simulator result reads the text",
+        "filter_self_check": filters.self_check(),
+        "note": "Descriptive counts of one generation run; no simulator result reads the text. "
+        "The counts are recomputed from the committed responses, and the filters reject every "
+        "hand-made violation in filter_self_check. The prompt listed the limits and banned "
+        "phrasings, so a run where every variant passes is possible; then the agreement between "
+        "the rater and the filters cannot be estimated.",
     }
     return catalog, manifest, results
 

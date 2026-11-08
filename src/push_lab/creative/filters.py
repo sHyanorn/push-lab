@@ -216,3 +216,36 @@ def select(responses: Sequence[Sequence[Any]]) -> Selection:
                         out.catalog[verdict.template] = (family.id, v)
                         kept += 1
     return out
+
+
+# One hand-made violation per rule, applied to every committed run as a check that the
+# filters reject (METHODS 13.3)
+VIOLATIONS: tuple[tuple[int, Any, str], ...] = (
+    (2, {"title": "Missing body"}, "schema"),
+    (2, {"title": "Don\u2019t stop now", "body": "A curly quote is not plain ASCII."}, "charset"),
+    (
+        3,
+        {"title": "No placeholder here", "body": "The family needs its duration slot."},
+        "placeholders",
+    ),
+    (2, {"title": "A pick for you", "body": "Too short"}, "length"),
+    (2, {"title": "Hurry, last chance", "body": "This video is gone in a moment."}, "banned"),
+    (2, {"title": "Win a prize today", "body": "Open the app to claim your reward."}, "banned"),
+    (2, {"title": "Watch 3 videos", "body": "Numbers may only come from placeholders."}, "banned"),
+    (
+        0,
+        {"title": "A new upload", "body": "From a creator you watched {creator_videos} of."},
+        "banned",
+    ),
+)
+
+
+def self_check() -> dict[str, int]:
+    """How many of ``VIOLATIONS`` each rule rejected, and how many slipped through."""
+    out = {"cases": len(VIOLATIONS), "rejected_as_expected": 0}
+    for family, raw, rule in VIOLATIONS:
+        responses: list[list[Any]] = [[] for _ in FAMILIES]
+        responses[family] = [raw]
+        if select(responses).verdicts[0].failed == rule:
+            out["rejected_as_expected"] += 1
+    return out

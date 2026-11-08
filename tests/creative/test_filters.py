@@ -177,3 +177,11 @@ def test_select_drops_duplicates_across_families() -> None:
 def test_select_needs_one_response_per_family() -> None:
     with pytest.raises(ValueError):
         filters.select([[]])
+
+
+def test_self_check_rejects_every_violation() -> None:
+    check = filters.self_check()
+    assert check == {
+        "cases": len(filters.VIOLATIONS),
+        "rejected_as_expected": len(filters.VIOLATIONS),
+    }
