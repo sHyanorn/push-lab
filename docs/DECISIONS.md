@@ -65,3 +65,9 @@
 ## D014 Send-time policy does not read the simulator's profile
 - Date: 2026-11-08
 - Rationale: if one activity profile drove both the policy and the simulator, the policy would win by construction. The simulator uses profiles from 04-22 to 05-08, the policy estimates its own from 04-08 to 04-21, and the sweep adds a shift and noise on top
+
+## D016 Data quality checks
+- Date: 2026-11-08
+- Errors (the command exits with status 1): a missing processed table; a Parquet schema that differs from the shared schema; a row count that differs from the published figure (KuaiRand-Pure logs 1,141,112, 295,497 and 1,186,059 rows, 27,285 users; Criteo 13,979,592 rows); `is_rand` not 1 on every random-exposure row or not 0 on every standard-log row; Criteo treatment share more than 0.005 from the published 0.85; Criteo training share more than 0.01 from 0.1; Hillstrom treatment share outside 0.45 to 0.55; an OBD propensity outside (0, 1], or a random-policy propensity that is not 1/34
+- Reported without a threshold: missing shares per column (from Parquet statistics), KuaiRand click rate by tab, visit and conversion rates by arm, OBD click rates and propensity ranges
+- The report goes to `results/data_quality.json` and is committed; it has no timestamp, so it changes only when the data or the checks do

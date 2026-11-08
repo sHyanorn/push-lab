@@ -1,0 +1,164 @@
+{
+  "datasets": {
+    "criteo": {
+      "conversion_rate": 0.002917,
+      "train_rows": 1398727,
+      "train_share": 0.100055,
+      "treatment_share": 0.85,
+      "visit_rate": 0.046992
+    },
+    "hillstrom": {
+      "conversion_rate_by_treatment": {
+        "0": 0.005726,
+        "1": 0.008837
+      },
+      "rows_by_treatment": {
+        "0": 21306,
+        "1": 21387
+      },
+      "treatment_share": 0.500949,
+      "visit_rate_by_treatment": {
+        "0": 0.106167,
+        "1": 0.1514
+      }
+    },
+    "kuairand": {
+      "log_random": {
+        "click_rate_by_tab": {
+          "1": 0.177286,
+          "11": 0.0,
+          "14": 0.0,
+          "2": 0.113874
+        },
+        "tab1_share": 0.993226
+      },
+      "log_standard_early": {
+        "click_rate_by_tab": {
+          "0": 0.092025,
+          "1": 0.529675,
+          "10": 1.0,
+          "11": 0.0,
+          "12": 0.142686,
+          "13": 0.226148,
+          "14": 0.0,
+          "2": 0.479983,
+          "3": 0.022384,
+          "4": 0.619604,
+          "5": 0.285714,
+          "6": 0.180816,
+          "7": 0.408408,
+          "8": 0.041552,
+          "9": 0.996032
+        },
+        "tab1_share": 0.731634
+      },
+      "log_standard_late": {
+        "click_rate_by_tab": {
+          "0": 0.084491,
+          "1": 0.498101,
+          "10": 1.0,
+          "11": 0.0,
+          "12": 0.126959,
+          "13": 0.646552,
+          "14": 0.0,
+          "2": 0.480436,
+          "3": 0.022727,
+          "4": 0.597925,
+          "5": 0.242503,
+          "6": 0.164023,
+          "7": 0.391813,
+          "8": 0.039764,
+          "9": 0.989583
+        },
+        "tab1_share": 0.756397
+      },
+      "random_rows": 1186059,
+      "random_share_of_all_logs": 0.452234
+    },
+    "obd": {
+      "bts": {
+        "click_rate": 0.0069,
+        "propensity_max": 0.72529,
+        "propensity_min": 0.000165,
+        "rows": 10000
+      },
+      "random": {
+        "click_rate": 0.0046,
+        "propensity_max": 0.029412,
+        "propensity_min": 0.029412,
+        "rows": 10000
+      }
+    }
+  },
+  "errors": [],
+  "sources": {
+    "KuaiRand-Pure.tar.gz": "md5:0820331067a3784d9691136f772b35a7",
+    "bts_men.csv": "sha256:db6d1f7ed2d591ba521533e45286d4c1fba7fe57a8ad2e80342210335f43c527",
+    "bts_men_item_context.csv": "sha256:3b411ed6b0471316321a6b93f4f756bb25888eac6218cd71d0b603d41d85732d",
+    "criteo-research-uplift-v2.1.csv.gz": "sha256:2716e1bf0fd157a93b5bf86924d9088419dfbac2022c6cd90030220634f616dc",
+    "hillstrom.csv": "sha256:0e5893329d8b93cefecc571777672028290ab69865718020c78c7284f291aece",
+    "random_men.csv": "sha256:ede6d08c6877f99cd3770f7d09e26c738e6aa6de4445ccccfb1356ba5d06b1eb",
+    "random_men_item_context.csv": "sha256:6d855c2b7e917d0448d71bbe62c023147495882c0fdc8c41e86fef86abf9fe09"
+  },
+  "tables": {
+    "criteo.criteo": {
+      "missing_share": {},
+      "rows": 13979592
+    },
+    "hillstrom.hillstrom": {
+      "missing_share": {},
+      "rows": 42693
+    },
+    "kuairand.log_random": {
+      "missing_share": {},
+      "rows": 1186059
+    },
+    "kuairand.log_standard_early": {
+      "missing_share": {},
+      "rows": 1141112
+    },
+    "kuairand.log_standard_late": {
+      "missing_share": {},
+      "rows": 295497
+    },
+    "kuairand.users": {
+      "missing_share": {
+        "onehot_feat12": 0.026168,
+        "onehot_feat13": 0.026168,
+        "onehot_feat14": 0.026168,
+        "onehot_feat15": 0.026168,
+        "onehot_feat16": 0.026168,
+        "onehot_feat17": 0.026168,
+        "onehot_feat4": 0.032032
+      },
+      "rows": 27285
+    },
+    "kuairand.videos_basic": {
+      "missing_share": {
+        "music_type": 0.02677,
+        "video_duration": 0.031518
+      },
+      "rows": 7583
+    },
+    "kuairand.videos_statistic": {
+      "missing_share": {},
+      "rows": 7583
+    },
+    "obd.bts_men": {
+      "missing_share": {},
+      "rows": 10000
+    },
+    "obd.bts_men_items": {
+      "missing_share": {},
+      "rows": 34
+    },
+    "obd.random_men": {
+      "missing_share": {},
+      "rows": 10000
+    },
+    "obd.random_men_items": {
+      "missing_share": {},
+      "rows": 34
+    }
+  }
+}
