@@ -38,3 +38,14 @@ def test_real_processed_tables_match_schemas(key: tuple[str, str]) -> None:
     if not path.exists():
         pytest.skip(f"{path} not prepared")
     assert pq.read_schema(path).remove_metadata().equals(schemas.to_arrow(fixtures.SCHEMAS[key]))
+
+
+def test_kuairand_activity_is_lowest_overnight_in_utc8() -> None:
+    from push_lab.data import kuairand
+    from push_lab.sim import inputs
+
+    processed = paths.processed_dir(Path.cwd(), "kuairand")
+    if not (processed / "log_random.parquet").exists():
+        pytest.skip("KuaiRand is not prepared")
+    log = kuairand.load(processed, "log_random")
+    assert int(inputs.hourly_shares(log).argmin()) < 6

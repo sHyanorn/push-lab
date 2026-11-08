@@ -103,3 +103,13 @@ def copy_effects(
     z = np.sqrt(0.5) * family + np.sqrt(0.5) * rng.standard_normal(templates)
     out: FloatArray = np.exp(spread * z - spread**2 / 2)
     return out
+
+
+QUICK_SAMPLE = 5_000
+
+
+def quick_sample(users: int, size: int = QUICK_SAMPLE, seed: int = 0) -> npt.NDArray[np.int64]:
+    """Sorted positions of the users kept for quick runs."""
+    chosen = np.random.default_rng(seed).choice(users, min(size, users), replace=False)
+    out: npt.NDArray[np.int64] = np.sort(chosen).astype(np.int64)
+    return out
