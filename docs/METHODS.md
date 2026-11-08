@@ -517,7 +517,7 @@ Fixed before generation and applied in this order; a variant is dropped at its f
    - guilt: you missed, miss you, we miss, don't leave, come back now;
    - family claims the data cannot back: Creator update may not say new, just, latest, posted or uploaded (upload times are not tied to simulated days); Popular now may not say today or this hour;
    - more than one `!` in title and body together, or a word of three or more letters in capitals.
-6. *Near-duplicates*: the text `title | body`, lowercased, each placeholder replaced by one symbol and whitespace collapsed, is compared by character 4-gram Jaccard with every variant already kept, in all families (families in id order, variants in returned order); at 0.5 or above it is dropped.
+6. *Near-duplicates*: the text `title | body`, lowercased, each placeholder replaced by one symbol and whitespace collapsed, is compared by character 4-gram Jaccard with every earlier variant that passed all rules, in all families (families in id order, variants in returned order); at 0.5 or above it is dropped.
 
 The first 10 survivors of each family form the catalog. A family with fewer than 10 keeps all of them, $K$ falls below 60 and the family of each template is read from the catalog; this is recorded and nothing is regenerated.
 
