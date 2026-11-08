@@ -3,7 +3,9 @@
 from pathlib import Path
 
 import pandas as pd
+import pyarrow as pa
 import pyarrow.csv as pacsv
+import pyarrow.parquet as pq
 
 from push_lab.data import schemas
 
@@ -43,9 +45,13 @@ def convert(raw_dir: Path, out_dir: Path) -> list[Path]:
         items = _read(
             raw_dir / f"{policy}_men_item_context.csv", schemas.OBD_ITEMS_RAW, schemas.OBD_ITEMS
         )
-        for name, df in ((f"{policy}_men", log), (f"{policy}_men_items", items)):
+        for name, df, schema in (
+            (f"{policy}_men", log, schemas.OBD_LOG),
+            (f"{policy}_men_items", items, schemas.OBD_ITEMS),
+        ):
             target = out_dir / f"{name}.parquet"
-            df.to_parquet(target, index=False)
+            table = pa.Table.from_pandas(df, schema=schemas.to_arrow(schema), preserve_index=False)
+            pq.write_table(table, target)
             written.append(target)
     return written
 
