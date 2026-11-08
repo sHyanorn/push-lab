@@ -4,6 +4,7 @@ import numpy as np
 import numpy.typing as npt
 
 from push_lab.sim import inputs
+from push_lab.sim.world import PERTURB_STREAM, stream
 
 FloatArray = npt.NDArray[np.float64]
 
@@ -23,7 +24,7 @@ def perturbed(hourly: FloatArray, shift: float, noise: float, seed: int) -> Floa
     profile = inputs.smoothed_profile(inputs.windows_from_hourly(shift_hours(hourly, shift)))
     if noise == 0:
         return profile
-    z = np.random.default_rng(seed).standard_normal(profile.shape)
+    z = stream(PERTURB_STREAM, seed).standard_normal(profile.shape)
     noisy = profile * np.exp(noise * z)
     out: FloatArray = noisy / noisy.sum(axis=1, keepdims=True)
     return out

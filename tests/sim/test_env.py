@@ -238,3 +238,27 @@ def test_exploration_coins_are_independent_of_open_draws_with_the_same_seed() ->
     run = env.draws(N, 7)
     # With colliding streams every sent user would have an open draw below 0.775
     assert run.open[0, 0][send].max() > 0.9
+
+
+def test_streams_of_one_seed_are_uncorrelated() -> None:
+    """Exploration coins, open draws, template and coin streams and profile noise drawn
+    with the same seed at day 0, slot 0 share no bits (D032)."""
+    n, seed = 20_000, 7
+    samples = {
+        "explore": world.stream(world.EXPLORE_STREAM, seed, 0, 0).random(n),
+        "open": env.draws(n, seed).open[0, 0],
+        "opt_out": env.draws(n, seed).opt_out[0, 0],
+        "visit": env.draws(n, seed).visit[0],
+        "template": world.stream(world.TEMPLATE_STREAM, seed, 0, 0).random(n),
+        "coin": world.stream(world.COIN_STREAM, seed, 0, 0).random(n),
+        "half": world.stream(world.HALF_STREAM, seed, 0).random(n),
+        "perturb": world.stream(world.PERTURB_STREAM, seed).standard_normal((n, SLOTS))[:, 0],
+        "copy": np.random.default_rng(seed).standard_normal(n),
+    }
+    names = list(samples)
+    corr = np.corrcoef(np.stack([samples[k] for k in names]))
+    for i in range(len(names)):
+        for j in range(i + 1, len(names)):
+            if {names[i], names[j]} <= {"open", "copy"}:
+                continue  # one integer seed: the design never gives draws and world one seed
+            assert abs(corr[i, j]) < 5 / np.sqrt(n), (names[i], names[j])

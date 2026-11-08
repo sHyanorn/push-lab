@@ -425,7 +425,7 @@ The scores target the same-day visit; return, fatigue, annoyance and opt-out act
 
 The policy profile is rebuilt from hourly counts $c_{u,h}$ (04-09 to 04-21, UTC+8) with two perturbations per setting:
 - *Shift* $\Delta \in [-3, 3]$ hours: $c'_{u,h} = (1 - f)\, c_{u, h - \lfloor\Delta\rfloor} + f\, c_{u, h - \lfloor\Delta\rfloor - 1}$ with $f = \Delta - \lfloor\Delta\rfloor$, hours modulo 24, then windowing and smoothing as in 11.1. Three hours moves most of a window into the next one.
-- *Noise* $\xi \in [0, 1]$: $a'_{u,s} \propto a_{u,s}\, e^{\xi z_{u,s}}$ with standard normal $z$ from the setting's seed. At $\xi = 1$ the best slot is close to random.
+- *Noise* $\xi \in [0, 1]$: $a'_{u,s} \propto a_{u,s}\, e^{\xi z_{u,s}}$ with standard normal $z$ from a stream keyed by the setting's perturbation seed (D032). At $\xi = 1$ the best slot is close to random.
 
 At $\Delta = \xi = 0$ the profile equals `profile_policy`, which already differs from the simulator profile (best slots agree for 38.8% of users, D024). The exploration policy and every policy of a setting use the same perturbed profile.
 

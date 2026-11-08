@@ -108,7 +108,7 @@ def copy_effects(
 
 
 # Purposes of keyed random streams (D032)
-EXPLORE_STREAM, TEMPLATE_STREAM, COIN_STREAM, HALF_STREAM = 1, 2, 3, 4
+EXPLORE_STREAM, TEMPLATE_STREAM, COIN_STREAM, HALF_STREAM, PERTURB_STREAM = 1, 2, 3, 4, 5
 
 
 def stream(purpose: int, *key: int) -> np.random.Generator:
