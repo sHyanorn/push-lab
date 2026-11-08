@@ -75,11 +75,11 @@ Hour estimates are for planning; the required core is about 85 hours. If behind,
 - [x] Evidence matrix: each claim with its tier
 
 ## M8 Presentation (6 h)
-- [ ] Demo notebook tells the core story
-- [ ] Static HTML report generated from results JSON
-- [ ] `reproduce` workflow (manual dispatch) runs the full pipeline on a subsample
-- [ ] English README with report screenshot
-- [ ] Tidy up DECISIONS.md
+- [x] Demo notebook tells the core story
+- [x] Static HTML report generated from results JSON
+- [x] `reproduce` workflow (manual dispatch) runs the full pipeline on a subsample
+- [x] English README with report screenshot
+- [x] Tidy up DECISIONS.md
 
 ## Optional
 - [ ] Duolingo: sample one training part locally, check propensities, replicate the recovering bandit off-policy
