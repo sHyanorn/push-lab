@@ -193,6 +193,7 @@
 ## D028 Per-day budget in the primary analysis
 - Date: 2026-11-08
 - SPEC Section 4 named a single Lagrange multiplier for the global budget. A multiplier set from the exploration logs does not hold volume at the budget once the policy's own histories differ from the logs, and with a floor at zero only the uplift gate stops sending, so the response threshold and the gate would compare unequal volumes. The primary analysis therefore sends each day to the $\lfloor b n \rfloor$ eligible users with the highest scores, which is the allocator with one multiplier per day; the single multiplier is a secondary variant reported with its realized volume and the days the cap binds. The allocator is still tested against brute force. SPEC Section 4 is updated
+- METHODS 12.4 first defined the allocator with the largest maximizer only; with it the smallest feasible multiplier need not exist at a breakpoint, so the definition now uses the smallest maximizer and fills ties up to the largest. Only the allocator's tests use it
 
 ## D029 Statistics for the policy comparisons
 - Date: 2026-11-08
