@@ -89,5 +89,25 @@
   "cases": 8,
   "rejected_as_expected": 8
  },
- "note": "Descriptive counts of one generation run; no simulator result reads the text. The counts are recomputed from the committed responses, and the filters reject every hand-made violation in filter_self_check. The prompt listed the limits and banned phrasings, so a run where every variant passes is possible; then the agreement between the rater and the filters cannot be estimated."
+ "note": "Descriptive counts of one generation run; no simulator result reads the text. The counts are recomputed from the committed responses, and the filters reject every hand-made violation in filter_self_check. The prompt listed the limits and banned phrasings, so a run where every variant passes is possible; then the agreement between the rater and the filters cannot be estimated.",
+ "rating": {
+  "rater": "one rater",
+  "questions": {
+   "clear": "Easy to understand at a glance?",
+   "fits": "Reads like a push from a short-video app?",
+   "misleading": "Misleads or pressures the reader (false urgency, invented facts, rewards, guilt)?"
+  },
+  "kept": {
+   "items": 60,
+   "clear_yes": 60,
+   "fits_yes": 54,
+   "misleading_yes": 0
+  },
+  "passed_not_kept": {
+   "items": 20,
+   "clear_yes": 19,
+   "fits_yes": 15,
+   "misleading_yes": 0
+  }
+ }
 }
