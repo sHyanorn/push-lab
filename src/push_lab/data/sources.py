@@ -86,9 +86,22 @@ OBD_MEN = (
     _obd("bts", "items", 4_287, "3b411ed6b0471316321a6b93f4f756bb25888eac6218cd71d0b603d41d85732d"),
 )
 
+# Full dataset, used only for the Men's campaign (METHODS 14.2); optional, never in CI
+OBD_FULL = Source(
+    dataset="obd_full",
+    url="https://research.zozo.com/data_release/open_bandit_dataset.zip",
+    filename="open_bandit_dataset.zip",
+    size=412_931_917,
+    # No published checksum; computed on 2026-11-08 at download
+    algorithm="sha256",
+    checksum="e8ec18196582a5937381a1776382ca940689b90a18d2dcd1fb635be6df614d78",
+)
+
 SOURCES: dict[str, tuple[Source, ...]] = {
     "kuairand": (KUAIRAND_PURE,),
     "hillstrom": (HILLSTROM,),
     "criteo": (CRITEO_UPLIFT,),
     "obd": OBD_MEN,
 }
+# Fetched only when named with --only
+OPTIONAL: dict[str, tuple[Source, ...]] = {"obd_full": (OBD_FULL,)}

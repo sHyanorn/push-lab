@@ -6,7 +6,7 @@ from collections.abc import Callable, Sequence
 from pathlib import Path
 
 from push_lab.data import kuairand, obd, paths, uplift_trials
-from push_lab.data.sources import CRITEO_UPLIFT, HILLSTROM, KUAIRAND_PURE
+from push_lab.data.sources import CRITEO_UPLIFT, HILLSTROM, KUAIRAND_PURE, OBD_FULL
 
 
 def _kuairand(root: Path) -> list[Path]:
@@ -32,21 +32,30 @@ def _obd(root: Path) -> list[Path]:
     return obd.convert(paths.raw_dir(root, "obd"), paths.processed_dir(root, "obd"))
 
 
+def _obd_full(root: Path) -> list[Path]:
+    archive = paths.raw_dir(root, "obd_full") / OBD_FULL.filename
+    return obd.convert_full(archive, paths.processed_dir(root, "obd_full"))
+
+
 PREPARERS: dict[str, Callable[[Path], list[Path]]] = {
     "kuairand": _kuairand,
     "hillstrom": _hillstrom,
     "criteo": _criteo,
     "obd": _obd,
 }
+# Run only when named with --only
+OPTIONAL: dict[str, Callable[[Path], list[Path]]] = {"obd_full": _obd_full}
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Convert downloaded datasets to Parquet.")
-    parser.add_argument("--only", nargs="+", choices=sorted(PREPARERS), help="datasets to convert")
+    parser.add_argument(
+        "--only", nargs="+", choices=sorted(PREPARERS | OPTIONAL), help="datasets to convert"
+    )
     parser.add_argument("--root", type=Path, default=Path.cwd(), help="repository root")
     args = parser.parse_args(argv)
     for dataset in args.only or sorted(PREPARERS):
-        for path in PREPARERS[dataset](args.root):
+        for path in (PREPARERS | OPTIONAL)[dataset](args.root):
             print(f"{dataset}: {path}")
     return 0
 

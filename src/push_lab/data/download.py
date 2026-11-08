@@ -16,7 +16,7 @@ from collections.abc import Callable, Sequence
 from pathlib import Path
 
 from push_lab.data import paths
-from push_lab.data.sources import SOURCES, Source
+from push_lab.data.sources import OPTIONAL, SOURCES, Source
 
 CHUNK = 1 << 20
 BACKOFF = (2.0, 4.0, 8.0, 16.0)
@@ -130,11 +130,13 @@ def fetch(
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Download the project's datasets.")
-    parser.add_argument("--only", nargs="+", choices=sorted(SOURCES), help="datasets to fetch")
+    parser.add_argument(
+        "--only", nargs="+", choices=sorted(SOURCES | OPTIONAL), help="datasets to fetch"
+    )
     parser.add_argument("--root", type=Path, default=Path.cwd(), help="repository root")
     args = parser.parse_args(argv)
     for dataset in args.only or sorted(SOURCES):
-        for source in SOURCES[dataset]:
+        for source in (SOURCES | OPTIONAL)[dataset]:
             path = fetch(source, paths.raw_dir(args.root, dataset))
             print(f"{dataset}: {path} ok")
     return 0
