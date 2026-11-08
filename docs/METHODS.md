@@ -617,7 +617,7 @@ $$
 
 ### 14.3 Validation in the simulator
 
-**Logs.** The exploration policy of 11.7 on the 5,000 evaluation users, at the setting's parameters. A round is a user-day; its action is the vector of the four slot send decisions, $a \in \{0, 1\}^4$, with probability $b(a \mid u, d) = \prod_s p_s^{a_s} (1 - p_s)^{1 - a_s}$, $p_s = 0.775$ at the user's best slot under the policy profile and $0.075$ elsewhere. Templates are uniform in the logs and in every target, so their probabilities cancel and are not part of the action. The logs record the vector, its probability, the per-slot send probabilities, and the user-day reward. Context features are those of 12.3 at the first slot of the day, built from the logged history.
+**Logs.** The exploration policy of 11.7 on the 5,000 evaluation users, at the setting's parameters. A round is a user-day; its action is the vector of the four slot send decisions, $a \in \{0, 1\}^4$, with probability $b(a \mid u, d) = \prod_s p_s^{a_s} (1 - p_s)^{1 - a_s}$, $p_s = 0.775$ at the user's best slot under the policy profile and $0.075$ elsewhere. Templates are uniform in the logs and in every target, so their probabilities cancel and are not part of the action. The logs record the vector, its probability, the per-slot send probabilities, and the user-day reward. The context of a user-day is built from the logged history at the first slot of the day: the day-level features of 12.3 (policy visit rate, score of the next item, day, share of earlier days with a visit, visit the day before, opens so far, days since the last open and the last delivery, decayed volume), the four profile shares, the best slot, and whether the user opted out before the day.
 
 **Reward.** Primary: whether the user visited on day $d$ (active day). Secondary: opens on day $d$.
 
@@ -637,11 +637,11 @@ The smallest propensity of one slot-and-template action, $0.075/60 = 0.00125$, d
 **Truth.** Each target runs online on the same 5,000 users at the same setting with 20 run seeds; its value is the mean reward per user-day, averaged over the seeds, with a t interval.
 
 **Settings and seeds.**
-- *No-carryover control*: the reference with $\epsilon_f = \epsilon_v = \kappa_o = \kappa_r = \gamma = 0$, so a day's reward depends only on that day's context and action; here every estimator but DM should be unbiased, which checks the implementation.
+- *No-carryover control*: the reference with $\epsilon_f = \epsilon_v = \kappa_o = \kappa_r = \gamma = 0$, and each user's $p_0$ held at the mean of the first 28 items of the list, so neither behaviour nor the list position carries over and a day's reward depends only on that day's context and action; here every estimator but DM should be unbiased, which checks the implementation.
 - *Reference*: the reference setting (11.5) with $\Delta = \xi = 0$. Fatigue, annoyance, opt-out and return carry over across days, so a target's own history differs from the logged one; per-day OPE cannot see this, and the size of the resulting bias is what the check measures.
 - 50 log seeds per setting (run seeds 1,001 to 1,050), world seed 10,100 as in the grid of 12.6, truth run seeds 2,001 to 2,020.
 
-**Validation measures**, per setting, target and estimator, over the 50 log seeds: bias $= \overline{\hat V} - V$ with a t interval, RMSE, and coverage, the share of seeds whose 95% bootstrap interval contains $V$, with a Wilson interval.
+**Validation measures**, per setting, target and estimator, over the 50 log seeds: bias $= \overline{\hat V} - V$ with a 95% interval whose variance adds that of the estimates over log seeds and that of the truth over run seeds, RMSE, and coverage, the share of seeds whose 95% bootstrap interval contains $V$, with a Wilson interval.
 
 ### 14.4 Pre-registered decision rule
 
