@@ -39,6 +39,20 @@ def test_window_counts_and_smoothing() -> None:
     np.testing.assert_allclose(profile[2], pi)
 
 
+def test_hourly_counts_sum_to_the_windows() -> None:
+    def ms(hour: int) -> int:
+        return int(pd.Timestamp(f"2022-04-12 {hour:02d}:40", tz="Asia/Shanghai").value // 1e6)
+
+    log = pd.DataFrame({"user_id": [1, 1, 2, 2, 9], "time_ms": [ms(9), ms(5), ms(23), ms(23), 0]})
+    users = np.array([1, 2])
+    hourly = inputs.hourly_counts(log, users)
+    assert hourly.shape == (2, 24)
+    assert hourly[0, 9] == 1 and hourly[0, 5] == 1 and hourly[1, 23] == 2
+    np.testing.assert_array_equal(
+        inputs.windows_from_hourly(hourly), inputs.window_counts(log, users)
+    )
+
+
 def test_visit_rates_are_smoothed_toward_the_mean() -> None:
     log = pd.DataFrame({"user_id": [1, 1, 1, 2], "date": [1, 2, 2, 1]})
     v = inputs.visit_rates(log, np.array([1, 2, 3]), days=4)
@@ -69,6 +83,12 @@ def test_build_runs_on_synthetic_data(tmp_path: Path) -> None:
         assert all(len(set(row)) == len(row) for row in c.items)
     order = cached.lists["cascade"].score
     assert (np.diff(order, axis=1) <= 0).all()
+    # The policy profile is the smoothed windowing of the policy-period hourly counts
+    np.testing.assert_allclose(
+        cached.profile_policy,
+        inputs.smoothed_profile(inputs.windows_from_hourly(cached.hourly_policy)),
+    )
+    assert ((cached.visit_rate_policy > 0) & (cached.visit_rate_policy < 1)).all()
 
 
 TINY = inputs.Settings(

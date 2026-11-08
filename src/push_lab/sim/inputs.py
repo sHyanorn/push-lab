@@ -60,20 +60,29 @@ class CandidateList:
 
 @dataclass(frozen=True)
 class Inputs:
+    """Simulator-side arrays (``visit_rate``, ``profile_sim``, ``p0``) and policy-side arrays
+    from the policy period (``profile_policy``, ``hourly_policy``, ``visit_rate_policy``)."""
+
     user_ids: IntArray
     visit_rate: FloatArray
     profile_sim: FloatArray
     profile_policy: FloatArray
+    hourly_policy: FloatArray
+    visit_rate_policy: FloatArray
     lists: dict[str, CandidateList]
+
+    ARRAYS = (
+        "user_ids",
+        "visit_rate",
+        "profile_sim",
+        "profile_policy",
+        "hourly_policy",
+        "visit_rate_policy",
+    )
 
     def save(self, path: Path) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
-        arrays: dict[str, Any] = {
-            "user_ids": self.user_ids,
-            "visit_rate": self.visit_rate,
-            "profile_sim": self.profile_sim,
-            "profile_policy": self.profile_policy,
-        }
+        arrays: dict[str, Any] = {name: getattr(self, name) for name in self.ARRAYS}
         for name, c in self.lists.items():
             arrays |= {f"{name}.items": c.items, f"{name}.score": c.score, f"{name}.p0": c.p0}
         np.savez(path, **arrays)
@@ -85,7 +94,7 @@ class Inputs:
                 name: CandidateList(z[f"{name}.items"], z[f"{name}.score"], z[f"{name}.p0"])
                 for name in LISTS
             }
-            return cls(z["user_ids"], z["visit_rate"], z["profile_sim"], z["profile_policy"], lists)
+            return cls(**{name: z[name] for name in cls.ARRAYS}, lists=lists)
 
 
 @dataclass(frozen=True)
@@ -112,19 +121,26 @@ def hourly_shares(log: pd.DataFrame) -> FloatArray:
     return out
 
 
-def window_counts(log: pd.DataFrame, user_ids: IntArray) -> FloatArray:
-    """Rows per user in each send slot's response window; rows outside the windows drop out."""
+def hourly_counts(log: pd.DataFrame, user_ids: IntArray) -> FloatArray:
+    """Rows per user in each local hour; users outside ``user_ids`` drop out."""
     hour = local_hour(log["time_ms"].to_numpy())
-    slot = np.full(len(hour), -1)
-    for s, (start, end) in enumerate(WINDOWS):
-        slot[(hour >= start) & (hour < end)] = s
     log_users = log["user_id"].to_numpy(dtype=np.int64)
     pos = np.searchsorted(user_ids, log_users)
     known = (pos < len(user_ids)) & (user_ids[np.minimum(pos, len(user_ids) - 1)] == log_users)
-    keep = (slot >= 0) & known
-    counts = np.zeros((len(user_ids), SLOTS))
-    np.add.at(counts, (pos[keep], slot[keep]), 1.0)
+    counts = np.zeros((len(user_ids), 24))
+    np.add.at(counts, (pos[known], hour[known]), 1.0)
     return counts
+
+
+def windows_from_hourly(hourly: FloatArray) -> FloatArray:
+    """Rows in each send slot's response window; hours outside the windows drop out."""
+    out: FloatArray = np.stack([hourly[:, a:b].sum(axis=1) for a, b in WINDOWS], axis=1)
+    return out
+
+
+def window_counts(log: pd.DataFrame, user_ids: IntArray) -> FloatArray:
+    """Rows per user in each send slot's response window; rows outside the windows drop out."""
+    return windows_from_hourly(hourly_counts(log, user_ids))
 
 
 def smoothed_profile(counts: FloatArray, prior: float = PROFILE_PRIOR) -> FloatArray:
@@ -322,11 +338,14 @@ def build(root: Path, settings: Settings | None = None) -> Fitted:
         ]
     )
     early = policy_period(standard)[columns]
+    hourly_policy = hourly_counts(early, user_ids)
     inputs = Inputs(
         user_ids=user_ids,
         visit_rate=visit_rates(period, user_ids, _days(*SIM_PERIOD)),
         profile_sim=smoothed_profile(window_counts(period, user_ids)),
-        profile_policy=smoothed_profile(window_counts(early, user_ids)),
+        profile_policy=smoothed_profile(windows_from_hourly(hourly_policy)),
+        hourly_policy=hourly_policy,
+        visit_rate_policy=visit_rates(early, user_ids, _days(*POLICY_PERIOD)),
         lists=lists,
     )
     return Fitted(
