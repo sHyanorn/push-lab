@@ -43,6 +43,11 @@
   "max_weight": 10.65475,
   "validation": {
    "DM": {
+    "ratio_to_on_policy": {
+     "value": 0.6466969546974278,
+     "ci_low": 0.5266200915895848,
+     "ci_high": 0.8459941799846217
+    },
     "relative_error_median": 0.3545735220043932,
     "relative_error_interval": [
      0.1540058200153783,
@@ -53,6 +58,11 @@
     "validated": false
    },
    "IPS": {
+    "ratio_to_on_policy": {
+     "value": 0.6580956231884059,
+     "ci_low": 0.34450692746242095,
+     "ci_high": 1.0825037099014778
+    },
     "relative_error_median": 0.36463309221748397,
     "relative_error_interval": [
      0.031024693650793585,
@@ -63,6 +73,11 @@
     "validated": true
    },
    "SNIPS": {
+    "ratio_to_on_policy": {
+     "value": 0.6682714093130638,
+     "ci_low": 0.3511707654971136,
+     "ci_high": 1.1072178731199815
+    },
     "relative_error_median": 0.35390375752139314,
     "relative_error_interval": [
      0.020056968801543586,
@@ -73,6 +88,11 @@
     "validated": false
    },
    "DR": {
+    "ratio_to_on_policy": {
+     "value": 0.6833157625985563,
+     "ci_low": 0.36097921518905607,
+     "ci_high": 1.1013622293960093
+    },
     "relative_error_median": 0.33826258885337845,
     "relative_error_interval": [
      0.021229250190801612,
@@ -121,6 +141,11 @@
   "max_weight": 10.65475,
   "validation": {
    "DM": {
+    "ratio_to_on_policy": {
+     "value": 0.8789570560102355,
+     "ci_low": 0.8689041907956961,
+     "ci_high": 0.8891666720545165
+    },
     "relative_error_median": 0.12116898976150264,
     "relative_error_interval": [
      0.11083332794548348,
@@ -131,6 +156,11 @@
     "validated": false
    },
    "IPS": {
+    "ratio_to_on_policy": {
+     "value": 0.8909312947634085,
+     "ci_low": 0.8169458010768341,
+     "ci_high": 0.9636180545873354
+    },
     "relative_error_median": 0.11053217340567467,
     "relative_error_interval": [
      0.036381945412664554,
@@ -141,6 +171,11 @@
     "validated": false
    },
    "SNIPS": {
+    "ratio_to_on_policy": {
+     "value": 0.9081158484848105,
+     "ci_low": 0.8337625014863629,
+     "ci_high": 0.9828830295547776
+    },
     "relative_error_median": 0.09268014454278053,
     "relative_error_interval": [
      0.018013040426012882,
@@ -151,6 +186,11 @@
     "validated": false
    },
    "DR": {
+    "ratio_to_on_policy": {
+     "value": 0.9011026292459252,
+     "ci_low": 0.8279766584178264,
+     "ci_high": 0.9731880617566887
+    },
     "relative_error_median": 0.09975662385823816,
     "relative_error_interval": [
      0.02681193824331127,
