@@ -46,11 +46,26 @@ def draws(users: int, seed: int) -> Draws:
     )
 
 
+def _empty_history(users: int) -> tuple[BoolArray, BoolArray]:
+    return np.zeros((0, SLOTS, users), dtype=bool), np.zeros((0, users), dtype=bool)
+
+
 @dataclass(frozen=True)
 class Observation:
+    """What a policy sees at (day, slot): opt-outs so far, and opens ``[day, slot, user]`` and
+    visits ``[day, user]`` of earlier days only (read-only views)."""
+
     day: int
     slot: int
     opted_out: BoolArray
+    opened: BoolArray | None = None
+    visited: BoolArray | None = None
+
+    def history(self) -> tuple[BoolArray, BoolArray]:
+        """Opens and visits of days before ``day``; empty when the caller passed none."""
+        if self.opened is None or self.visited is None:
+            return _empty_history(len(self.opted_out))
+        return self.opened, self.visited
 
 
 @dataclass(frozen=True)
@@ -79,6 +94,17 @@ class Outcome:
     propensity: npt.NDArray[np.float32]
     opted_out_at: IntArray
     visited: BoolArray
+    # Only with ``truth=True``, for diagnostics: the open probability of a push at every
+    # (day, slot, user) with the template the policy chose (0 for opted-out users), and the
+    # organic visit probability of every (day, user). Policies never see these.
+    open_prob: npt.NDArray[np.float32] | None = None
+    organic: npt.NDArray[np.float32] | None = None
+
+
+def _read_only(a: BoolArray) -> BoolArray:
+    view = a.view()
+    view.flags.writeable = False
+    return view
 
 
 def simulate(
@@ -88,6 +114,7 @@ def simulate(
     run: Draws,
     world_seed: int = 0,
     templates: int = world.TEMPLATES,
+    truth: bool = False,
 ) -> Outcome:
     n, candidates = pop.p0.shape
     p = params
@@ -112,40 +139,55 @@ def simulate(
     out_propensity = np.zeros(shape, dtype=np.float32)
     opted_out_at = np.full(n, -1, dtype=np.int64)
     visited = np.zeros((DAYS, n), dtype=bool)
+    open_prob = np.zeros(shape, dtype=np.float32) if truth else None
+    organic_prob = np.zeros((DAYS, n), dtype=np.float32) if truth else None
 
     def advance(t: float) -> None:
         nonlocal now
         volume[:] *= 0.5 ** ((t - now) / p.fatigue_half_life)
         now = t
 
+    def open_probability(idx: IntArray, k: IntArray, slot: int) -> FloatArray:
+        """Open probability of a push to users ``idx`` with templates ``k`` now, at ``slot``."""
+        item = np.minimum(pointer[idx], candidates - 1)
+        novelty = 1 - p.novelty * 0.5 ** ((now - last_seen[idx, k]) / p.novelty_half_life)
+        prob: FloatArray = np.minimum(
+            1.0,
+            p.base_rate
+            * pop.p0[idx, item]
+            * timing[idx, slot]
+            * copy[k]
+            * np.exp(-phi * volume[idx])
+            * novelty,
+        )
+        return prob
+
     for d in range(DAYS):
         advance(float(d))
         organic = np.minimum(
             1.0, pop.visit_rate * np.exp(-delta * volume) + p.return_boost * returns
         )
+        if organic_prob is not None:
+            organic_prob[d] = organic
         opens_today = np.zeros(n, dtype=np.int64)
+        past_opened, past_visited = _read_only(out_opened[:d]), _read_only(visited[:d])
         for s, hour in enumerate(SLOT_HOURS):
             t = d + hour / 24
             advance(t)
-            action = policy.act(Observation(d, s, opted.copy()))
+            action = policy.act(Observation(d, s, opted.copy(), past_opened, past_visited))
             out_send[d, s] = action.send
             out_propensity[d, s] = action.propensity
             out_template[d, s] = np.where(action.send, action.template, -1)
+            if open_prob is not None:
+                every = np.flatnonzero(~opted)
+                open_prob[d, s, every] = open_probability(every, action.template[every], s)
             idx = np.flatnonzero(action.send & ~opted)
             if len(idx) == 0:
                 continue
             k = action.template[idx]
             item = np.minimum(pointer[idx], candidates - 1)
-            novelty = 1 - p.novelty * 0.5 ** ((t - last_seen[idx, k]) / p.novelty_half_life)
-            prob = (
-                p.base_rate
-                * pop.p0[idx, item]
-                * timing[idx, s]
-                * copy[k]
-                * np.exp(-phi * volume[idx])
-                * novelty
-            )
-            opened = run.open[d, s, idx] < np.minimum(prob, 1.0)
+            prob = open_probability(idx, k, s)
+            opened = run.open[d, s, idx] < prob
             volume[idx] += 1.0
             hazard = p.opt_out * volume[idx] / (f_ref + 1.0)
             leaving = idx[run.opt_out[d, s, idx] < hazard]
@@ -168,4 +210,6 @@ def simulate(
         propensity=out_propensity,
         opted_out_at=opted_out_at,
         visited=visited,
+        open_prob=open_prob,
+        organic=organic_prob,
     )

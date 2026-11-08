@@ -171,3 +171,49 @@ def test_templates_are_logged_for_every_send() -> None:
     assert (out.template[out.send] == 7).all()
     assert (out.template[~out.send] == -1).all()
     assert (out.item[out.send & ~out.delivered] == -1).all()
+
+
+@dataclass
+class Recorder:
+    """Exploration policy that keeps every observation it receives."""
+
+    inner: EpsilonGreedy
+    seen: list[Observation]
+
+    def act(self, obs: Observation) -> Action:
+        self.seen.append(obs)
+        return self.inner.act(obs)
+
+
+def test_policies_see_only_earlier_days() -> None:
+    recorder = Recorder(EpsilonGreedy(np.zeros(N, dtype=np.int64), seed=2), [])
+    out = _run(recorder)
+    for obs in recorder.seen:
+        opened, visited = obs.history()
+        assert opened.shape == (obs.day, SLOTS, N) and visited.shape == (obs.day, N)
+        np.testing.assert_array_equal(opened, out.opened[: obs.day])
+        np.testing.assert_array_equal(visited, out.visited[: obs.day])
+        assert not opened.flags.writeable and not visited.flags.writeable
+
+
+def test_truth_matches_the_outcomes_and_changes_nothing() -> None:
+    pop, run = _population(constant_items=False), env.draws(N, 5)
+    explorer = EpsilonGreedy(np.zeros(N, dtype=np.int64), seed=1)
+    plain = env.simulate(pop, REFERENCE, explorer, run)
+    out = env.simulate(pop, REFERENCE, explorer, run, truth=True)
+    assert plain.open_prob is None and out.open_prob is not None and out.organic is not None
+    for field in ("send", "delivered", "opened", "visited", "opted_out_at"):
+        np.testing.assert_array_equal(getattr(plain, field), getattr(out, field))
+    # Opens are draws below the open probability; skip draws within float32 rounding of it
+    p = out.open_prob[out.delivered].astype(np.float64)
+    u = run.open[out.delivered]
+    clear = np.abs(u - p) > 1e-6
+    np.testing.assert_array_equal(out.opened[out.delivered][clear], (u < p)[clear])
+    organic = run.visit < out.organic.astype(np.float64)
+    near = np.abs(run.visit - out.organic) < 1e-6
+    expected = organic | out.opened.any(axis=1)
+    np.testing.assert_array_equal(out.visited[~near], expected[~near])
+    # Opted-out users have no open probability
+    flat = out.open_prob.reshape(DAYS * SLOTS, N)
+    for u_ in np.flatnonzero(out.opted_out_at >= 0)[:20]:
+        assert (flat[out.opted_out_at[u_] + 1 :, u_] == 0).all()
