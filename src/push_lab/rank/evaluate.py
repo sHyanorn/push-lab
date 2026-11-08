@@ -70,7 +70,7 @@ def _est(e: metrics.Estimate) -> dict[str, float]:
     return {k: _round(v) if isinstance(v, float) else v for k, v in e.as_dict().items()}
 
 
-def _fit_cutoff(
+def fit_cutoff(
     standard: pd.DataFrame,
     cutoff: int,
     users: pd.DataFrame,
@@ -142,7 +142,7 @@ def run(root: Path, settings: Settings | None = None) -> dict[str, Any]:
     idx = metrics.resample_indices(len(eval_users), samples=s.bootstrap_samples)
 
     # Cutoff c2: retrieval, coarse and fine ranking at evaluation
-    window2, builder2 = _fit_cutoff(standard, splits.CUTOFF_EVAL, users, items, s.tower, timings)
+    window2, builder2 = fit_cutoff(standard, splits.CUTOFF_EVAL, users, items, s.tower, timings)
     tower2 = builder2.tower
     user_vecs = tower2.user_vectors(eval_users)
     item_vecs = tower2.item_vectors(catalog)
@@ -170,7 +170,7 @@ def run(root: Path, settings: Settings | None = None) -> dict[str, Any]:
     pool_recall = metrics.recall_at_k(pool, positives, pool.shape[1])
 
     # Cutoff c1: fine-ranker training rows
-    window1, builder1 = _fit_cutoff(standard, splits.CUTOFF_TRAIN, users, items, s.tower, timings)
+    window1, builder1 = fit_cutoff(standard, splits.CUTOFF_TRAIN, users, items, s.tower, timings)
     train_rows = splits.between(standard, *splits.LABELS_TRAIN)
     valid_rows = splits.between(standard, *splits.LABELS_VALID)
     start = time.perf_counter()
