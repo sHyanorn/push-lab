@@ -42,6 +42,8 @@ FOLDS, FOLD_SEED = 2, 0
 SAMPLES, BOOT_SEED = 1_000, 0
 MAX_RELATIVE_ERROR = 0.5
 SCORE_CHUNK = 20_000
+# Rows shown together share user features and lie within a second of each other
+IMPRESSION_GAP_US = 1_000_000
 # Base model of METHODS Section 8
 PARAMS: dict[str, Any] = {
     "objective": "binary",
@@ -109,14 +111,31 @@ def _categories(train: pd.DataFrame, x: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
+def impressions(log: pd.DataFrame) -> IntArray:
+    """Impression of each row: OBD has no impression id, so rows in time order with the same
+    user features less than ``IMPRESSION_GAP_US`` apart form one. Chains can merge consecutive
+    impressions of a user, which only makes the resampling units coarser."""
+    t = pd.to_datetime(log["timestamp"], format="ISO8601").astype("int64").to_numpy() // 1000
+    order = np.argsort(t, kind="stable")
+    user = [c for c in log.columns if c.startswith("user_feature_")]
+    key = pd.util.hash_pandas_object(log[user].iloc[order], index=False).to_numpy()
+    ts = t[order]
+    same = np.r_[False, (np.diff(ts) < IMPRESSION_GAP_US) & (key[1:] == key[:-1])]
+    out = np.empty(len(log), dtype=np.int64)
+    out[order] = np.cumsum(~same) - 1
+    return out
+
+
 def outcome_model(
     log: pd.DataFrame, items: pd.DataFrame, dist: FloatArray
 ) -> tuple[FloatArray, FloatArray]:
-    """Cross-fitted q(x_i, a_i) and q(x_i, pi), each row scored by the model of the other fold."""
+    """Cross-fitted q(x_i, a_i) and q(x_i, pi): folds split impressions, and each row is scored
+    by the model of the other fold."""
     n = len(log)
     logged_item = log["item_id"].to_numpy(dtype=np.int64)
     position = log["position"].to_numpy(dtype=np.int64) - 1
-    fold = np.random.default_rng(FOLD_SEED).permutation(n) % FOLDS
+    group = impressions(log)
+    fold = np.random.default_rng(FOLD_SEED).permutation(int(group.max()) + 1)[group] % FOLDS
     x_logged = features(log, items, logged_item)
     y = log["click"].to_numpy()
     q_logged, q_target = np.empty(n), np.empty(n)
@@ -142,16 +161,17 @@ def logged(log: pd.DataFrame, items: pd.DataFrame, dist: FloatArray) -> est.Logg
     weight = dist[item, position] / log["propensity_score"].to_numpy()
     q_logged, q_target = outcome_model(log, items, dist)
     return est.Logged(
-        log["click"].to_numpy(dtype=np.float64), weight, q_logged, q_target, np.arange(len(log))
+        log["click"].to_numpy(dtype=np.float64), weight, q_logged, q_target, impressions(log)
     )
 
 
-def on_policy(clicks: FloatArray, samples: int, seed: int) -> tuple[float, FloatArray]:
-    """Click rate and its row-bootstrap resamples; for binary rows a resampled mean is a
-    binomial draw divided by n, which is exact and fast."""
-    n, mean = len(clicks), float(clicks.mean())
-    boot = np.random.default_rng(seed).binomial(n, mean, size=samples) / n
-    return mean, boot
+def on_policy(log: pd.DataFrame, samples: int, seed: int) -> tuple[float, FloatArray]:
+    """Click rate and its resamples over impressions."""
+    clicks = log["click"].to_numpy(dtype=np.float64)
+    ones, zeros = np.ones(len(clicks)), np.zeros(len(clicks))
+    data = est.Logged(clicks, ones, zeros, zeros, impressions(log))
+    boot = est.bootstrap(data, samples, seed)[:, est.ESTIMATORS.index("IPS")]
+    return float(clicks.mean()), boot
 
 
 def validate(
@@ -164,7 +184,7 @@ def validate(
 ) -> dict[str, Any]:
     data = logged(random_log, items, dist)
     report: Any = est.evaluate(data, samples, seed)
-    truth, truth_boot = on_policy(bts_log["click"].to_numpy(dtype=np.float64), samples, seed + 1)
+    truth, truth_boot = on_policy(bts_log, samples, seed + 1)
     boot = est.bootstrap(data, samples, seed)
     low, high = np.percentile(truth_boot, [2.5, 97.5])
     verdicts: dict[str, Any] = {}
@@ -189,6 +209,8 @@ def validate(
     return {
         "on_policy": {"value": truth, "ci_low": float(low), "ci_high": float(high)},
         "random_rows": len(random_log),
+        "random_impressions": int(impressions(random_log).max()) + 1,
+        "bts_impressions": int(impressions(bts_log).max()) + 1,
         "random_clicks": int(random_log["click"].sum()),
         "bts_rows": len(bts_log),
         "bts_clicks": int(bts_log["click"].sum()),
@@ -222,7 +244,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Validate the estimators on OBD.")
     parser.add_argument("--root", type=Path, default=Path.cwd(), help="repository root")
     args = parser.parse_args(argv)
-    result = run(args.root)
+    from push_lab.policy.sweep import code_commit
+
+    result = {"commit": code_commit(args.root)} | run(args.root)
     target = args.root / paths.RESULTS / "ope_obd.json"
     target.write_text(json.dumps(result, indent=1) + "\n", encoding="utf-8", newline="\n")
     print(f"wrote {target}")

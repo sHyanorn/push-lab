@@ -77,16 +77,14 @@ def test_truth_is_deterministic() -> None:
 def test_ips_and_dr_cover_the_truth_without_carryover() -> None:
     seeds = range(6)
     logs = {s: sim_ope.estimate_log(CTX, sim_ope.CONTROL, s) for s in seeds}
-    truths = {
-        t: [sim_ope.truth(CTX, sim_ope.CONTROL, t, 100 + s) for s in range(4)]
-        for t in ("T", "N", "T2")
-    }
-    for target in truths:
-        values = [t["visit"] for t in truths[target]]
+    for target in ("T", "N", "T2"):
         for name in ("IPS", "DR"):
             ests: list[Any] = [logs[s][target]["visit"]["estimates"][name] for s in seeds]
-            check = sim_ope.validate(ests, float(np.mean(values)), float(np.std(values) / 2))
-            assert abs(check["bias"]["value"]) < 0.02, (target, name)
+            exact = sim_ope.exact_truth(CTX, sim_ope.CONTROL, target)["visit"]
+            check = sim_ope.validate(ests, exact, 0.0)
+            half = (check["bias"]["ci_high"] - check["bias"]["ci_low"]) / 2
+            # Within about 3.3 standard errors of the exact value, and covering it
+            assert abs(check["bias"]["value"]) < 1.7 * half, (target, name)
             assert check["coverage"]["value"] >= 4 / 6, (target, name)
 
 
@@ -125,3 +123,21 @@ def test_validate_uses_an_exact_truth() -> None:
     check = sim_ope.validate(ests, 0.5, 0.0)
     assert check["bias"]["value"] == pytest.approx(0)
     assert check["coverage"]["value"] == 1
+
+
+def test_logs_keep_the_send_decision_of_opted_out_users() -> None:
+    explorer = EpsilonGreedy(CTX.best, seed=6)
+    params = sim_ope.CONTROL.__class__(opt_out=0.05)
+    out = env.simulate(CTX.pop, params, explorer, env.draws(USERS, 6), 1)
+    rows = sim_ope.user_days(out, CTX.static)
+    assert (out.opted_out_at >= 0).mean() > 0.3
+    # Send decisions follow the logging probabilities whether or not the user opted out
+    for d in (5, 20):
+        coins = np.stack(
+            [
+                explorer.act(env.Observation(d, s, np.zeros(USERS, dtype=bool))).send
+                for s in range(SLOTS)
+            ],
+            axis=1,
+        )
+        np.testing.assert_array_equal(rows.bits[d * USERS : (d + 1) * USERS], coins)

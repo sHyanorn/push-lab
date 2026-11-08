@@ -11,6 +11,8 @@ IntArray = npt.NDArray[np.int64]
 ESTIMATORS = ("DM", "IPS", "SNIPS", "DR")
 SAMPLES = 1_000
 CHUNK = 100
+# Cap on resample counts held at once (rows x clusters)
+CELLS = 20_000_000
 
 
 @dataclass(frozen=True)
@@ -68,8 +70,9 @@ def bootstrap(logged: Logged, samples: int = SAMPLES, seed: int = 0) -> FloatArr
     k = len(sums)
     rng = np.random.default_rng(seed)
     out = np.empty((samples, len(ESTIMATORS)))
-    for start in range(0, samples, CHUNK):
-        rows = min(CHUNK, samples - start)
+    chunk = max(1, min(CHUNK, CELLS // k))
+    for start in range(0, samples, chunk):
+        rows = min(chunk, samples - start)
         idx = rng.integers(0, k, size=(rows, k))
         counts = np.stack([np.bincount(r, minlength=k) for r in idx]).astype(np.float64)
         out[start : start + rows] = from_sums(counts @ sums)
@@ -83,6 +86,8 @@ def evaluate(logged: Logged, samples: int = SAMPLES, seed: int = 0) -> dict[str,
     boot = bootstrap(logged, samples, seed)
     low, high = np.nanpercentile(boot, [2.5, 97.5], axis=0)
     return {
+        # SPEC Section 5: estimators whose intervals do not overlap make the estimate inconclusive
+        "inconclusive": bool(low.max() > high.min()),
         "estimates": {
             name: {"value": est[name], "ci_low": float(lo), "ci_high": float(hi)}
             for name, lo, hi in zip(ESTIMATORS, low, high, strict=True)

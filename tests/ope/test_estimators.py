@@ -89,3 +89,12 @@ def test_report_fields() -> None:
     assert set(out["estimates"]) == set(est.ESTIMATORS)
     assert out["rounds"] == 500
     assert out["max_weight"] == pytest.approx(logged.weight.max())
+
+
+def test_disjoint_intervals_are_inconclusive() -> None:
+    logged, _ = _world(2_000, 4, exact_q=False)
+    out: Any = est.evaluate(logged, samples=200)
+    # The misspecified model pushes DM well above the weighted estimators
+    assert out["inconclusive"] is True
+    exact, _ = _world(2_000, 4, exact_q=True)
+    assert est.evaluate(exact, samples=200)["inconclusive"] is False

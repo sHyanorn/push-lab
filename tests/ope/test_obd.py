@@ -68,3 +68,19 @@ def test_validation_recovers_the_bts_value() -> None:
     assert out["validation"]["IPS"]["validated"]
     assert out["validation"]["DR"]["relative_error_median"] < 0.2
     assert out["random_rows"] == 20_000 and out["max_weight"] > 1
+
+
+def test_impressions_group_rows_shown_together() -> None:
+    log = pd.DataFrame(
+        {
+            "timestamp": [
+                "2019-11-24 00:00:00.000000+00:00",
+                "2019-11-24 00:00:00.200000+00:00",
+                "2019-11-24 00:00:00.400000+00:00",
+                "2019-11-24 00:00:00.500000+00:00",
+                "2019-11-24 00:00:05.000000+00:00",
+            ],
+            "user_feature_0": ["a", "a", "a", "b", "a"],
+        }
+    )
+    np.testing.assert_array_equal(obd.impressions(log), [0, 0, 0, 1, 2])
