@@ -12,7 +12,7 @@ SLOT_HOURS = (8, 12, 17, 21)
 # A push sent at a slot is opened, if at all, within the following three hours
 WINDOWS = ((8, 11), (12, 15), (17, 20), (21, 24))
 SLOTS = len(SLOT_HOURS)
-# Until the committed copy sets them (M6)
+# The committed copy has 60 templates in 6 families (D036, D038)
 TEMPLATES = 60
 FAMILIES = 6
 

@@ -62,7 +62,7 @@ Hour estimates are for planning; the required core is about 85 hours. If behind,
 
 ## M6 Copy and templates (10 h)
 - [x] METHODS.md: template families, placeholders, filters, recovering bandit
-- [x] Generation script: Claude API with structured output, manifest of model, effort, prompt, request ids and usage; tested against a recorded response
+- [x] Generation script: Claude API with structured output, manifest of model, effort, prompt, request ids and usage; tested against a response in the API's format
 - [x] Generate once and commit the outputs and manifest
 - [x] Filters: schema, length, placeholders, near-duplicates, banned claims
 - [x] Recovering bandit against uniform and greedy without the penalty, in the simulator with the copy-spread sweep

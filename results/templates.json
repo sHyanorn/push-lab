@@ -693,11 +693,87 @@
    "value": 0.138725,
    "ci_low": 0.106724,
    "ci_high": 0.173929
+  },
+  "active_days": {
+   "B1": {
+    "value": 0.044719,
+    "ci_low": 0.029861,
+    "ci_high": 0.062139
+   },
+   "B2": {
+    "value": 0.000788,
+    "ci_low": -0.000983,
+    "ci_high": 0.002604
+   },
+   "D0-U": {
+    "value": 0.043931,
+    "ci_low": 0.029206,
+    "ci_high": 0.061023
+   },
+   "RAW-RD": {
+    "value": -0.000672,
+    "ci_low": -0.002606,
+    "ci_high": 0.00153
+   },
+   "O-U": {
+    "value": 0.078207,
+    "ci_low": 0.059871,
+    "ci_high": 0.098222
+   }
+  },
+  "relative_to_U": {
+   "B1": {
+    "value": 0.108691,
+    "ci_low": 0.075808,
+    "ci_high": 0.145443
+   },
+   "D0-U": {
+    "value": 0.106959,
+    "ci_low": 0.074517,
+    "ci_high": 0.143042
+   },
+   "O-U": {
+    "value": 0.190627,
+    "ci_low": 0.151717,
+    "ci_high": 0.232144
+   }
+  },
+  "repeat_rate": {
+   "U": {
+    "value": 0.241129,
+    "ci_low": 0.240742,
+    "ci_high": 0.241513
+   },
+   "RD": {
+    "value": 0.776352,
+    "ci_low": 0.74164,
+    "ci_high": 0.807765
+   },
+   "D0": {
+    "value": 0.814998,
+    "ci_low": 0.786962,
+    "ci_high": 0.840068
+   },
+   "RAW": {
+    "value": 0.770751,
+    "ci_low": 0.745032,
+    "ci_high": 0.795219
+   },
+   "O": {
+    "value": 0.818854,
+    "ci_low": 0.756176,
+    "ci_high": 0.871784
+   }
   }
  },
  "share_of_oracle_gain": {
-  "median": 0.40676,
-  "settings_with_oracle_gain": 64
+  "median_over_settings": 0.40676,
+  "settings_with_oracle_gain": 64,
+  "ratio_of_averages": {
+   "value": 0.570175,
+   "ci_low": 0.484154,
+   "ci_high": 0.644104
+  }
  },
  "flips": {
   "base_rate": {
@@ -1163,55 +1239,148 @@
   "B1": {
    "sd_over_seed_triples": 0.007968,
    "mean_bootstrap_se": 0.000449,
-   "triples": 10
+   "ratio": 17.749471,
+   "triples": 10,
+   "mean_over_triples": {
+    "value": 0.001492,
+    "ci_low": -0.004208,
+    "ci_high": 0.007191
+   },
+   "negative_triples": 4
   },
   "B2": {
    "sd_over_seed_triples": 0.007346,
    "mean_bootstrap_se": 0.000382,
-   "triples": 10
+   "ratio": 19.236451,
+   "triples": 10,
+   "mean_over_triples": {
+    "value": -0.005182,
+    "ci_low": -0.010437,
+    "ci_high": 7.3e-05
+   },
+   "negative_triples": 7
+  }
+ },
+ "post_hoc": {
+  "B1_relative_vs_copy_spread_correlation": {
+   "value": 0.763238,
+   "ci_low": 0.705043,
+   "ci_high": 0.873061
   }
  },
  "score_diagnostics_median": {
   "main": {
    "RD": {
-    "spearman": 0.333426,
-    "top_overlap": 0.3
+    "spearman": {
+     "value": 0.333169,
+     "ci_low": 0.282376,
+     "ci_high": 0.381467
+    },
+    "top_overlap": {
+     "value": 0.333333,
+     "ci_low": 0.3,
+     "ci_high": 0.366667
+    }
    },
    "D0": {
-    "spearman": 0.335893,
-    "top_overlap": 0.3
+    "spearman": {
+     "value": 0.336407,
+     "ci_low": 0.279868,
+     "ci_high": 0.393169
+    },
+    "top_overlap": {
+     "value": 0.333333,
+     "ci_low": 0.3,
+     "ci_high": 0.366667
+    }
    },
    "RAW": {
-    "spearman": 0.322315,
-    "top_overlap": 0.3
+    "spearman": {
+     "value": 0.324977,
+     "ci_low": 0.267817,
+     "ci_high": 0.383616
+    },
+    "top_overlap": {
+     "value": 0.3,
+     "ci_low": 0.3,
+     "ci_high": 0.366667
+    }
    }
   },
   "grid": {
    "RD": {
-    "spearman": 0.166177,
-    "top_overlap": 0.3
+    "spearman": {
+     "value": 0.18151,
+     "ci_low": 0.160635,
+     "ci_high": 0.182234
+    },
+    "top_overlap": {
+     "value": 0.2,
+     "ci_low": 0.2,
+     "ci_high": 0.3
+    }
    },
    "D0": {
-    "spearman": 0.131059,
-    "top_overlap": 0.3
+    "spearman": {
+     "value": 0.069934,
+     "ci_low": 0.068809,
+     "ci_high": 0.20169
+    },
+    "top_overlap": {
+     "value": 0.3,
+     "ci_low": 0.3,
+     "ci_high": 0.333333
+    }
    },
    "RAW": {
-    "spearman": 0.153896,
-    "top_overlap": 0.3
+    "spearman": {
+     "value": 0.091879,
+     "ci_low": 0.083527,
+     "ci_high": 0.171258
+    },
+    "top_overlap": {
+     "value": 0.333333,
+     "ci_low": 0.3,
+     "ci_high": 0.333333
+    }
    }
   },
   "replicate": {
    "RD": {
-    "spearman": 0.131314,
-    "top_overlap": 0.3
+    "spearman": {
+     "value": 0.141483,
+     "ci_low": 0.063958,
+     "ci_high": 0.185386
+    },
+    "top_overlap": {
+     "value": 0.25,
+     "ci_low": 0.216667,
+     "ci_high": 0.3
+    }
    },
    "D0": {
-    "spearman": 0.149941,
-    "top_overlap": 0.3
+    "spearman": {
+     "value": 0.146665,
+     "ci_low": 0.098385,
+     "ci_high": 0.209077
+    },
+    "top_overlap": {
+     "value": 0.316667,
+     "ci_low": 0.25,
+     "ci_high": 0.366667
+    }
    },
    "RAW": {
-    "spearman": 0.176342,
-    "top_overlap": 0.3
+    "spearman": {
+     "value": 0.181099,
+     "ci_low": 0.136314,
+     "ci_high": 0.238592
+    },
+    "top_overlap": {
+     "value": 0.3,
+     "ci_low": 0.266667,
+     "ci_high": 0.333333
+    }
    }
   }
  },
