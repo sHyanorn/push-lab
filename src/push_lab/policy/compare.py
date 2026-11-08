@@ -19,6 +19,7 @@ import numpy.typing as npt
 from push_lab.data import paths
 from push_lab.policy import design
 from push_lab.policy.sweep import METRICS, setting_paths
+from push_lab.runtime import rounded, write_json
 
 FloatArray = npt.NDArray[np.float64]
 IntArray = npt.NDArray[np.int64]
@@ -82,11 +83,7 @@ def p_value(boot: FloatArray) -> float:
 
 def interval(point: float, boot: FloatArray) -> dict[str, float]:
     low, high = np.percentile(boot, [2.5, 97.5])
-    return {"value": _r(point), "ci_low": _r(low), "ci_high": _r(high)}
-
-
-def _r(x: float) -> float:
-    return round(float(x), 6)
+    return {"value": rounded(point), "ci_low": rounded(low), "ci_high": rounded(high)}
 
 
 def verdict(point: float, p: float, level: float = SETTING_LEVEL) -> str:
@@ -138,7 +135,10 @@ def flips(x: FloatArray, points: FloatArray, boot: FloatArray) -> list[dict[str,
         if np.sign(a) == np.sign(b):
             continue
         resolved = (low[i] > 0 and high[i + 1] < 0) or (high[i] < 0 and low[i + 1] > 0)
-        entry: dict[str, Any] = {"between": [_r(x[i]), _r(x[i + 1])], "resolved": bool(resolved)}
+        entry: dict[str, Any] = {
+            "between": [rounded(x[i]), rounded(x[i + 1])],
+            "resolved": bool(resolved),
+        }
         if resolved:
             at = x[i] + (x[i + 1] - x[i]) * a / (a - b)
             ba, bb = boot[:, i], boot[:, i + 1]
@@ -146,10 +146,10 @@ def flips(x: FloatArray, points: FloatArray, boot: FloatArray) -> list[dict[str,
             xs = x[i] + (x[i + 1] - x[i]) * ba[crossing] / (ba[crossing] - bb[crossing])
             lo, hi = np.percentile(xs, [2.5, 97.5])
             entry |= {
-                "at": _r(at),
-                "ci_low": _r(lo),
-                "ci_high": _r(hi),
-                "resamples_crossing": _r(crossing.mean()),
+                "at": rounded(at),
+                "ci_low": rounded(lo),
+                "ci_high": rounded(hi),
+                "resamples_crossing": rounded(crossing.mean()),
             }
         out.append(entry)
     return out
@@ -190,7 +190,7 @@ def evaluate_setting(metrics: FloatArray, names: list[str], boot: Bootstrap) -> 
         d = f"diff.{key}"
         pv = p_value(b[d])
         comparisons[key] = interval(point[d], b[d]) | {
-            "p_value": _r(pv),
+            "p_value": rounded(pv),
             "verdict": verdict(point[d], pv),
         }
     comparisons["H2"]["note"] = H2_NOTE
@@ -261,11 +261,11 @@ def summarize(
                 for i in ids
             ]
             labeled[sweep][key] = {
-                "sweep_average": avg | {"p_value": _r(p)},
+                "sweep_average": avg | {"p_value": rounded(p)},
                 "wins": verdicts.count("win"),
                 "losses": verdicts.count("loss"),
                 "neither": verdicts.count("neither"),
-                "median_half_width": _r(float(np.median(half))),
+                "median_half_width": rounded(float(np.median(half))),
                 "losing_settings": [
                     {"id": i, "values": settings[i]["values"]}
                     for i, v in zip(ids, verdicts, strict=True)
@@ -314,7 +314,7 @@ def summarize(
             boots = np.stack([results[i].boot[key] for i in ids], axis=1)
             crossings = flips(x, pts, boots)
             grid_flips[name][key] = {
-                "values": [_r(v) for v in x],
+                "values": [rounded(v) for v in x],
                 "estimates": [
                     (results[i].summary["primary"] | results[i].summary["secondary"])[key]
                     for i in ids
@@ -332,8 +332,8 @@ def summarize(
             pts = np.array([results[i].points[key] for i in refits])
             se = np.mean([results[i].boot[key].std() for i in refits])
             fit_variability[key] = {
-                "sd_over_refits": _r(pts.std(ddof=1)),
-                "mean_bootstrap_se": _r(se),
+                "sd_over_refits": rounded(pts.std(ddof=1)),
+                "mean_bootstrap_se": rounded(se),
                 "refits": len(refits),
             }
         fit_variability["H2"]["note"] = H2_NOTE
@@ -342,7 +342,7 @@ def summarize(
     for sweep, ids in by_sweep.items():
         keys = list(infos[ids[0]]["diagnostics"])
         diagnostics[sweep] = {
-            k: _r(float(np.median([infos[i]["diagnostics"][k] for i in ids]))) for k in keys
+            k: rounded(float(np.median([infos[i]["diagnostics"][k] for i in ids]))) for k in keys
         }
 
     samples = len(next(iter(results.values())).boot["H1"])
@@ -350,7 +350,7 @@ def summarize(
         "tier": "C",
         "note": "Simulator results with the sweep; settings are points drawn uniformly over "
         "the parameter box, not probabilities of the real world.",
-        "p_value_resolution": _r(2 / samples),
+        "p_value_resolution": rounded(2 / samples),
         "complete": {
             sweep: len(by_sweep.get(sweep, []))
             == sum(s["sweep"] == sweep for s in frozen["settings"])
@@ -367,11 +367,11 @@ def summarize(
             {
                 "id": i,
                 "sweep": settings[i]["sweep"],
-                "values": {k: _r(v) for k, v in settings[i]["values"].items()},
+                "values": {k: rounded(v) for k, v in settings[i]["values"].items()},
                 "multipliers": infos[i].get("multipliers", {}),
                 "cap_binding_days": infos[i].get("cap_binding_days", {}),
                 "fixed_slot": infos[i]["fixed_slot"],
-                "diagnostics": {k: _r(v) for k, v in infos[i]["diagnostics"].items()},
+                "diagnostics": {k: rounded(v) for k, v in infos[i]["diagnostics"].items()},
                 "timings_s": infos[i]["timings_s"],
             }
             | results[i].summary
@@ -414,7 +414,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     result = run(args.root)
     out = args.root / paths.RESULTS / "policy.json"
-    out.write_text(json.dumps(result, indent=1) + "\n", encoding="utf-8", newline="\n")
+    write_json(out, result)
     print(f"wrote {out}")
     return 0
 

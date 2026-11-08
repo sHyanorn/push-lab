@@ -5,7 +5,6 @@ truncation measures, which are labeled as such.
 """
 
 import argparse
-import json
 import sys
 import time
 from collections.abc import Sequence
@@ -22,6 +21,7 @@ from push_lab.rank import cascade, fine, metrics, splits, truncation
 from push_lab.rank.features import FeatureBuilder
 from push_lab.recall import popularity, two_tower
 from push_lab.recall.index import ItemIndex, overlap
+from push_lab.runtime import rounded, write_json
 
 RECALL_K = (50, 100, 200, 500)
 TRUNCATION_N = (50, 100, 200, 500)
@@ -62,12 +62,8 @@ class Settings:
     bootstrap_samples: int = metrics.BOOTSTRAP_SAMPLES
 
 
-def _round(x: float) -> float:
-    return round(float(x), 6)
-
-
 def _est(e: metrics.Estimate) -> dict[str, float]:
-    return {k: _round(v) if isinstance(v, float) else v for k, v in e.as_dict().items()}
+    return {k: rounded(v) if isinstance(v, float) else v for k, v in e.as_dict().items()}
 
 
 def fit_cutoff(
@@ -82,7 +78,7 @@ def fit_cutoff(
     start = time.perf_counter()
     tower = two_tower.TwoTower(users, items, window, config)
     tower.fit()
-    timings[f"two_tower_fit_s_{cutoff}"] = _round(time.perf_counter() - start)
+    timings[f"two_tower_fit_s_{cutoff}"] = rounded(time.perf_counter() - start)
     return window, FeatureBuilder(window, cutoff, users, items, tower)
 
 
@@ -122,7 +118,7 @@ def _signed(feature: str, values: pd.Series) -> FloatArray:
 
 def _quantiles(values: pd.Series) -> dict[str, float]:
     q = values.quantile(list(QUANTILES))
-    return {f"p{round(100 * p)}": _round(v) for p, v in zip(QUANTILES, q, strict=True)}
+    return {f"p{round(100 * p)}": rounded(v) for p, v in zip(QUANTILES, q, strict=True)}
 
 
 def run(root: Path, settings: Settings | None = None) -> dict[str, Any]:
@@ -149,11 +145,11 @@ def run(root: Path, settings: Settings | None = None) -> dict[str, Any]:
     k_max = min(max(RECALL_K), len(catalog))
     start = time.perf_counter()
     hnsw = ItemIndex(catalog, item_vecs).search(user_vecs, k_max)
-    timings["hnsw_search_s"] = _round(time.perf_counter() - start)
+    timings["hnsw_search_s"] = rounded(time.perf_counter() - start)
     start = time.perf_counter()
     # Exact search feeds every reported number; HNSW is checked against it (D018)
     personal = ItemIndex(catalog, item_vecs, exact=True).search(user_vecs, k_max)
-    timings["exact_search_s"] = _round(time.perf_counter() - start)
+    timings["exact_search_s"] = rounded(time.perf_counter() - start)
 
     popular = popularity.popularity(window2)
     trending = popularity.trending(window2, splits.CUTOFF_EVAL)
@@ -175,7 +171,7 @@ def run(root: Path, settings: Settings | None = None) -> dict[str, Any]:
     valid_rows = splits.between(standard, *splits.LABELS_VALID)
     start = time.perf_counter()
     ranker = fine.FineRanker.fit(builder1, train_rows, valid_rows, s.fine_params)
-    timings["fine_fit_s"] = _round(time.perf_counter() - start)
+    timings["fine_fit_s"] = rounded(time.perf_counter() - start)
 
     x_eval = builder2.build(
         rows["user_id"].to_numpy(dtype=np.int64), rows["video_id"].to_numpy(dtype=np.int64)
@@ -230,7 +226,7 @@ def run(root: Path, settings: Settings | None = None) -> dict[str, Any]:
     )
     start = time.perf_counter()
     catalog_scores = _scores_by_user(builder2, ranker, eval_users[sample], catalog)
-    timings["catalog_scoring_s"] = _round(time.perf_counter() - start)
+    timings["catalog_scoring_s"] = rounded(time.perf_counter() - start)
     sizes = [n for n in TRUNCATION_N if n < pool.shape[1]] + [pool.shape[1]]
     study = truncation.study(
         pool, user_vecs, catalog, item_vecs, positives, sample, catalog_scores, sizes
@@ -254,7 +250,7 @@ def run(root: Path, settings: Settings | None = None) -> dict[str, Any]:
                 | {"tier": "model-internal"},
                 "score_regret": _est(metrics.estimate(result.regret, sample_idx))
                 | {"tier": "model-internal"},
-                "fine_ms_per_user_batched": _round(_latency(builder2, ranker, lat_users, kept)),
+                "fine_ms_per_user_batched": rounded(_latency(builder2, ranker, lat_users, kept)),
             }
         )
     catalog_latency = _latency(builder2, ranker, lat_users, np.tile(catalog, (len(lat_users), 1)))
@@ -264,7 +260,7 @@ def run(root: Path, settings: Settings | None = None) -> dict[str, Any]:
     c2 = metrics.compare(ranking["fused"]["gauc_click"], ranking["two_tower"]["gauc_click"], idx)
     rejected = metrics.holm({"C1": c1.p_value, "C2": c2.p_value})
     # With B resamples the smallest nonzero p-value is 2/B; 0 means below it
-    p_resolution = {"p_value_resolution": _round(2 / s.bootstrap_samples)}
+    p_resolution = {"p_value_resolution": rounded(2 / s.bootstrap_samples)}
 
     # The same scorers on the fine ranker's own validation rows (standard logs, not random)
     x_valid = builder1.build(
@@ -346,8 +342,8 @@ def run(root: Path, settings: Settings | None = None) -> dict[str, Any]:
             "truncation_sample_users": len(sample),
         },
         "ann": {
-            "hnsw_overlap_at_200": _round(overlap(hnsw[:, :200], personal[:, :200])),
-            "hnsw_overlap_at_500": _round(overlap(hnsw, personal)),
+            "hnsw_overlap_at_200": rounded(overlap(hnsw[:, :200], personal[:, :200])),
+            "hnsw_overlap_at_500": rounded(overlap(hnsw, personal)),
         },
         "recall": {
             name: {str(k): _est(metrics.estimate(v, idx)) | {"tier": "A"} for k, v in by_k.items()}
@@ -368,17 +364,17 @@ def run(root: Path, settings: Settings | None = None) -> dict[str, Any]:
         },
         "fusion_weight": fusion,
         "truncation": truncation_out,
-        "catalog_fine_ms_per_user_batched": _round(catalog_latency),
+        "catalog_fine_ms_per_user_batched": rounded(catalog_latency),
         "latency_note": (
             f"features and prediction for {len(lat_users)} users in one call, divided by the "
             "number of users; not a per-request latency"
         ),
         "primary": {
             "C1_two_tower_vs_popularity_recall200": _est(c1.difference)
-            | {"p_value": _round(c1.p_value), "holm_rejected": rejected["C1"]}
+            | {"p_value": rounded(c1.p_value), "holm_rejected": rejected["C1"]}
             | p_resolution,
             "C2_fused_vs_two_tower_gauc_click": _est(c2.difference)
-            | {"p_value": _round(c2.p_value), "holm_rejected": rejected["C2"]}
+            | {"p_value": rounded(c2.p_value), "holm_rejected": rejected["C2"]}
             | p_resolution,
         },
         "diagnostics": {
@@ -403,8 +399,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     result = run(args.root)
     out = args.root / paths.RESULTS / "ranking.json"
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8", newline="\n")
+    write_json(out, result, indent=2)
     print(f"wrote {out}")
     return 0
 

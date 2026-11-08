@@ -17,6 +17,7 @@ import numpy.typing as npt
 from scipy.stats import qmc
 
 from push_lab.data import paths
+from push_lab.runtime import write_json
 from push_lab.sim import world
 from push_lab.sim.world import Params
 
@@ -153,8 +154,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--users", type=int, default=27_285, help="simulated population")
     args = parser.parse_args(argv)
     out = args.root / paths.RESULTS / DESIGN_FILE
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(build(args.users), indent=1) + "\n", encoding="utf-8", newline="\n")
+    write_json(out, build(args.users))
     print(f"wrote {out}")
     return 0
 

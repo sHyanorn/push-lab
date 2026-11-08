@@ -16,6 +16,7 @@ import pyarrow.parquet as pq
 
 from push_lab.data import fixtures, paths, schemas
 from push_lab.data.sources import SOURCES
+from push_lab.runtime import rounded
 
 # Published figures for the real data (D016)
 PUBLISHED: dict[str, float] = {
@@ -58,10 +59,6 @@ class Report:
             self.errors.append(message)
 
 
-def _round(x: float) -> float:
-    return round(float(x), 6)
-
-
 def _table(
     report: Report, root: Path, key: tuple[str, str], published: bool
 ) -> pd.DataFrame | None:
@@ -90,7 +87,7 @@ def _table(
     n_rows = meta.num_rows
     report.tables[label] = {
         "rows": n_rows,
-        "missing_share": {c: _round(v / n_rows) for c, v in nulls.items() if v and n_rows},
+        "missing_share": {c: rounded(v / n_rows) for c, v in nulls.items() if v and n_rows},
     }
     if key not in COLUMNS:
         return None
@@ -106,10 +103,10 @@ def _kuairand(report: Report, logs: dict[str, pd.DataFrame]) -> None:
     for name, log in logs.items():
         summary[name] = {
             "click_rate_by_tab": {
-                str(tab): _round(rate)
+                str(tab): rounded(rate)
                 for tab, rate in log.groupby("tab")["is_click"].mean().items()
             },
-            "tab1_share": _round((log["tab"] == 1).mean()),
+            "tab1_share": rounded((log["tab"] == 1).mean()),
         }
         want_rand = int(name == "log_random")
         report.check(
@@ -118,19 +115,19 @@ def _kuairand(report: Report, logs: dict[str, pd.DataFrame]) -> None:
         )
     total = sum(len(log) for log in logs.values())
     summary["random_rows"] = len(logs["log_random"])
-    summary["random_share_of_all_logs"] = _round(len(logs["log_random"]) / total)
+    summary["random_share_of_all_logs"] = rounded(len(logs["log_random"]) / total)
     report.datasets["kuairand"] = summary
 
 
 def _hillstrom(report: Report, df: pd.DataFrame) -> None:
     arms = df.groupby("treatment")
-    share = _round(df["treatment"].mean())
+    share = rounded(df["treatment"].mean())
     report.datasets["hillstrom"] = {
         "rows_by_treatment": {str(k): int(v) for k, v in arms.size().items()},
         "treatment_share": share,
-        "visit_rate_by_treatment": {str(k): _round(v) for k, v in arms["visit"].mean().items()},
+        "visit_rate_by_treatment": {str(k): rounded(v) for k, v in arms["visit"].mean().items()},
         "conversion_rate_by_treatment": {
-            str(k): _round(v) for k, v in arms["conversion"].mean().items()
+            str(k): rounded(v) for k, v in arms["conversion"].mean().items()
         },
     }
     low, high = ARM_SHARE_RANGE
@@ -138,12 +135,12 @@ def _hillstrom(report: Report, df: pd.DataFrame) -> None:
 
 
 def _criteo(report: Report, df: pd.DataFrame, published: bool) -> None:
-    share = _round(df["treatment"].mean())
-    train = _round(df["train"].mean())
+    share = rounded(df["treatment"].mean())
+    train = rounded(df["train"].mean())
     report.datasets["criteo"] = {
         "treatment_share": share,
-        "visit_rate": _round(df["visit"].mean()),
-        "conversion_rate": _round(df["conversion"].mean()),
+        "visit_rate": rounded(df["visit"].mean()),
+        "conversion_rate": rounded(df["conversion"].mean()),
         "train_share": train,
         "train_rows": int(df["train"].sum()),
     }
@@ -165,9 +162,9 @@ def _obd(report: Report, logs: dict[str, pd.DataFrame]) -> None:
         p = log["propensity_score"]
         summary[policy] = {
             "rows": len(log),
-            "click_rate": _round(log["click"].mean()),
-            "propensity_min": _round(p.min()),
-            "propensity_max": _round(p.max()),
+            "click_rate": rounded(log["click"].mean()),
+            "propensity_min": rounded(p.min()),
+            "propensity_max": rounded(p.max()),
         }
         report.check(bool(((p > 0) & (p <= 1)).all()), f"obd.{policy}: propensity outside (0, 1]")
     if "random" in logs:

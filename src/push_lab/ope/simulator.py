@@ -11,9 +11,7 @@ seeds per target otherwise (D044).
 """
 
 import argparse
-import json
 import multiprocessing as mp
-import os
 import sys
 import time
 from collections.abc import Sequence
@@ -27,8 +25,9 @@ import numpy.typing as npt
 
 from push_lab.data import paths
 from push_lab.ope import estimators as est
-from push_lab.policy import rules, sweep
+from push_lab.policy import rules
 from push_lab.policy.features import NAMES, History, Static
+from push_lab.runtime import code_commit, one_thread_per_process, write_json
 from push_lab.sim import env, inputs, world
 from push_lab.sim.env import Action, Observation
 from push_lab.sim.explore import EpsilonGreedy
@@ -399,8 +398,7 @@ def run(
         for count, (setting, seed, result) in enumerate(pool.imap_unordered(_log_work, jobs), 1):
             logs[setting][seed] = result
             saved = root / paths.RESULTS / runs / f"{setting}_{seed}.json"
-            saved.parent.mkdir(parents=True, exist_ok=True)
-            saved.write_text(json.dumps(result) + "\n", encoding="utf-8")
+            write_json(saved, result, indent=None)
             print(f"{count}/{len(jobs)} {setting} log {seed}", flush=True)
     contexts = load_contexts(root)
     out: dict[str, Any] = {
@@ -427,16 +425,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--processes", type=int, default=4)
     parser.add_argument("--smoke", action="store_true", help=SMOKE_HELP)
     args = parser.parse_args(argv)
-    for var in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS"):
-        os.environ[var] = "1"
-    commit = sweep.code_commit(args.root)
+    one_thread_per_process()
+    commit = code_commit(args.root)
     if args.smoke:
         result = {"commit": commit} | run(args.root, args.processes, LOG_SEEDS[:2], SMOKE)
         target = args.root / paths.RESULTS / SMOKE / RESULTS_FILE
     else:
         result = {"commit": commit} | run(args.root, args.processes)
         target = args.root / paths.RESULTS / RESULTS_FILE
-    target.write_text(json.dumps(result, indent=1) + "\n", encoding="utf-8", newline="\n")
+    write_json(target, result)
     print(f"wrote {target}")
     return 0
 

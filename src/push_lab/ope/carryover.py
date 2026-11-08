@@ -9,7 +9,6 @@ and writes ``results/ope_carryover.json``; each log's estimates go to
 import argparse
 import json
 import multiprocessing as mp
-import os
 import sys
 import time
 from collections.abc import Sequence
@@ -23,7 +22,8 @@ from scipy import stats
 
 from push_lab.data import paths
 from push_lab.ope import simulator as sim
-from push_lab.policy import compare, sweep
+from push_lab.policy import compare
+from push_lab.runtime import code_commit, one_thread_per_process, write_json
 from push_lab.sim.world import RANGES, Params
 
 FloatArray = npt.NDArray[np.float64]
@@ -217,11 +217,10 @@ def run(
         for count, (kind, sid, key, result) in enumerate(pool.imap_unordered(_work, jobs), 1):
             if kind == "log":
                 logs[sid][int(key)] = result
-                (folder / f"{sid}_{key}.json").write_text(json.dumps(result) + "\n", "utf-8")
+                write_json(folder / f"{sid}_{key}.json", result, indent=None)
             else:
                 truths[sid][str(key)] = result
-                path = folder / f"truth_{sid}_{key}.json"
-                path.write_text(json.dumps(result) + "\n", "utf-8")
+                write_json(folder / f"truth_{sid}_{key}.json", result, indent=None)
             print(f"{count}/{len(jobs)} {kind} setting {sid} {key}", flush=True)
     return {
         "tier": "C",
@@ -248,10 +247,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--smoke", action="store_true", help=SMOKE_HELP)
     args = parser.parse_args(argv)
     target = args.root / paths.RESULTS / RESULTS_FILE
-    commit = sweep.code_commit(args.root)
+    commit = code_commit(args.root)
     if args.smoke:
-        for var in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS"):
-            os.environ[var] = "1"
+        one_thread_per_process()
         result = {"commit": commit} | run(args.root, args.processes, False, LOG_SEEDS[:2], SMOKE)
         target = args.root / paths.RESULTS / SMOKE / RESULTS_FILE
     elif args.post_hoc:
@@ -260,14 +258,13 @@ def main(argv: Sequence[str] | None = None) -> int:
             result, args.root / paths.RESULTS / RUNS
         )
     else:
-        for var in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS"):
-            os.environ[var] = "1"
+        one_thread_per_process()
         result = {"commit": commit}
         if args.reuse_logs:
             earlier = json.loads(target.read_text("utf-8"))
             result |= {"logs_commit": earlier.get("logs_commit", earlier["commit"])}
         result |= run(args.root, args.processes, args.reuse_logs)
-    target.write_text(json.dumps(result, indent=1) + "\n", encoding="utf-8", newline="\n")
+    write_json(target, result)
     print(f"wrote {target}")
     return 0
 

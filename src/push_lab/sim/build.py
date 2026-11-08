@@ -5,7 +5,6 @@ run, never policy outcomes: those are Tier C and come only with the sweep (M5).
 """
 
 import argparse
-import json
 import sys
 import time
 from collections.abc import Sequence
@@ -19,6 +18,7 @@ from sklearn.metrics import roc_auc_score
 
 from push_lab.data import paths
 from push_lab.rank import metrics
+from push_lab.runtime import rounded, write_json
 from push_lab.sim import env, inputs, world
 from push_lab.sim.explore import EpsilonGreedy
 from push_lab.sim.world import SLOTS, Params
@@ -37,18 +37,14 @@ class Settings:
     bootstrap_samples: int = metrics.BOOTSTRAP_SAMPLES
 
 
-def _round(x: float) -> float:
-    return round(float(x), 6)
-
-
 def _est(e: metrics.Estimate, tier: str = "A") -> dict[str, Any]:
-    return {k: _round(v) if isinstance(v, float) else v for k, v in e.as_dict().items()} | {
+    return {k: rounded(v) if isinstance(v, float) else v for k, v in e.as_dict().items()} | {
         "tier": tier
     }
 
 
 def _quantiles(values: FloatArray) -> dict[str, float]:
-    return {f"p{round(q * 100)}": _round(np.quantile(values, q)) for q in QUANTILES}
+    return {f"p{round(q * 100)}": rounded(np.quantile(values, q)) for q in QUANTILES}
 
 
 def _per_user(users: IntArray, values: FloatArray) -> tuple[IntArray, FloatArray, FloatArray]:
@@ -83,7 +79,7 @@ def response_checks(v: inputs.Validation, samples: int) -> dict[str, Any]:
         rate[pos], weight[pos] = observed, n
         reliability.append(
             {
-                "mean_predicted": _round(v.predicted[inside].mean()),
+                "mean_predicted": rounded(v.predicted[inside].mean()),
                 "observed": _est(metrics.estimate(rate, idx, weights=weight)),
             }
         )
@@ -94,9 +90,9 @@ def response_checks(v: inputs.Validation, samples: int) -> dict[str, Any]:
         "best_rounds": v.best_rounds,
         "log_loss": _est(metrics.estimate(mean_loss, idx, weights=rows)),
         "auc": {
-            "value": _round(roc_auc_score(v.labels, v.predicted)),
-            "ci_low": _round(low),
-            "ci_high": _round(high),
+            "value": rounded(roc_auc_score(v.labels, v.predicted)),
+            "ci_low": rounded(low),
+            "ci_high": rounded(high),
             "tier": "A",
         },
         "gauc": _est(metrics.estimate(gauc, idx)),
@@ -105,7 +101,7 @@ def response_checks(v: inputs.Validation, samples: int) -> dict[str, Any]:
             metrics.estimate(_per_user(v.users, v.predicted)[1], idx, weights=rows)
         ),
         "note": "validation users are held out from fitting but drive early stopping",
-        "feature_gain_share": {k: _round(v) for k, v in v.gain_share.items()},
+        "feature_gain_share": {k: rounded(v) for k, v in v.gain_share.items()},
         "reliability_by_decile": reliability,
     }
 
@@ -129,29 +125,31 @@ def input_checks(fitted: inputs.Fitted, samples: int) -> dict[str, Any]:
     hourly = fitted.hourly_sim
     return {
         "users": n,
-        "visit_rate": _quantiles(inp.visit_rate) | {"mean": _round(inp.visit_rate.mean())},
+        "visit_rate": _quantiles(inp.visit_rate) | {"mean": rounded(inp.visit_rate.mean())},
         "slot_shares": {
-            "simulator_profile": [_round(x) for x in inp.profile_sim.mean(axis=0)],
-            "policy_profile": [_round(x) for x in inp.profile_policy.mean(axis=0)],
+            "simulator_profile": [rounded(x) for x in inp.profile_sim.mean(axis=0)],
+            "policy_profile": [rounded(x) for x in inp.profile_policy.mean(axis=0)],
         },
         "best_slot_agreement_policy_vs_simulator": _est(
             metrics.estimate(agree, idx), tier="descriptive"
         )
         | {
-            "chance_if_independent": _round(chance),
+            "chance_if_independent": rounded(chance),
             "users_without_policy_period_rows": no_early_rows,
         },
-        "hourly_activity_utc8": [_round(x) for x in hourly],
+        "hourly_activity_utc8": [rounded(x) for x in hourly],
         "lowest_activity_hour_utc8": int(np.argmin(hourly)),
         "date_field_matches_local_date": {
-            f"utc+{h}": _round(share) for h, share in fitted.date_agreement.items()
+            f"utc+{h}": rounded(share) for h, share in fitted.date_agreement.items()
         },
-        "timing_eta": {str(lift): _round(world.solve_eta(inp.profile_sim, lift)) for lift in LIFTS},
+        "timing_eta": {
+            str(lift): rounded(world.solve_eta(inp.profile_sim, lift)) for lift in LIFTS
+        },
         "reference": asdict(reference)
         | {
-            "reference_volume": _round(world.reference_volume(reference.fatigue_half_life)),
-            "fatigue_rate": _round(world.fatigue_rate(reference)),
-            "annoyance_rate": _round(world.annoyance_rate(reference)),
+            "reference_volume": rounded(world.reference_volume(reference.fatigue_half_life)),
+            "fatigue_rate": rounded(world.fatigue_rate(reference)),
+            "annoyance_rate": rounded(world.annoyance_rate(reference)),
         },
         "ranges": {k: list(v) for k, v in world.RANGES.items()}
         | {"opt_out_stress": world.OPT_OUT_STRESS},
@@ -179,11 +177,11 @@ def run(root: Path, settings: Settings | None = None) -> dict[str, Any]:
             "epsilon": explorer.epsilon,
             "q": explorer.q,
             "templates": explorer.templates,
-            "send_probability_best_slot": _round(
+            "send_probability_best_slot": rounded(
                 1 - explorer.epsilon + explorer.epsilon * explorer.q
             ),
-            "send_probability_other_slots": _round(explorer.epsilon * explorer.q),
-            "min_propensity": _round(explorer.min_propensity),
+            "send_probability_other_slots": rounded(explorer.epsilon * explorer.q),
+            "min_propensity": rounded(explorer.min_propensity),
         },
         "quick_sample_users": len(world.quick_sample(pop.users)),
         "timings_s": timings,
@@ -196,8 +194,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     result = run(args.root)
     out = args.root / paths.RESULTS / "simulator.json"
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8", newline="\n")
+    write_json(out, result, indent=2)
     print(f"wrote {out}")
     return 0
 

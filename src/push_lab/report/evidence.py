@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from push_lab.data import paths
+from push_lab.runtime import write_json
 
 TIERS = {
     "A": {
@@ -406,7 +407,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--root", type=Path, default=Path.cwd(), help="repository root")
     args = parser.parse_args(argv)
     target = args.root / paths.RESULTS / "evidence.json"
-    target.write_text(json.dumps(build(args.root), indent=1) + "\n", encoding="utf-8")
+    write_json(target, build(args.root))
     print(f"wrote {target}")
     return 0
 

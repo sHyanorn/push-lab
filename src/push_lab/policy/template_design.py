@@ -17,6 +17,7 @@ from push_lab.creative.families import FAMILIES, TEMPLATES
 from push_lab.data import paths
 from push_lab.policy import design
 from push_lab.policy import templates as tp
+from push_lab.runtime import write_json
 
 GRID_NAMES = ("base_rate", "copy_spread", "novelty", "novelty_half_life")
 REPLICATES = 10
@@ -103,7 +104,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     out = args.root / paths.RESULTS / DESIGN_FILE
     data = build(args.root, args.users)
-    out.write_text(json.dumps(data, indent=1) + "\n", encoding="utf-8", newline="\n")
+    write_json(out, data)
     print(f"wrote {out}: {len(data['settings'])} settings")
     return 0
 

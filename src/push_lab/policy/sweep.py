@@ -10,7 +10,6 @@ import argparse
 import json
 import multiprocessing as mp
 import os
-import subprocess
 import sys
 import time
 from collections.abc import Sequence
@@ -26,6 +25,7 @@ from push_lab.data import paths
 from push_lab.policy import design, profile, rules
 from push_lab.policy.features import Rows, Static, logged_rows
 from push_lab.policy.gate import KINDS, Models
+from push_lab.runtime import code_commit, one_thread_per_process, write_json
 from push_lab.sim import env, inputs
 from push_lab.sim.explore import EpsilonGreedy
 from push_lab.sim.world import DAYS, SLOTS, Params
@@ -228,8 +228,7 @@ def write_setting(
     root: Path, setting_id: int, values: FloatArray, info: dict[str, Any], runs: Path = RUNS
 ) -> None:
     npz, meta = setting_paths(root, setting_id, runs)
-    npz.parent.mkdir(parents=True, exist_ok=True)
-    meta.write_text(json.dumps(info, indent=1) + "\n", encoding="utf-8")
+    write_json(meta, info)
     # The archive marks a finished setting, so it is written last and moved into place whole
     partial = npz.with_name(npz.stem + ".partial.npz")
     np.savez_compressed(partial, metrics=values.astype(np.float32))
@@ -245,19 +244,6 @@ def finished(root: Path, setting_id: int, commit: str, runs: Path = RUNS) -> boo
     if ran != commit:
         raise SystemExit(f"setting {setting_id} ran with commit {ran}, not {commit}")
     return True
-
-
-def code_commit(root: Path) -> str:
-    """HEAD, refusing a working tree whose code differs from it."""
-
-    def git(*a: str) -> str:
-        return subprocess.run(
-            ["git", *a], cwd=root, capture_output=True, text=True, check=True
-        ).stdout.strip()
-
-    if git("status", "--porcelain", "--", "src", "pyproject.toml", "uv.lock"):
-        raise SystemExit("commit the code before running the sweep")
-    return git("rev-parse", "HEAD")
 
 
 def load_context(root: Path) -> Context:
@@ -285,8 +271,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--ids", type=int, nargs="*", help="only these setting ids")
     parser.add_argument("--no-compare", action="store_true")
     args = parser.parse_args(argv)
-    for var in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS"):
-        os.environ[var] = "1"
+    one_thread_per_process()
     frozen = design.load(args.root)
     commit = code_commit(args.root)
     # Load once here so a broken cache fails before any worker starts

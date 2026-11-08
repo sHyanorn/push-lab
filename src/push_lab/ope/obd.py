@@ -21,6 +21,7 @@ import pandas as pd
 from push_lab.data import obd, paths
 from push_lab.data.schemas import OBD_MEN_ACTIONS
 from push_lab.ope import estimators as est
+from push_lab.runtime import code_commit, write_json
 
 FloatArray = npt.NDArray[np.float64]
 IntArray = npt.NDArray[np.int64]
@@ -278,8 +279,6 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--post-hoc", action="store_true", help="add the empirical-target check to the results"
     )
     args = parser.parse_args(argv)
-    from push_lab.policy.sweep import code_commit
-
     target = args.root / paths.RESULTS / "ope_obd.json"
     if args.post_hoc:
         result = json.loads(target.read_text("utf-8"))
@@ -288,7 +287,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         result["full"]["post_hoc"] = {"commit": code_commit(args.root)} | empirical_target(*logs)
     else:
         result = {"commit": code_commit(args.root)} | run(args.root)
-    target.write_text(json.dumps(result, indent=1) + "\n", encoding="utf-8", newline="\n")
+    write_json(target, result)
     print(f"wrote {target}")
     return 0
 

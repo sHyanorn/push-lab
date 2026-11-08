@@ -17,10 +17,11 @@ import numpy.typing as npt
 
 from push_lab.data import paths
 from push_lab.policy import compare, sweep, template_design
-from push_lab.policy.compare import Bootstrap, _r, interval, p_value
+from push_lab.policy.compare import Bootstrap, interval, p_value
 from push_lab.policy.template_design import GRID_NAMES, PRIMARY
 from push_lab.policy.template_sweep import METRICS, RUNS
 from push_lab.policy.templates import KINDS
+from push_lab.runtime import rounded, write_json
 
 FloatArray = npt.NDArray[np.float64]
 
@@ -72,7 +73,7 @@ def evaluate_setting(metrics: FloatArray, kinds: list[str], boot: Bootstrap) -> 
     for key in PRIMARY:
         p = p_value(bt[f"opens.{key}"])
         primary[key] = iv(f"opens.{key}") | {
-            "p_value": _r(p),
+            "p_value": rounded(p),
             "verdict": compare.verdict(point[f"opens.{key}"], p, SETTING_LEVEL),
         }
     oracle = iv("opens.O-U")
@@ -146,7 +147,7 @@ def _correlation(x: FloatArray, y: FloatArray, seed: int) -> dict[str, float]:
 
 def _median(values: list[float | None]) -> float | None:
     known = [v for v in values if v is not None]
-    return _r(float(np.median(known))) if known else None
+    return rounded(float(np.median(known))) if known else None
 
 
 def summarize(
@@ -178,11 +179,11 @@ def summarize(
             entries = [results[i].summary["primary"][key] for i in main_ids]
             verdicts = [e["verdict"] for e in entries]
             labeled[key] = {
-                "sweep_average": avg | {"p_value": _r(p)},
+                "sweep_average": avg | {"p_value": rounded(p)},
                 "wins": verdicts.count("win"),
                 "losses": verdicts.count("loss"),
                 "neither": verdicts.count("neither"),
-                "median_half_width": _r(
+                "median_half_width": rounded(
                     float(np.median([(e["ci_high"] - e["ci_low"]) / 2 for e in entries]))
                 ),
                 "losing_settings": [
@@ -231,7 +232,7 @@ def summarize(
             pts = np.array([results[i].points[key] for i in ids])
             crossings = compare.flips(x, pts, np.stack([results[i].boot[key] for i in ids], axis=1))
             flips[name][key] = {
-                "values": [_r(v) for v in x],
+                "values": [rounded(v) for v in x],
                 "estimates": [results[i].summary["primary"][key] for i in ids],
                 "crossings": crossings,
                 "result": "no flip in range"
@@ -248,14 +249,14 @@ def summarize(
             sd = pts.std(ddof=1)
             half = T975[len(pts) - 1] * sd / np.sqrt(len(pts))
             variability[key] = {
-                "sd_over_seed_triples": _r(sd),
-                "mean_bootstrap_se": _r(se),
-                "ratio": _r(sd / se),
+                "sd_over_seed_triples": rounded(sd),
+                "mean_bootstrap_se": rounded(se),
+                "ratio": rounded(sd / se),
                 "triples": len(replicates),
                 "mean_over_triples": {
-                    "value": _r(pts.mean()),
-                    "ci_low": _r(pts.mean() - half),
-                    "ci_high": _r(pts.mean() + half),
+                    "value": rounded(pts.mean()),
+                    "ci_low": rounded(pts.mean() - half),
+                    "ci_high": rounded(pts.mean() + half),
                 },
                 "negative_triples": int((pts < 0).sum()),
             }
@@ -287,7 +288,7 @@ def summarize(
         "settings_note": "Settings are points drawn uniformly over the parameter box, not "
         "probabilities of the real world.",
         "metric": frozen["metric"],
-        "p_value_resolution": _r(2 / samples),
+        "p_value_resolution": rounded(2 / samples),
         "complete": complete,
         "primary": labeled,
         "primary_holm": {k: bool(v) for k, v in rejected.items()},
@@ -301,7 +302,7 @@ def summarize(
             {
                 "id": i,
                 "sweep": settings[i]["sweep"],
-                "values": {k: _r(v) for k, v in settings[i]["values"].items()},
+                "values": {k: rounded(v) for k, v in settings[i]["values"].items()},
                 "uniform_family_share": infos[i]["uniform_family_share"],
                 "timings_s": infos[i]["timings_s"],
             }
@@ -344,7 +345,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     result = run(args.root)
     out = args.root / paths.RESULTS / "templates.json"
-    out.write_text(json.dumps(result, indent=1) + "\n", encoding="utf-8", newline="\n")
+    write_json(out, result)
     print(f"wrote {out}")
     return 0
 

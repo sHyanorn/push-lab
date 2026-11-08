@@ -4,7 +4,6 @@ Writes ``results/uplift.json``. Every number is Tier A: measured on randomized t
 """
 
 import argparse
-import json
 import sys
 import time
 from collections.abc import Callable, Sequence
@@ -20,6 +19,7 @@ from sklearn.model_selection import train_test_split
 
 from push_lab.data import paths, uplift_trials
 from push_lab.rank import metrics
+from push_lab.runtime import rounded, write_json
 from push_lab.uplift import curves
 from push_lab.uplift.forest import CRITEO_FOREST_ROWS, CausalForest
 from push_lab.uplift.learners import SLearner, TLearner, XLearner
@@ -69,13 +69,9 @@ class Trial:
     scores: dict[str, dict[str, FloatArray]]
 
 
-def _round(x: float) -> float:
-    return round(float(x), 6)
-
-
 def _interval(point: float, boot: FloatArray) -> dict[str, Any]:
     low, high = np.nanpercentile(boot, [2.5, 97.5])
-    return {"value": _round(point), "ci_low": _round(low), "ci_high": _round(high), "tier": "A"}
+    return {"value": rounded(point), "ci_low": rounded(low), "ci_high": rounded(high), "tier": "A"}
 
 
 def _p_value(boot: FloatArray) -> float:
@@ -101,9 +97,9 @@ def _statistics(c: curves.Counts) -> FloatArray:
 def _band(point: FloatArray, boot: FloatArray) -> dict[str, list[float]]:
     low, high = np.nanpercentile(boot, [2.5, 97.5], axis=0)
     return {
-        "value": [_round(v) for v in point],
-        "ci_low": [_round(v) for v in low],
-        "ci_high": [_round(v) for v in high],
+        "value": [rounded(v) for v in point],
+        "ci_low": [rounded(v) for v in low],
+        "ci_high": [rounded(v) for v in high],
     }
 
 
@@ -138,9 +134,9 @@ def _control_per_bin(groups: IntArray, t: IntArray) -> dict[str, float]:
     return {
         "bins": int(present.sum()),
         "min": int(control.min()),
-        "p5": _round(q[0]),
-        "p50": _round(q[1]),
-        "p95": _round(q[2]),
+        "p5": rounded(q[0]),
+        "p50": rounded(q[1]),
+        "p95": rounded(q[2]),
         "bins_without_control": int((control == 0).sum()),
     }
 
@@ -153,7 +149,7 @@ def _assess(
     out: dict[str, Any] = {
         "methods": {},
         "budget": {},
-        "qini_curve": {"tier": "A", "share": [_round(v) for v in grid], "methods": {}},
+        "qini_curve": {"tier": "A", "share": [rounded(v) for v in grid], "methods": {}},
     }
     boot_qini: dict[str, FloatArray] = {}
     k = len(BUDGETS)
@@ -199,7 +195,7 @@ def _paired_qini(
         lambda c: np.array([curves.qini_coefficient(c[0]) - curves.qini_coefficient(c[1])]),
         samples,
     )[:, 0]
-    return _interval(point, boot) | {"p_value": _round(_p_value(boot))}
+    return _interval(point, boot) | {"p_value": rounded(_p_value(boot))}
 
 
 def _by_decile(t: IntArray, y: IntArray, score: FloatArray, samples: int) -> dict[str, Any]:
@@ -224,7 +220,7 @@ def _by_decile(t: IntArray, y: IntArray, score: FloatArray, samples: int) -> dic
 
 
 def _against_zero(est: dict[str, Any], boot: FloatArray) -> dict[str, Any]:
-    return est | {"p_value": _round(_p_value(boot))}
+    return est | {"p_value": rounded(_p_value(boot))}
 
 
 Effect = Callable[[FloatArray], FloatArray]
@@ -284,8 +280,8 @@ def run_hillstrom(root: Path, timings: dict[str, Any]) -> tuple[Trial, dict[str,
         "contrast": f"{uplift_trials.HILLSTROM_TREATED} against {uplift_trials.HILLSTROM_CONTROL}",
         "training_rows": len(train),
         "test_rows": len(test),
-        "treated_share_training": _round(t.mean()),
-        "treated_share_test": _round(t_test.mean()),
+        "treated_share_training": rounded(t.mean()),
+        "treated_share_test": rounded(t_test.mean()),
         "curves": "exact",
     }
     return Trial(t_test, outcomes, scores), setup
@@ -345,8 +341,8 @@ def run_criteo(
         "training_rows": len(t),
         "forest_training_rows": len(forest_rows),
         "test_rows": len(t_test),
-        "treated_share_training": _round(t.mean()),
-        "treated_share_test": _round(t_test.mean()),
+        "treated_share_training": rounded(t.mean()),
+        "treated_share_test": rounded(t_test.mean()),
         "curves": f"binned at {settings.criteo_bins} score quantiles",
     }
     return Trial(t_test, outcomes, scores), setup
@@ -432,7 +428,7 @@ def run(root: Path, settings: Settings | None = None, criteo: bool = True) -> di
     rejected = metrics.holm({name: entry["p_value"] for name, entry in primary.items()})
     for name, entry in primary.items():
         entry["holm_rejected"] = rejected[name]
-        entry["p_value_resolution"] = _round(2 / s.bootstrap_samples)
+        entry["p_value_resolution"] = rounded(2 / s.bootstrap_samples)
     result["primary"] = primary
     result["timings_s"] = timings
     return result
@@ -450,8 +446,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     result = run(args.root, criteo=args.only is None)
     name = "uplift.json" if args.only is None else "runs/uplift_hillstrom.json"
     out = args.root / paths.RESULTS / name
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8", newline="\n")
+    write_json(out, result, indent=2)
     print(f"wrote {out}")
     return 0
 

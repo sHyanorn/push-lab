@@ -9,7 +9,6 @@ Run it alone: it uses one thread per process.
 import argparse
 import json
 import multiprocessing as mp
-import os
 import sys
 import time
 from collections.abc import Sequence
@@ -26,6 +25,7 @@ from push_lab.creative.families import FAMILIES
 from push_lab.data import paths
 from push_lab.policy import design, profile, sweep, template_design
 from push_lab.policy import templates as tp
+from push_lab.runtime import code_commit, one_thread_per_process
 from push_lab.sim import env, inputs, world
 from push_lab.sim.world import DAYS, SLOT_HOURS, SLOTS, Params
 
@@ -175,10 +175,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--ids", type=int, nargs="*", help="only these setting ids")
     parser.add_argument("--no-compare", action="store_true")
     args = parser.parse_args(argv)
-    for var in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS"):
-        os.environ[var] = "1"
+    one_thread_per_process()
     frozen = template_design.load(args.root)
-    commit = sweep.code_commit(args.root)
+    commit = code_commit(args.root)
     ctx = load_context(args.root)
     current = template_design.build(args.root, len(ctx.inputs.user_ids))
     if json.loads(json.dumps(current)) != frozen or len(ctx.family) != frozen["templates"]:
