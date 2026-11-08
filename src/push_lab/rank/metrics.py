@@ -132,10 +132,13 @@ def compare(a: FloatArray, b: FloatArray, idx: IntArray) -> Comparison:
     both = ~np.isnan(a) & ~np.isnan(b)
     diff = np.where(both, a - b, np.nan)
     est = estimate(diff, idx)
-    boot = _nanmean_rows(diff, idx)
+    return Comparison(est, p_value(_nanmean_rows(diff, idx)))
+
+
+def p_value(boot: FloatArray) -> float:
+    """Twice the smaller tail share at zero over the defined resamples, capped at 1."""
     boot = boot[~np.isnan(boot)]
-    p = min(1.0, 2 * min(float(np.mean(boot <= 0)), float(np.mean(boot >= 0))))
-    return Comparison(est, p)
+    return min(1.0, 2 * min(float(np.mean(boot <= 0)), float(np.mean(boot >= 0))))
 
 
 def holm(p_values: dict[str, float], level: float = 0.05) -> dict[str, bool]:

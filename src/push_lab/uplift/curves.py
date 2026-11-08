@@ -153,12 +153,12 @@ def uplift_at(c: Counts, budgets: FloatArray) -> FloatArray:
     return out
 
 
-def qini_on_grid(c: Counts, points: int = 101) -> tuple[FloatArray, FloatArray]:
+def qini_on_grid(c: Counts, points: int = 101) -> FloatArray:
     """Qini curve at evenly spaced shares of the rows, divided by the number of treated rows."""
     x, q = qini_curve(c)
     share = np.linspace(0.0, 1.0, points)
     values: FloatArray = np.interp(share * x[-1], x, q) / c.n_t.sum()
-    return share, values
+    return values
 
 
 @dataclass(frozen=True)

@@ -74,11 +74,6 @@ def _interval(point: float, boot: FloatArray) -> dict[str, Any]:
     return {"value": rounded(point), "ci_low": rounded(low), "ci_high": rounded(high), "tier": "A"}
 
 
-def _p_value(boot: FloatArray) -> float:
-    boot = boot[~np.isnan(boot)]
-    return min(1.0, 2 * min(float(np.mean(boot <= 0)), float(np.mean(boot >= 0))))
-
-
 # Statistics of one method's counts: Qini, AUUC, then per budget the incremental responders per
 # 1,000 rows and the share of the treat-everyone effect, then the treat-everyone effect per 1,000,
 # then the Qini curve on the grid
@@ -87,7 +82,7 @@ def _statistics(c: curves.Counts) -> FloatArray:
     full = at[-1]
     share = at[:-1] / full if full != 0 else np.full(len(BUDGETS), np.nan)
     per_1000 = at / c.n * 1000
-    _, grid = curves.qini_on_grid(c, QINI_GRID_POINTS)
+    grid = curves.qini_on_grid(c, QINI_GRID_POINTS)
     out: FloatArray = np.r_[
         curves.qini_coefficient(c), curves.auuc(c), per_1000[:-1], share, per_1000[-1], grid
     ]
@@ -195,7 +190,7 @@ def _paired_qini(
         lambda c: np.array([curves.qini_coefficient(c[0]) - curves.qini_coefficient(c[1])]),
         samples,
     )[:, 0]
-    return _interval(point, boot) | {"p_value": rounded(_p_value(boot))}
+    return _interval(point, boot) | {"p_value": rounded(metrics.p_value(boot))}
 
 
 def _by_decile(t: IntArray, y: IntArray, score: FloatArray, samples: int) -> dict[str, Any]:
@@ -220,7 +215,7 @@ def _by_decile(t: IntArray, y: IntArray, score: FloatArray, samples: int) -> dic
 
 
 def _against_zero(est: dict[str, Any], boot: FloatArray) -> dict[str, Any]:
-    return est | {"p_value": rounded(_p_value(boot))}
+    return est | {"p_value": rounded(metrics.p_value(boot))}
 
 
 Effect = Callable[[FloatArray], FloatArray]
