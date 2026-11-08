@@ -124,6 +124,60 @@ def summarize(
     return {"settings": [per_setting[s["id"]] for s in grid], "flips": flips}
 
 
+PAIRS = (("N", "T"), ("T_half", "T"), ("T2", "T"))
+
+
+def _normal(value: float, se: float) -> dict[str, float]:
+    return {"value": value, "ci_low": value - 1.959964 * se, "ci_high": value + 1.959964 * se}
+
+
+def orderings(result: dict[str, Any], folder: Path) -> dict[str, Any]:
+    """Post hoc: along each grid, the true difference between two targets against its per-day
+    estimate (mean over log seeds); reversed where both intervals exclude 0 with opposite signs."""
+    settings = result["settings"]
+    out: dict[str, Any] = {}
+    for name in NAMES:
+        members = sorted(
+            (g[1], i) for i, s in enumerate(settings) for g in s["grid"] if g[0] == name
+        )
+        entry: dict[str, Any] = {"values": [settings[i]["values"][name] for _, i in members]}
+        for a, b in PAIRS:
+            pair: dict[str, Any] = {"truth": []} | {e: [] for e in ("DR", "IPS")}
+            pair["reversed"] = {e: [] for e in ("DR", "IPS")}
+            for _, i in members:
+                ta, tb = settings[i]["targets"][a]["truth"], settings[i]["targets"][b]["truth"]
+                truth = _normal(ta["value"] - tb["value"], float(np.hypot(ta["se"], tb["se"])))
+                pair["truth"].append(truth)
+                logs = [
+                    json.loads((folder / f"{i}_{seed}.json").read_text("utf-8"))
+                    for seed in result["log_seeds"]
+                ]
+                for e in ("DR", "IPS"):
+                    d = np.array(
+                        [
+                            x[a]["visit"]["estimates"][e]["value"]
+                            - x[b]["visit"]["estimates"][e]["value"]
+                            for x in logs
+                        ]
+                    )
+                    est = _normal(float(d.mean()), float(d.std(ddof=1) / np.sqrt(len(d))))
+                    pair[e].append(est)
+                    pair["reversed"][e].append(
+                        bool(
+                            (est["ci_low"] > 0 and truth["ci_high"] < 0)
+                            or (est["ci_high"] < 0 and truth["ci_low"] > 0)
+                        )
+                    )
+            entry[f"{a}-{b}"] = pair
+        out[name] = entry
+    return {
+        "note": "Post hoc, after the results of D048. Per-day estimate of a difference between "
+        "targets against its truth, active-day share; normal intervals over log seeds and "
+        "truth runs.",
+        "orderings": out,
+    }
+
+
 def run(root: Path, processes: int) -> dict[str, Any]:
     start = time.perf_counter()
     grid = settings()
@@ -158,12 +212,19 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Sweep the OPE check over carryover.")
     parser.add_argument("--root", type=Path, default=Path.cwd(), help="repository root")
     parser.add_argument("--processes", type=int, default=4)
+    parser.add_argument(
+        "--post-hoc", action="store_true", help="add the post hoc orderings to existing results"
+    )
     args = parser.parse_args(argv)
-    for var in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS"):
-        os.environ[var] = "1"
-    commit = sweep.code_commit(args.root)
-    result = {"commit": commit} | run(args.root, args.processes)
     target = args.root / paths.RESULTS / RESULTS_FILE
+    if args.post_hoc:
+        result = json.loads(target.read_text("utf-8"))
+        result["post_hoc"] = orderings(result, args.root / paths.RESULTS / RUNS)
+    else:
+        for var in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS"):
+            os.environ[var] = "1"
+        commit = sweep.code_commit(args.root)
+        result = {"commit": commit} | run(args.root, args.processes)
     target.write_text(json.dumps(result, indent=1) + "\n", encoding="utf-8", newline="\n")
     print(f"wrote {target}")
     return 0
