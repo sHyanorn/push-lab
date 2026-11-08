@@ -90,7 +90,58 @@ def evaluate_setting(metrics: FloatArray, kinds: list[str], boot: Bootstrap) -> 
     }
     kept = {k: bt[f"opens.{k}"] for k in PAIRS}
     points = {k: float(point[f"opens.{k}"]) for k in PAIRS}
+    extra = [f"active.{k}" for k in PAIRS]
+    extra += [f"{kind}.{m}" for kind in kinds for m in ("opens", "delivered", "repeats")]
+    kept |= {k: bt[k] for k in extra}
+    points |= {k: float(point[k]) for k in extra}
     return SettingResult(summary, kept, points)
+
+
+# Two-sided 97.5% quantiles of Student's t by degrees of freedom, for means over seed triples
+T975 = {1: 12.706, 2: 4.303, 3: 3.182, 4: 2.776, 5: 2.571, 6: 2.447, 7: 2.365, 8: 2.306, 9: 2.262}
+RESAMPLES = 10_000
+
+
+def _averaged(
+    results: dict[int, SettingResult], ids: list[int], key: str, seed: int
+) -> tuple[dict[str, float], FloatArray, float]:
+    """Sweep average of ``key`` with its two-level resamples and its point value."""
+    boots = np.stack([results[i].boot[key] for i in ids])
+    pts = np.array([results[i].points[key] for i in ids])
+    avg, _, resampled = compare.sweep_average(boots, pts, seed)
+    return avg, resampled, float(pts.mean())
+
+
+def _ratio(
+    num: tuple[dict[str, float], FloatArray, float],
+    den: tuple[dict[str, float], FloatArray, float],
+) -> dict[str, float] | None:
+    """Ratio of two sweep averages; both use the same resampled settings and users."""
+    if den[2] == 0:
+        return None
+    return interval(num[2] / den[2], num[1] / den[1])
+
+
+def _seed_mean(values: list[dict[str, float | None]], stat: str) -> float | None:
+    known = [float(x) for v in values if (x := v[stat]) is not None]
+    return float(np.mean(known)) if known else None
+
+
+def _median_with_interval(values: list[float | None], seed: int) -> dict[str, float] | None:
+    """Median over settings with a percentile interval from resampling the settings."""
+    known = np.array([v for v in values if v is not None])
+    if len(known) == 0:
+        return None
+    pick = np.random.default_rng(seed).integers(0, len(known), (RESAMPLES, len(known)))
+    return interval(float(np.median(known)), np.median(known[pick], axis=1))
+
+
+def _correlation(x: FloatArray, y: FloatArray, seed: int) -> dict[str, float]:
+    pick = np.random.default_rng(seed).integers(0, len(x), (RESAMPLES, len(x)))
+    xs, ys = x[pick], y[pick]
+    xc, yc = xs - xs.mean(axis=1, keepdims=True), ys - ys.mean(axis=1, keepdims=True)
+    boot = (xc * yc).sum(axis=1) / np.sqrt((xc**2).sum(axis=1) * (yc**2).sum(axis=1))
+    return interval(float(np.corrcoef(x, y)[0, 1]), boot)
 
 
 def _median(values: list[float | None]) -> float | None:
@@ -152,10 +203,20 @@ def summarize(
             else "incomplete"
         )
     shares = [results[i].summary["share_of_oracle_gain"] for i in main_ids]
-    oracle_share = {
-        "median": _median([s["value"] if s else None for s in shares]),
+    oracle_share: dict[str, Any] = {
+        "median_over_settings": _median([s["value"] if s else None for s in shares]),
         "settings_with_oracle_gain": sum(s is not None for s in shares),
     }
+    if main_ids:
+        swept = {k: _averaged(results, main_ids, k, seed) for k in results[main_ids[0]].boot}
+        oracle_share["ratio_of_averages"] = _ratio(swept["B1"], swept["O-U"])
+        averages["active_days"] = {k: swept[f"active.{k}"][0] for k in PAIRS}
+        averages["relative_to_U"] = {
+            k: _ratio(swept[k], swept["U.opens"]) for k in ("B1", "D0-U", "O-U")
+        }
+        averages["repeat_rate"] = {
+            kind: _ratio(swept[f"{kind}.repeats"], swept[f"{kind}.delivered"]) for kind in KINDS
+        }
 
     grid_ids = by_sweep.get("grid", [])
     flips: dict[str, Any] = {}
@@ -184,21 +245,40 @@ def summarize(
         for key in PRIMARY:
             pts = np.array([results[i].points[key] for i in replicates])
             se = np.mean([results[i].boot[key].std() for i in replicates])
+            sd = pts.std(ddof=1)
+            half = T975[len(pts) - 1] * sd / np.sqrt(len(pts))
             variability[key] = {
-                "sd_over_seed_triples": _r(pts.std(ddof=1)),
+                "sd_over_seed_triples": _r(sd),
                 "mean_bootstrap_se": _r(se),
+                "ratio": _r(sd / se),
                 "triples": len(replicates),
+                "mean_over_triples": {
+                    "value": _r(pts.mean()),
+                    "ci_low": _r(pts.mean() - half),
+                    "ci_high": _r(pts.mean() + half),
+                },
+                "negative_triples": int((pts < 0).sum()),
             }
 
     diagnostics: dict[str, Any] = {}
     for sw, ids in by_sweep.items():
         diagnostics[sw] = {
             kind: {
-                stat: _median([d[stat] for i in ids for d in infos[i]["score_diagnostics"][kind]])
+                stat: _median_with_interval(
+                    [_seed_mean(infos[i]["score_diagnostics"][kind], stat) for i in ids], seed
+                )
                 for stat in ("spearman", "top_overlap")
             }
             for kind in infos[ids[0]]["score_diagnostics"]
         }
+
+    post_hoc: dict[str, Any] = {}
+    if main_ids:
+        spread = np.array([settings[i]["values"]["copy_spread"] for i in main_ids])
+        relative = np.array(
+            [results[i].points["B1"] / results[i].points["U.opens"] for i in main_ids]
+        )
+        post_hoc["B1_relative_vs_copy_spread_correlation"] = _correlation(spread, relative, seed)
 
     samples = len(next(iter(results.values())).boot["B1"])
     return {
@@ -215,6 +295,7 @@ def summarize(
         "share_of_oracle_gain": oracle_share,
         "flips": flips,
         "seed_variability": variability,
+        "post_hoc": post_hoc,
         "score_diagnostics_median": diagnostics,
         "settings": [
             {

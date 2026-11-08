@@ -158,7 +158,18 @@ def test_compare_labels_a_clear_win(tmp_path: Path) -> None:
     b1 = out["primary"]["B1"]
     assert b1["wins"] == 64 and b1["label"] == "beats in most sampled settings"
     assert out["primary"]["B2"]["holm_rejected"]
-    assert out["share_of_oracle_gain"]["median"] == pytest.approx(0.5, abs=0.05)
+    share = out["share_of_oracle_gain"]
+    assert share["median_over_settings"] == pytest.approx(0.5, abs=0.05)
+    assert share["ratio_of_averages"]["ci_low"] < 0.5 < share["ratio_of_averages"]["ci_high"]
+    avg = out["secondary_sweep_averages"]
+    assert avg["relative_to_U"]["B1"]["value"] == pytest.approx(0.5, abs=0.05)
+    assert avg["repeat_rate"]["U"]["value"] == 0
+    assert set(avg["active_days"]) == set(template_compare.PAIRS)
+    variability = out["seed_variability"]["B1"]
+    assert variability["ratio"] > 0 and variability["negative_triples"] == 0
+    diag = out["score_diagnostics_median"]["main"]["RD"]["spearman"]
+    assert diag["value"] == pytest.approx(0.5)
+    assert "B1_relative_vs_copy_spread_correlation" in out["post_hoc"]
     assert set(out["flips"]) == set(template_design.GRID_NAMES)
     assert out["seed_variability"]["B1"]["triples"] == 10
     assert out["note"] == template_compare.NOTE
