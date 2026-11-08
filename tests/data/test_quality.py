@@ -2,9 +2,11 @@ import json
 from pathlib import Path
 
 import pandas as pd
+import pyarrow as pa
+import pyarrow.parquet as pq
 import pytest
 
-from push_lab.data import fixtures, paths, quality
+from push_lab.data import fixtures, paths, quality, schemas
 
 
 @pytest.fixture
@@ -45,10 +47,19 @@ def test_non_uniform_random_propensity_is_an_error(tree: Path) -> None:
     path = paths.processed_dir(tree, "obd") / "random_men.parquet"
     df = pd.read_parquet(path)
     df.loc[0, "propensity_score"] = 0.5
+    table = pa.Table.from_pandas(df, schema=schemas.to_arrow(schemas.OBD_LOG))
+    pq.write_table(table, path)
+    errors = quality.build(tree, published=False).errors
+    assert errors == ["obd.random: propensity is not uniform over the Men's actions"]
+
+
+def test_schema_drift_is_an_error(tree: Path) -> None:
+    path = paths.processed_dir(tree, "hillstrom") / "hillstrom.parquet"
+    df = pd.read_parquet(path)
+    df["visit"] = df["visit"].astype("float64")
     df.to_parquet(path, index=False)
     errors = quality.build(tree, published=False).errors
-    assert "obd.random: propensity is not uniform over the Men's actions" in errors
-    assert any("schema differs" in e for e in errors)
+    assert "hillstrom.hillstrom: Parquet schema differs from the shared schema" in errors
 
 
 def test_main_writes_report_and_fails_on_errors(tree: Path) -> None:

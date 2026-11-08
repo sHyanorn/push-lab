@@ -98,7 +98,8 @@ def hillstrom(rng: np.random.Generator, n: int) -> pd.DataFrame:
 
 def criteo(rng: np.random.Generator, n: int) -> pd.DataFrame:
     cols = _fill(schemas.CRITEO_PROCESSED, rng, n)
-    treatment = rng.random(n) < 0.85
+    # Exactly the published treatment share, so checks against it do not depend on the seed
+    treatment = rng.permutation(np.arange(n) < round(0.85 * n))
     visit = rng.random(n) < 0.04 + 0.01 * treatment
     cols.update(
         treatment=treatment.astype(np.int8),

@@ -41,10 +41,11 @@ def test_criteo_train_and_eval_partition_rows(tmp_path: Path) -> None:
 
 def test_hillstrom_keeps_womens_contrast(tmp_path: Path) -> None:
     header = ",".join(schemas.HILLSTROM)
+    # Invented rows in the source format
     rows = [
-        "10,2) $100 - $200,142.44,1,0,Surburban,0,Phone,Womens E-Mail,0,0,0",
-        "6,3) $200 - $350,329.08,1,1,Rural,1,Web,No E-Mail,1,0,0",
-        "7,2) $100 - $200,180.65,0,1,Surburban,1,Web,Mens E-Mail,0,0,0",
+        "3,1) $0 - $100,50.0,1,0,Urban,1,Web,Womens E-Mail,0,0,0",
+        "8,2) $100 - $200,120.0,0,1,Rural,0,Phone,No E-Mail,1,0,0",
+        "5,1) $0 - $100,75.5,1,1,Urban,1,Web,Mens E-Mail,0,0,0",
     ]
     csv = tmp_path / "h.csv"
     csv.write_text("\n".join([header, *rows]) + "\n")
