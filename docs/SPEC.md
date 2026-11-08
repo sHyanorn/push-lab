@@ -10,7 +10,7 @@ An offline lab for push notification recommendation: it builds the full pipeline
 |---|---|
 | Algorithms and data structures | Two-tower recall with an ANN index, coarse-to-fine ranking cascade, budget allocation under a global volume cap, bandit selection |
 | Machine learning | GBDT ranking with two targets, meta-learners and a causal forest for uplift |
-| Causal inference and evaluation | Qini and AUUC on randomized trials, off-policy estimators validated against known ground truth |
+| Causal inference and evaluation | Qini and AUUC on randomized trials, off-policy estimators checked against known ground truth |
 | Engineering | Reproducible data pipeline, simulator with explicit assumptions, versioned LLM-generated copy, CPU-only budget, CI |
 
 ## 3. Core story
@@ -73,7 +73,7 @@ This is a hypothesis to be tested, not a result. The comparisons are pre-registe
 3. DR with optimistic shrinkage; DR-learner; ALS baseline; recent-favorite-author recall source
 4. DeepFM or DCN ranker against LightGBM (FuxiCTR)
 5. KuaiRand-1K (4.4M videos) to show ANN recall and coarse-ranking latency at scale
-6. Full Open Bandit Dataset (downloaded once locally) for a 300k-row estimator comparison
+6. Full Open Bandit Dataset (downloaded once locally) for an estimator comparison on the full Men's campaign (D042)
 7. causalml cross-check in a separate Python 3.12 environment
 
 ### Out of scope
@@ -109,10 +109,10 @@ Rules:
 | Component | Source | Treatment in the report |
 |---|---|---|
 | Response to a pushed item | Fitted on one half of KuaiRand random exposures (tab 1); scaled by a base-rate factor, since in-feed click rates (about 18%) are far above push open rates | Factor swept |
-| Active hours | KuaiRand organic logs (`hourmin`) from 04-22 to 05-08 | Proxy: in-app activity is assumed to predict push open times |
-| Send-time policy input | Profiles from 04-08 to 04-21 logs, plus a swept shift (hours) and noise | Prevents the policy from reading the simulator's own profile |
+| Active hours | KuaiRand logs (`time_ms`, D023) from 04-22 to 05-08 | Proxy: in-app activity is assumed to predict push open times |
+| Send-time policy input | Profiles from 04-09 to 04-21 logs (D025), plus a swept shift (hours) and noise | Prevents the policy from reading the simulator's own profile |
 | Novelty or fatigue | Functional form from Yancey and Settles (2020): penalty `gamma * 0.5^(d/h)` | Swept, including zero |
-| Opt-out hazard | Increases with recent volume; shape after Zhao et al. (2018) | Swept, including zero |
+| Opt-out hazard | Increases with recent volume; shape after Zhang et al. (2023) (D025) | Swept, including zero |
 | Return after a push | Visit probability raised by the response, decays over days | Swept |
 | Copy effect | Each template gets a latent multiplier on response: family effect plus template noise | Spread swept, including zero (then no copy policy should beat uniform) |
 | Annoyance (added in M4, D023) | Recent volume lowers organic visits | Elasticity swept, including zero; conclusions also reported at zero |
@@ -185,7 +185,7 @@ No raw data or row-level samples are committed. CI runs on synthetic fixtures.
 
 ## 10. Compute budget
 
-Target: 4 vCPU, no GPU, 16 GB RAM. Full reproduction under one hour; CI under ten minutes.
+Target: 4 vCPU, no GPU, 16 GB RAM. Full reproduction under one hour; CI under ten minutes. Measured: about four hours, mostly the three sweeps (D050).
 
 | Step | Estimate |
 |---|---|
@@ -194,9 +194,9 @@ Target: 4 vCPU, no GPU, 16 GB RAM. Full reproduction under one hour; CI under te
 | LightGBM ranker, about 1M rows | 1 to 2 minutes |
 | Truncation study, fine ranker over the full pool for the evaluation users | a few minutes |
 | Meta-learners on Criteo 10% (1.4M rows), scoring 12.6M rows | a few minutes each |
-| Causal forest, 200k rows, 100 trees | about 1 minute (measured: 46 s) |
-| Simulator, 27k users x 28 days x 4 slots (3M decisions), one policy and seed | about 5 seconds, vectorized over users, scores precomputed |
-| Sensitivity sweep, 263 settings x 3 seeds on 5k users, policy models refitted per setting | about 2 to 3 hours on 4 processes (D031) |
+| Causal forest, 200k rows, 100 trees | about 1 minute (measured on Criteo: 18 to 20 s, D021) |
+| Simulator, 27k users x 28 days x 4 slots (3M decisions), one policy and seed | about 5 seconds, vectorized over users, scores precomputed (measured: under a second, D024) |
+| Sensitivity sweep, 263 settings x 3 seeds on 5k users, policy models refitted per setting | about 2 to 3 hours on 4 processes (D031; measured: 6,097 s, D034) |
 | Copy generation (one-off, not in CI) | 6 requests; under 1 USD at 2026-11-08 prices (D011) |
 
 Estimates are measured in M1 to M4 and recorded in DECISIONS.md.
