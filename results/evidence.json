@@ -411,7 +411,7 @@
   {
    "id": "OBD-ratio-IPS",
    "tier": "B",
-   "statement": "On real logs (full Men's campaign of OBD), IPS estimates the BTS click rate at this fraction of its on-policy value; the small sample has too little power to show the shortfall",
+   "statement": "On real logs (full Men's campaign of OBD), IPS estimates the BTS click rate at this fraction of its on-policy value. The target is BTS with its fixed prior, which the deployed BTS was not, so the shortfall mixes estimator error with that mismatch. Post hoc reading: the small sample has too little power to show it",
    "source": {
     "file": "results/ope_obd.json",
     "path": [
@@ -421,14 +421,14 @@
     ]
    },
    "status": "reported",
-   "value": 0.8909312947634085,
-   "ci_low": 0.8169458010768341,
-   "ci_high": 0.9636180545873354
+   "value": 0.8909312947634057,
+   "ci_low": 0.80977395876837,
+   "ci_high": 0.9690720761504081
   },
   {
    "id": "OBD-ratio-DR",
    "tier": "B",
-   "statement": "On real logs (full Men's campaign of OBD), DR estimates the BTS click rate at this fraction of its on-policy value; the small sample has too little power to show the shortfall",
+   "statement": "On real logs (full Men's campaign of OBD), DR estimates the BTS click rate at this fraction of its on-policy value. The target is BTS with its fixed prior, which the deployed BTS was not, so the shortfall mixes estimator error with that mismatch. Post hoc reading: the small sample has too little power to show it",
    "source": {
     "file": "results/ope_obd.json",
     "path": [
@@ -438,9 +438,9 @@
     ]
    },
    "status": "reported",
-   "value": 0.9011026292459252,
-   "ci_low": 0.8279766584178264,
-   "ci_high": 0.9731880617566887
+   "value": 0.896014552390171,
+   "ci_low": 0.8159625624347296,
+   "ci_high": 0.967859203272055
   },
   {
    "id": "OBD-small-DM",
@@ -455,9 +455,9 @@
     ]
    },
    "status": "reported",
-   "value": 0.004462208987412252,
-   "ci_low": 0.004370402175711549,
-   "ci_high": 0.004561045284291133
+   "value": 0.004771663228680699,
+   "ci_low": 0.004645541973261443,
+   "ci_high": 0.0048965050734386725
   },
   {
    "id": "OBD-small-IPS",
@@ -472,14 +472,14 @@
     ]
    },
    "status": "reported",
-   "value": 0.004540859800000001,
-   "ci_low": 0.00246099174,
-   "ci_high": 0.006929985484999999
+   "value": 0.0045408598,
+   "ci_low": 0.002408378378739517,
+   "ci_high": 0.007243123200708526
   },
   {
    "id": "OBD-small-SNIPS",
-   "tier": "not validated",
-   "statement": "BTS click rate estimated by SNIPS from the small sample's random logs (fails on the small sample, fails on the full); on-policy value 0.00690",
+   "tier": "B",
+   "statement": "BTS click rate estimated by SNIPS from the small sample's random logs (passes on the small sample, fails on the full); on-policy value 0.00690",
    "source": {
     "file": "results/ope_obd.json",
     "path": [
@@ -489,9 +489,9 @@
     ]
    },
    "status": "reported",
-   "value": 0.0046110727242601405,
-   "ci_low": 0.0024831540675621356,
-   "ci_high": 0.006888060360429144
+   "value": 0.00461107272426015,
+   "ci_low": 0.002474714054009958,
+   "ci_high": 0.007388056980881261
   },
   {
    "id": "OBD-small-DR",
@@ -506,14 +506,14 @@
     ]
    },
    "status": "reported",
-   "value": 0.004714878761930039,
-   "ci_low": 0.0025785499415178935,
-   "ci_high": 0.0071483153695035
+   "value": 0.004514835701843617,
+   "ci_low": 0.0024007417121832877,
+   "ci_high": 0.007296628896931585
   },
   {
    "id": "OPE-first-run",
    "tier": "C",
-   "statement": "First simulator check (D043): registered verdict 'implementation failure', since IPS and DR failed the no-carryover control for T-half and N; the truth estimate shared one set of run seeds across targets",
+   "statement": "First simulator check (D043): registered verdict 'implementation failure', since IPS and DR failed the no-carryover control for T-half and N; against exact truths computed afterwards the biases contain 0, consistent with a chance false alarm among 12 unadjusted tests",
    "source": {
     "file": "results/ope_simulator.json",
     "path": [
@@ -535,7 +535,7 @@
      "DR"
     ]
    },
-   "status": "reported",
+   "status": "awaiting sweep",
    "value": 0.0001782652094372006,
    "ci_low": -0.000273572725210048,
    "ci_high": 0.0006301031440844491
@@ -553,7 +553,7 @@
      "IPS"
     ]
    },
-   "status": "reported",
+   "status": "awaiting sweep",
    "value": 6.095341863632253e-05,
    "ci_low": -0.0005356149736784824,
    "ci_high": 0.0006575218109511274
@@ -571,7 +571,7 @@
      "DR"
     ]
    },
-   "status": "reported",
+   "status": "awaiting sweep",
    "value": 0.00041135007876891283,
    "ci_low": -6.337655695998375e-05,
    "ci_high": 0.0008860767144978094
@@ -589,7 +589,7 @@
      "IPS"
     ]
    },
-   "status": "reported",
+   "status": "awaiting sweep",
    "value": 0.000614411624623501,
    "ci_low": -7.2945097765753e-05,
    "ci_high": 0.001301768347012755
@@ -607,7 +607,7 @@
      "DR"
     ]
    },
-   "status": "reported",
+   "status": "awaiting sweep",
    "value": -4.930114344203762e-05,
    "ci_low": -0.0010788436980415114,
    "ci_high": 0.0009802414111574362
@@ -625,7 +625,7 @@
      "IPS"
     ]
    },
-   "status": "reported",
+   "status": "awaiting sweep",
    "value": -5.3219174136920344e-05,
    "ci_low": -0.0015094137181089911,
    "ci_high": 0.0014029753698351505
@@ -643,7 +643,7 @@
      "DR"
     ]
    },
-   "status": "reported",
+   "status": "awaiting sweep",
    "value": 0.000644434948100292,
    "ci_low": -0.00014107456140520958,
    "ci_high": 0.0014299444576057936
@@ -661,7 +661,7 @@
      "IPS"
     ]
    },
-   "status": "reported",
+   "status": "awaiting sweep",
    "value": 0.0011678698306174518,
    "ci_low": -0.00020818587743012297,
    "ci_high": 0.0025439255386650265
@@ -679,7 +679,7 @@
      "DR"
     ]
    },
-   "status": "reported",
+   "status": "awaiting sweep",
    "value": -0.00034970489893348944,
    "ci_low": -0.0021967984817011614,
    "ci_high": 0.0014973886838341827
@@ -697,7 +697,7 @@
      "IPS"
     ]
    },
-   "status": "reported",
+   "status": "awaiting sweep",
    "value": -0.0007804691942837616,
    "ci_low": -0.0038903011600873926,
    "ci_high": 0.0023293627715198694
@@ -715,7 +715,7 @@
      "DR"
     ]
    },
-   "status": "reported",
+   "status": "awaiting sweep",
    "value": -0.001483998264266262,
    "ci_low": -0.003107020989439247,
    "ci_high": 0.0001390244609067229
@@ -733,7 +733,7 @@
      "IPS"
     ]
    },
-   "status": "reported",
+   "status": "awaiting sweep",
    "value": -0.00215135131314359,
    "ci_low": -0.004597509027062127,
    "ci_high": 0.00029480640077494697
@@ -751,7 +751,7 @@
      "DR"
     ]
    },
-   "status": "reported",
+   "status": "awaiting sweep",
    "value": 0.0002910773617171847,
    "ci_low": -0.00017311176954899635,
    "ci_high": 0.0007552664929833657
@@ -769,7 +769,7 @@
      "IPS"
     ]
    },
-   "status": "reported",
+   "status": "awaiting sweep",
    "value": 0.00015914330709321245,
    "ci_low": -0.0004359294557487221,
    "ci_high": 0.000754216069935147
@@ -787,7 +787,7 @@
      "DR"
     ]
    },
-   "status": "reported",
+   "status": "awaiting sweep",
    "value": -0.009127620096658351,
    "ci_low": -0.009645216200051288,
    "ci_high": -0.008610023993265414
@@ -805,7 +805,7 @@
      "IPS"
     ]
    },
-   "status": "reported",
+   "status": "awaiting sweep",
    "value": -0.008925396349846237,
    "ci_low": -0.009647206561857014,
    "ci_high": -0.00820358613783546
@@ -823,7 +823,7 @@
      "DR"
     ]
    },
-   "status": "reported",
+   "status": "awaiting sweep",
    "value": -0.00014124797959602642,
    "ci_low": -0.0010917710634606058,
    "ci_high": 0.000809275104268553
@@ -841,7 +841,7 @@
      "IPS"
     ]
    },
-   "status": "reported",
+   "status": "awaiting sweep",
    "value": -0.00012458351799793377,
    "ci_low": -0.0015128597223428642,
    "ci_high": 0.0012636926863469967
@@ -859,7 +859,7 @@
      "DR"
     ]
    },
-   "status": "reported",
+   "status": "awaiting sweep",
    "value": -0.0180783889836037,
    "ci_low": -0.01888943746362267,
    "ci_high": -0.01726734050358473
@@ -877,7 +877,7 @@
      "IPS"
     ]
    },
-   "status": "reported",
+   "status": "awaiting sweep",
    "value": -0.017542007435349616,
    "ci_low": -0.018916524384343877,
    "ci_high": -0.016167490486355355
@@ -895,7 +895,7 @@
      "DR"
     ]
    },
-   "status": "reported",
+   "status": "awaiting sweep",
    "value": 0.000294134716361083,
    "ci_low": -0.0017383856917860831,
    "ci_high": 0.002326655124508249
@@ -913,7 +913,7 @@
      "IPS"
     ]
    },
-   "status": "reported",
+   "status": "awaiting sweep",
    "value": -0.00015379190695574696,
    "ci_low": -0.00329738692056568,
    "ci_high": 0.002989803106654186
@@ -931,7 +931,7 @@
      "DR"
     ]
    },
-   "status": "reported",
+   "status": "awaiting sweep",
    "value": 0.018244301211054914,
    "ci_low": 0.01661041537721693,
    "ci_high": 0.019878187044892897
@@ -949,7 +949,7 @@
      "IPS"
     ]
    },
-   "status": "reported",
+   "status": "awaiting sweep",
    "value": 0.017699333306106624,
    "ci_low": 0.015306989106704449,
    "ci_high": 0.0200916775055088

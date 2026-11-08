@@ -222,8 +222,9 @@ def ope_entries(root: Path) -> list[dict[str, Any]]:
                 "id": "OPE-first-run",
                 "tier": "C",
                 "statement": "First simulator check (D043): registered verdict 'implementation "
-                "failure', since IPS and DR failed the no-carryover control for T-half and N; the "
-                "truth estimate shared one set of run seeds across targets",
+                "failure', since IPS and DR failed the no-carryover control for T-half and N; "
+                "against exact truths computed afterwards the biases contain 0, consistent with a "
+                "chance false alarm among 12 unadjusted tests",
                 "source": {"file": "results/ope_simulator.json", "path": ["control"]},
                 "status": "verdict",
             }
@@ -246,7 +247,8 @@ def ope_entries(root: Path) -> list[dict[str, Any]]:
                                 "file": "results/ope_simulator_amended.json",
                                 "path": [setting, target, "visit", name],
                             },
-                            "status": "reported",
+                            # Simulator results need the sweep before they are shown (D046)
+                            "status": "awaiting sweep",
                         }
                         | check["bias"]
                     )
@@ -269,8 +271,10 @@ def _obd_entries(data: dict[str, Any]) -> list[dict[str, Any]]:
                     "id": f"OBD-ratio-{name}",
                     "tier": "B",
                     "statement": f"On real logs (full Men's campaign of OBD), {name} estimates the "
-                    "BTS click rate at this fraction of its on-policy value; the small sample has "
-                    "too little power to show the shortfall",
+                    "BTS click rate at this fraction of its on-policy value. The target is BTS "
+                    "with its fixed prior, which the deployed BTS was not, so the shortfall mixes "
+                    "estimator error with that mismatch. Post hoc reading: the small sample has "
+                    "too little power to show it",
                     "source": {"file": source, "path": ["full", "validation", name]},
                     "status": "reported",
                 }
