@@ -50,7 +50,7 @@ uv run python -m push_lab.creative.generate --model <model-id>  # One-off; needs
 uv run python -m push_lab.report.evidence        # Rebuild results/evidence.json
 uv run python -m push_lab.report.build           # Report in site/ and the README numbers
 uv run python -m push_lab.report.notebook --update  # Rerun the demo notebook and store its outputs
-uv run python -m push_lab.reproduce synthetic    # Pipeline on fixtures (overwrites results/; fresh checkout)
+uv run python -m push_lab.reproduce synthetic    # Fixtures into data/processed, overwrites results/: fresh checkout only
 ```
 
 ## Hard rules

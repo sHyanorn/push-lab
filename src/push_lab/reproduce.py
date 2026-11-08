@@ -3,9 +3,9 @@
 ``synthetic`` writes fixtures into ``data/processed``, runs the pipeline steps that work on
 them and checks each result file against the top-level keys of the committed one; deeper
 keys depend on the data (tabs, features, the full OBD campaign). ``sample`` reruns
-steps on downloaded KuaiRand-Pure, Hillstrom and the OBD small sample and compares their
+steps on downloaded KuaiRand-Pure and Hillstrom and compares their
 numbers with the committed results, ignoring timings and commits. Both overwrite files in
-``results/``, so run them in a fresh checkout.
+``data/processed`` or ``results/``, so run them in a fresh checkout (D052).
 """
 
 import argparse

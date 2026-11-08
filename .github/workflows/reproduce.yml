@@ -25,8 +25,8 @@ jobs:
       - run: uv sync --locked
       - if: inputs.mode == 'sample'
         run: |
-          uv run python -m push_lab.data.download --only kuairand hillstrom obd
-          uv run python -m push_lab.data.prepare --only kuairand hillstrom obd
+          uv run python -m push_lab.data.download --only kuairand hillstrom
+          uv run python -m push_lab.data.prepare --only kuairand hillstrom
       - run: uv run python -m push_lab.reproduce "$MODE"
         env:
           MODE: ${{ inputs.mode }}
