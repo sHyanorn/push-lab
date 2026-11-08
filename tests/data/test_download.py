@@ -1,5 +1,6 @@
 import hashlib
 import threading
+import urllib.error
 import urllib.request
 from collections.abc import Iterator
 from dataclasses import replace
@@ -16,6 +17,8 @@ PAYLOAD = bytes(range(256)) * 4096  # 1 MiB
 
 class _State:
     ignore_range = False
+    reject_range = False  # answer Range requests with 416
+    status: int | None = None  # answer every request with this error status
     cut_after: int | None = None  # drop the connection after this many bytes, once
     requests: list[str | None]
 
@@ -29,6 +32,12 @@ class _Handler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         range_header = self.headers.get("Range")
         self.state.requests.append(range_header)
+        if self.state.status is not None:
+            self.send_error(self.state.status)
+            return
+        if range_header and self.state.reject_range:
+            self.send_error(416)
+            return
         start = 0
         if range_header and not self.state.ignore_range:
             start = int(range_header.removeprefix("bytes=").rstrip("-"))
@@ -98,6 +107,29 @@ def test_restarts_when_server_ignores_range(server: tuple[str, _State], tmp_path
     state.ignore_range = True
     (tmp_path / "file.bin.part").write_bytes(PAYLOAD[:1000])
     assert _fetch(_source(url), tmp_path).read_bytes() == PAYLOAD
+
+
+def test_restarts_after_416(server: tuple[str, _State], tmp_path: Path) -> None:
+    url, state = server
+    state.reject_range = True
+    (tmp_path / "file.bin.part").write_bytes(PAYLOAD[:1000])
+    assert _fetch(_source(url), tmp_path).read_bytes() == PAYLOAD
+    assert state.requests == ["bytes=1000-", None]
+
+
+def test_permanent_client_error_is_not_retried(server: tuple[str, _State], tmp_path: Path) -> None:
+    url, state = server
+    state.status = 404
+    with pytest.raises(urllib.error.HTTPError):
+        _fetch(_source(url), tmp_path)
+    assert len(state.requests) == 1
+
+
+def test_bad_resumed_file_is_downloaded_again(server: tuple[str, _State], tmp_path: Path) -> None:
+    url, state = server
+    (tmp_path / "file.bin.part").write_bytes(b"x" * len(PAYLOAD))
+    assert _fetch(_source(url), tmp_path).read_bytes() == PAYLOAD
+    assert state.requests == [None]
 
 
 def test_retries_after_dropped_connection(server: tuple[str, _State], tmp_path: Path) -> None:

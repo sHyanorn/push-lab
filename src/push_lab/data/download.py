@@ -20,6 +20,7 @@ from push_lab.data.sources import SOURCES, Source
 
 CHUNK = 1 << 20
 BACKOFF = (2.0, 4.0, 8.0, 16.0)
+RETRYABLE_CLIENT_ERRORS = frozenset({408, 429})
 
 
 class ChecksumError(Exception):
@@ -68,6 +69,31 @@ def _transfer(source: Source, part: Path, opener: urllib.request.OpenerDirector)
         raise OSError(f"incomplete download: {part.stat().st_size} of {source.size} bytes")
 
 
+def _download_with_retries(
+    source: Source,
+    part: Path,
+    opener: urllib.request.OpenerDirector,
+    backoff: Sequence[float],
+    sleep: Callable[[float], None],
+) -> None:
+    for attempt in range(len(backoff) + 1):
+        try:
+            _transfer(source, part, opener)
+            return
+        except urllib.error.HTTPError as error:
+            if error.code == 416:
+                # The server rejects the resume offset: start the file again
+                part.unlink(missing_ok=True)
+            elif 400 <= error.code < 500 and error.code not in RETRYABLE_CLIENT_ERRORS:
+                raise
+            if attempt == len(backoff):
+                raise
+        except urllib.error.URLError, http.client.HTTPException, OSError:
+            if attempt == len(backoff):
+                raise
+        sleep(backoff[attempt])
+
+
 def fetch(
     source: Source,
     dest_dir: Path,
@@ -84,20 +110,20 @@ def fetch(
     final.unlink(missing_ok=True)
     part = dest_dir / (source.filename + ".part")
     opener = opener or urllib.request.build_opener()
-    for attempt in range(len(backoff) + 1):
-        try:
-            _transfer(source, part, opener)
+    # A partial file left by an earlier run may hold bad bytes; if the resumed result fails
+    # its checksum, download once more from scratch
+    resumed = part.exists()
+    while True:
+        _download_with_retries(source, part, opener, backoff, sleep)
+        digest = file_digest(part, source.algorithm)
+        if digest == source.checksum:
             break
-        except urllib.error.URLError, http.client.HTTPException, OSError:
-            if attempt == len(backoff):
-                raise
-            sleep(backoff[attempt])
-    digest = file_digest(part, source.algorithm)
-    if digest != source.checksum:
         part.unlink()
-        raise ChecksumError(
-            f"{source.filename}: {source.algorithm} {digest} != expected {source.checksum}"
-        )
+        if not resumed:
+            raise ChecksumError(
+                f"{source.filename}: {source.algorithm} {digest} != expected {source.checksum}"
+            )
+        resumed = False
     os.replace(part, final)
     return final
 
