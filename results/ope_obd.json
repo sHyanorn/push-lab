@@ -1,0 +1,166 @@
+{
+ "tier": "B for an estimator that passes; the check itself is on real data",
+ "target": "BTS with the production prior of the Men's campaign, no updates",
+ "bts_distribution": {
+  "draws": 1000000,
+  "seed": 0
+ },
+ "rule": "interval contains the on-policy value and median relative error below 0.5",
+ "small": {
+  "on_policy": {
+   "value": 0.0069,
+   "ci_low": 0.0053,
+   "ci_high": 0.0085
+  },
+  "random_rows": 10000,
+  "random_clicks": 46,
+  "bts_rows": 10000,
+  "bts_clicks": 69,
+  "estimates": {
+   "DM": {
+    "value": 0.004462208987412252,
+    "ci_low": 0.004370402175711549,
+    "ci_high": 0.004561045284291133
+   },
+   "IPS": {
+    "value": 0.004540859800000001,
+    "ci_low": 0.00246099174,
+    "ci_high": 0.006929985484999999
+   },
+   "SNIPS": {
+    "value": 0.0046110727242601405,
+    "ci_low": 0.0024831540675621356,
+    "ci_high": 0.006888060360429144
+   },
+   "DR": {
+    "value": 0.004714878761930039,
+    "ci_low": 0.0025785499415178935,
+    "ci_high": 0.0071483153695035
+   }
+  },
+  "effective_size": 2476.118691826204,
+  "rounds": 10000,
+  "max_weight": 10.65475,
+  "validation": {
+   "DM": {
+    "relative_error_median": 0.3545735220043932,
+    "relative_error_interval": [
+     0.1540058200153783,
+     0.47337990841041516
+    ],
+    "rmse": 0.002589212988369274,
+    "interval_contains_on_policy": false,
+    "validated": false
+   },
+   "IPS": {
+    "relative_error_median": 0.36463309221748397,
+    "relative_error_interval": [
+     0.031024693650793585,
+     0.655493072537579
+    ],
+    "rmse": 0.002787498793256426,
+    "interval_contains_on_policy": true,
+    "validated": true
+   },
+   "SNIPS": {
+    "relative_error_median": 0.35390375752139314,
+    "relative_error_interval": [
+     0.020056968801543586,
+     0.6488292345028863
+    ],
+    "rmse": 0.002733642185248793,
+    "interval_contains_on_policy": false,
+    "validated": false
+   },
+   "DR": {
+    "relative_error_median": 0.33826258885337845,
+    "relative_error_interval": [
+     0.021229250190801612,
+     0.6390207848109438
+    ],
+    "rmse": 0.0026531518109584916,
+    "interval_contains_on_policy": true,
+    "validated": true
+   }
+  }
+ },
+ "full": {
+  "on_policy": {
+   "value": 0.006742727014339116,
+   "ci_low": 0.006668899119533995,
+   "ci_high": 0.00681949159421413
+  },
+  "random_rows": 452949,
+  "random_clicks": 2321,
+  "bts_rows": 4077727,
+  "bts_clicks": 27495,
+  "estimates": {
+   "DM": {
+    "value": 0.005926567486004195,
+    "ci_low": 0.005908019307783906,
+    "ci_high": 0.00594529501497226
+   },
+   "IPS": {
+    "value": 0.00600730650912136,
+    "ci_low": 0.0055168595979900635,
+    "ci_high": 0.006479463941415038
+   },
+   "SNIPS": {
+    "value": 0.00612317726372802,
+    "ci_low": 0.0056290289189843135,
+    "ci_high": 0.006615898599104717
+   },
+   "DR": {
+    "value": 0.006075889040908505,
+    "ci_low": 0.0055999129128126305,
+    "ci_high": 0.006547846555534314
+   }
+  },
+  "effective_size": 112213.08957107796,
+  "rounds": 452949,
+  "max_weight": 10.65475,
+  "validation": {
+   "DM": {
+    "relative_error_median": 0.12116898976150264,
+    "relative_error_interval": [
+     0.11083332794548348,
+     0.1310958092043039
+    ],
+    "rmse": 0.0008176639335486756,
+    "interval_contains_on_policy": false,
+    "validated": false
+   },
+   "IPS": {
+    "relative_error_median": 0.11053217340567467,
+    "relative_error_interval": [
+     0.036381945412664554,
+     0.18305419892316588
+    ],
+    "rmse": 0.0007745578694777389,
+    "interval_contains_on_policy": false,
+    "validated": false
+   },
+   "SNIPS": {
+    "relative_error_median": 0.09268014454278053,
+    "relative_error_interval": [
+     0.018013040426012882,
+     0.16623749851363703
+    ],
+    "rmse": 0.0006667572475184383,
+    "interval_contains_on_policy": false,
+    "validated": false
+   },
+   "DR": {
+    "relative_error_median": 0.09975662385823816,
+    "relative_error_interval": [
+     0.02681193824331127,
+     0.17202334158217356
+    ],
+    "rmse": 0.0007090967765387336,
+    "interval_contains_on_policy": false,
+    "validated": false
+   }
+  }
+ },
+ "small_note": "The small sample has 46 clicks in the random logs and 69 in the BTS logs, so this check has low power: it can show a gross failure, not a small bias."
+}
