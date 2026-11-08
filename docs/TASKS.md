@@ -52,13 +52,13 @@ Hour estimates are for planning; the required core is about 85 hours. If behind,
 
 ## M5 Delivery policies (14 h)
 - [x] Pre-register sweep ranges, policy pairs and decision rules in DECISIONS.md and push them before running any comparison
-- [ ] Baselines: fixed daily push at a fixed slot, score threshold
-- [ ] Uplift gate fitted on exploration logs (Tier C)
-- [ ] Global volume budget: marginal-gain allocation with one Lagrange multiplier, tested against brute force
-- [ ] Send-time policy from earlier-period profiles
-- [ ] Profile misspecification: swept shift and noise
-- [ ] Sensitivity sweep (Latin hypercube over base rate, fatigue, opt-out, return, copy spread and misspecification, including zero)
-- [ ] Policy comparison with Holm correction and flip thresholds
+- [x] Baselines: fixed daily push at a fixed slot, score threshold
+- [x] Uplift gate fitted on exploration logs (Tier C)
+- [x] Global volume budget: marginal-gain allocation with one Lagrange multiplier, tested against brute force
+- [x] Send-time policy from earlier-period profiles
+- [x] Profile misspecification: swept shift and noise
+- [x] Sensitivity sweep (Latin hypercube over base rate, fatigue, opt-out, return, copy spread and misspecification, including zero)
+- [x] Policy comparison with Holm correction and flip thresholds
 
 ## M6 Copy and templates (10 h)
 - [ ] METHODS.md: template families, placeholders, filters, recovering bandit
