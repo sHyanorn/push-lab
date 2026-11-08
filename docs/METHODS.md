@@ -661,3 +661,16 @@ The smallest propensity of one slot-and-template action, $0.075/60 = 0.00125$, d
 ### 14.5 Evidence matrix
 
 `results/evidence.json` lists every headline claim of the project with its tier, the results file and key it comes from, the estimate and its interval, and what the tier cannot support (SPEC Section 5). It is built by code from the results files, so its numbers cannot drift from them; the HTML report (M8) renders it.
+
+### 14.6 Sensitivity sweep of the simulator check
+
+Added after the results of 14.3 (D046, D047): simulator results are reported only with a sweep, and the direction of the per-day bias depends on which carryover dominates.
+
+- *Grid*: one parameter at a time over annoyance $\epsilon_v$, fatigue elasticity $\epsilon_f$, opt-out $\kappa_o$, return boost $\kappa_r$ and novelty penalty $\gamma$, at 5 evenly spaced points of each range of 11.5, the other parameters at the reference and $\Delta = \xi = 0$; 24 distinct settings, since the annoyance and fatigue midpoints are both the reference.
+- *Seeds*: 10 log seeds per setting (3,001 to 3,010), not used by any earlier run; 100 independent truth runs per target (the first 100 seeds of each target in the amended scheme of 14.3); world seed 10,100; the 5,000 evaluation users.
+- *Measures*: for every setting, target and estimator (IPS and DR, visit reward), the bias with its interval and the verdict of 14.4; coverage over 10 seeds has a coarse resolution and is reported without being read. Bias resamples draw the log seeds and the truth runs with replacement, 10,000 times.
+- *Flips* (descriptive): along each grid, for the DR and IPS bias of T½, N and T2, by the rule of 12.7: a crossing counts only where adjacent points have intervals that exclude 0 with opposite signs.
+- *Reading*, fixed before the run: a direction of the per-day bias is stated only with the grid ranges where it holds, for example "per-day OPE overestimates two pushes a day above an annoyance elasticity of x". Expectation: the bias of T2 grows with annoyance and fatigue and falls with return boost.
+
+**Code.** `ope/carryover.py` (`python -m push_lab.ope.carryover`, writes `results/ope_carryover.json`; each log's estimates go to `results/runs/ope_carryover/`).
+
