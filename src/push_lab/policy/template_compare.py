@@ -5,10 +5,8 @@
 """
 
 import argparse
-import json
 import sys
 from collections.abc import Sequence
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -16,9 +14,9 @@ import numpy as np
 import numpy.typing as npt
 
 from push_lab.data import paths
-from push_lab.policy import compare, sweep, template_design
-from push_lab.policy.compare import Bootstrap, interval, p_value
-from push_lab.policy.template_design import GRID_NAMES, PRIMARY
+from push_lab.policy import compare, template_design
+from push_lab.policy.compare import Bootstrap, SettingResult, interval, p_value
+from push_lab.policy.template_design import GRID_NAMES, PRIMARY, SETTING_LEVEL
 from push_lab.policy.template_sweep import METRICS, RUNS
 from push_lab.policy.templates import KINDS
 from push_lab.runtime import rounded, write_json
@@ -27,7 +25,6 @@ FloatArray = npt.NDArray[np.float64]
 
 SECONDARY = {"D0-U": ("D0", "U"), "RAW-RD": ("RAW", "RD"), "O-U": ("O", "U")}
 PAIRS = PRIMARY | SECONDARY
-SETTING_LEVEL = 0.05 / len(PRIMARY)
 LABELED_SWEEP = "main"
 NOTE = (
     "The simulator never reads the text. A template's effect is a random draw per world, "
@@ -35,13 +32,6 @@ NOTE = (
     "rotates the templates with the largest drawn effects; they say nothing about whether the "
     "generated copy is good or which wording works better for real users."
 )
-
-
-@dataclass
-class SettingResult:
-    summary: dict[str, Any]
-    boot: dict[str, FloatArray]
-    points: dict[str, float]
 
 
 def evaluate_setting(metrics: FloatArray, kinds: list[str], boot: Bootstrap) -> SettingResult:
@@ -168,48 +158,31 @@ def summarize(
     labeled: dict[str, Any] = {}
     p_all: dict[str, float] = {}
     averages: dict[str, Any] = {}
+    # Each sweep average reseeds its resampling, so computing every key once gives the same
+    # values as computing each where it is used
+    swept = (
+        {k: _averaged(results, main_ids, k, seed) for k in results[main_ids[0]].boot}
+        if main_ids
+        else {}
+    )
     if main_ids:
-        for key in PAIRS:
-            boots = np.stack([results[i].boot[key] for i in main_ids])
-            pts = np.array([results[i].points[key] for i in main_ids])
-            avg, p, _ = compare.sweep_average(boots, pts, seed)
-            if key not in PRIMARY:
-                averages[key] = avg
-                continue
-            entries = [results[i].summary["primary"][key] for i in main_ids]
-            verdicts = [e["verdict"] for e in entries]
-            labeled[key] = {
-                "sweep_average": avg | {"p_value": rounded(p)},
-                "wins": verdicts.count("win"),
-                "losses": verdicts.count("loss"),
-                "neither": verdicts.count("neither"),
-                "median_half_width": rounded(
-                    float(np.median([(e["ci_high"] - e["ci_low"]) / 2 for e in entries]))
-                ),
-                "losing_settings": [
-                    {"id": i, "values": settings[i]["values"]}
-                    for i, v in zip(main_ids, verdicts, strict=True)
-                    if v == "loss"
-                ],
-            }
+        for key in PRIMARY:
+            avg, resampled, _ = swept[key]
+            p = p_value(resampled)
+            labeled[key] = compare.labeled_entry(results, settings, main_ids, key, avg, p)
             p_all[key] = p
+        for key in SECONDARY:
+            averages[key] = swept[key][0]
     # Labels and Holm need every main setting; a partial run gets none
     rejected = compare.holm(p_all) if complete.get(LABELED_SWEEP) else {}
     for key, entry in labeled.items():
-        ok = rejected.get(key)
-        entry["holm_rejected"] = ok
-        entry["label"] = (
-            compare.label(entry["sweep_average"]["value"], ok, entry["wins"], entry["losses"])
-            if ok is not None
-            else "incomplete"
-        )
+        compare.add_label(entry, rejected.get(key))
     shares = [results[i].summary["share_of_oracle_gain"] for i in main_ids]
     oracle_share: dict[str, Any] = {
         "median_over_settings": _median([s["value"] if s else None for s in shares]),
         "settings_with_oracle_gain": sum(s is not None for s in shares),
     }
     if main_ids:
-        swept = {k: _averaged(results, main_ids, k, seed) for k in results[main_ids[0]].boot}
         oracle_share["ratio_of_averages"] = _ratio(swept["B1"], swept["O-U"])
         averages["active_days"] = {k: swept[f"active.{k}"][0] for k in PAIRS}
         averages["relative_to_U"] = {
@@ -219,26 +192,14 @@ def summarize(
             kind: _ratio(swept[f"{kind}.repeats"], swept[f"{kind}.delivered"]) for kind in KINDS
         }
 
-    grid_ids = by_sweep.get("grid", [])
-    flips: dict[str, Any] = {}
-    for name in GRID_NAMES:
-        members = sorted((g[1], i) for i in grid_ids for g in settings[i]["grid"] if g[0] == name)
-        if len(members) < 2:
-            continue
-        ids = [i for _, i in members]
-        x = np.array([settings[i]["values"][name] for i in ids])
-        flips[name] = {}
-        for key in PRIMARY:
-            pts = np.array([results[i].points[key] for i in ids])
-            crossings = compare.flips(x, pts, np.stack([results[i].boot[key] for i in ids], axis=1))
-            flips[name][key] = {
-                "values": [rounded(v) for v in x],
-                "estimates": [results[i].summary["primary"][key] for i in ids],
-                "crossings": crossings,
-                "result": "no flip in range"
-                if not crossings
-                else ("flip" if any(c["resolved"] for c in crossings) else "not resolved"),
-            }
+    flips = compare.grid_flips(
+        results,
+        settings,
+        by_sweep.get("grid", []),
+        GRID_NAMES,
+        tuple(PRIMARY),
+        lambda r, key: r.summary["primary"][key],
+    )
 
     variability: dict[str, Any] = {}
     replicates = by_sweep.get("replicate", [])
@@ -318,22 +279,12 @@ def run(root: Path) -> dict[str, Any]:
     boot = Bootstrap(frozen["users"], b["samples"], b["seed"])
     results: dict[int, SettingResult] = {}
     infos: dict[int, dict[str, Any]] = {}
-    commits: set[str] = set()
-    for s in frozen["settings"]:
-        npz, meta = sweep.setting_paths(root, s["id"], RUNS)
-        if not npz.exists():
-            continue
-        info = json.loads(meta.read_text("utf-8"))
-        commits.add(info["commit"])
-        with np.load(npz) as z:
-            metrics = z["metrics"].astype(np.float64)
+    for sid, info, metrics in compare.load_runs(root, frozen, RUNS):
         if info["kinds"] != list(KINDS):
-            raise SystemExit(f"setting {s['id']} ran other policies: {info['kinds']}")
-        results[s["id"]] = evaluate_setting(metrics, info["kinds"], boot)
-        infos[s["id"]] = info
-    if len(commits) != 1:
-        raise SystemExit(f"the settings come from {len(commits)} commits: {sorted(commits)}")
-    out = {"commit": commits.pop()} | summarize(results, frozen, infos)
+            raise SystemExit(f"setting {sid} ran other policies: {info['kinds']}")
+        results[sid] = evaluate_setting(metrics, info["kinds"], boot)
+        infos[sid] = info
+    out = {"commit": compare.run_commit(infos)} | summarize(results, frozen, infos)
     out["settings_run"] = len(results)
     out["settings_designed"] = len(frozen["settings"])
     return out

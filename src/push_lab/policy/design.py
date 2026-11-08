@@ -22,7 +22,6 @@ from push_lab.sim import world
 from push_lab.sim.world import Params
 
 FloatArray = npt.NDArray[np.float64]
-IntArray = npt.NDArray[np.int64]
 
 SIM_NAMES = tuple(f.name for f in fields(Params))
 POLICY_RANGES = {"profile_shift": (-3.0, 3.0), "profile_noise": (0.0, 1.0)}
@@ -143,8 +142,8 @@ def build(n_users: int) -> dict[str, Any]:
     }
 
 
-def load(root: Path) -> dict[str, Any]:
-    out: dict[str, Any] = json.loads((root / paths.RESULTS / DESIGN_FILE).read_text("utf-8"))
+def load(root: Path, file: str = DESIGN_FILE) -> dict[str, Any]:
+    out: dict[str, Any] = json.loads((root / paths.RESULTS / file).read_text("utf-8"))
     return out
 
 

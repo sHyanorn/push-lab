@@ -195,9 +195,7 @@ def fit_response(
         valid_sets=[d_valid],
         callbacks=[lgb.early_stopping(fine.EARLY_STOPPING, verbose=False)],
     )
-    predicted = np.asarray(
-        booster.predict(x[is_valid], num_iteration=booster.best_iteration), dtype=np.float64
-    )
+    predicted = _predict(booster, x[is_valid])
     gain = booster.feature_importance("gain", iteration=booster.best_iteration)
     shares = dict(zip(booster.feature_name(), gain / gain.sum(), strict=True))
     return booster, Validation(

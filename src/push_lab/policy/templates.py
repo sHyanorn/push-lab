@@ -211,7 +211,7 @@ class Templated:
         if d >= BACK_DAYS:
             self._away = ~visited[d - BACK_DAYS : d].any(axis=0)
 
-    def probabilities(self, users: IntArray, now: float) -> tuple[BoolArray, FloatArray]:
+    def probabilities(self, users: IntArray, now: float) -> FloatArray:
         eligible = self.eligible(users)
         since = now - self._last_seen[users]
         if self.kind == "U":
@@ -227,7 +227,7 @@ class Templated:
         else:
             s = self.scores[None, :] - self.penalty * 0.5 ** (since / PENALTY_HALF_LIFE)
             probs = softmax(s, eligible, TEMPERATURE)
-        return eligible, probs
+        return probs
 
     def act(self, obs: Observation) -> Action:
         if obs.slot == 0:
@@ -239,7 +239,7 @@ class Templated:
         users = np.flatnonzero(send & ~obs.opted_out)
         if len(users):
             now = obs.day + SLOT_HOURS[obs.slot] / 24
-            _, probs = self.probabilities(users, now)
+            probs = self.probabilities(users, now)
             u = choice_uniforms(self.run_seed, obs.day, obs.slot, n)[users]
             chosen = inverse_cdf(probs, u)
             template[users] = chosen

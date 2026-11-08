@@ -12,7 +12,7 @@ import multiprocessing as mp
 import os
 import sys
 import time
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -246,6 +246,35 @@ def finished(root: Path, setting_id: int, commit: str, runs: Path = RUNS) -> boo
     return True
 
 
+def run_pending(
+    root: Path,
+    frozen: dict[str, Any],
+    commit: str,
+    ids: list[int] | None,
+    processes: int,
+    init: Callable[[Path, str], None],
+    work: Callable[[dict[str, Any]], tuple[int, float]],
+    runs: Path = RUNS,
+    first: Callable[[dict[str, Any]], Any] | None = None,
+) -> None:
+    """Run the selected settings not on disk yet, ``first`` ordering them, in worker processes.
+    Every setting already on disk must come from ``commit``, selected or not."""
+    done = {s["id"] for s in frozen["settings"] if finished(root, s["id"], commit, runs)}
+    todo = [
+        s for s in frozen["settings"] if (ids is None or s["id"] in ids) and s["id"] not in done
+    ]
+    if first is not None:
+        todo.sort(key=first)
+    print(f"{len(todo)} settings to run at {commit}", flush=True)
+    start = time.perf_counter()
+    with mp.get_context("spawn").Pool(processes, init, (root, commit)) as pool:
+        for count, (sid, seconds) in enumerate(pool.imap_unordered(work, todo), 1):
+            elapsed = time.perf_counter() - start
+            print(
+                f"{count}/{len(todo)} setting {sid}: {seconds:.0f} s, {elapsed:.0f} s", flush=True
+            )
+
+
 def load_context(root: Path) -> Context:
     inp = inputs.Inputs.load(paths.processed_dir(root, "sim") / inputs.CACHE)
     chosen = design.users(len(inp.user_ids))
@@ -278,21 +307,17 @@ def main(argv: Sequence[str] | None = None) -> int:
     ctx = load_context(args.root)
     check_design(frozen, len(ctx.inputs.user_ids))
     del ctx
-    # Every setting already on disk must come from this commit, selected or not
-    finished_ids = {s["id"] for s in frozen["settings"] if finished(args.root, s["id"], commit)}
-    todo = [
-        s
-        for s in frozen["settings"]
-        if (args.ids is None or s["id"] in args.ids) and s["id"] not in finished_ids
-    ]
     # Settings with secondary policies take longest; start them first
-    todo.sort(key=lambda s: (s["sweep"] not in SECONDARY_SWEEPS, s["id"]))
-    print(f"{len(todo)} settings to run at {commit}", flush=True)
-    start = time.perf_counter()
-    with mp.get_context("spawn").Pool(args.processes, _init, (args.root, commit)) as pool:
-        for done, (sid, seconds) in enumerate(pool.imap_unordered(_work, todo), 1):
-            elapsed = time.perf_counter() - start
-            print(f"{done}/{len(todo)} setting {sid}: {seconds:.0f} s, {elapsed:.0f} s", flush=True)
+    run_pending(
+        args.root,
+        frozen,
+        commit,
+        args.ids,
+        args.processes,
+        _init,
+        _work,
+        first=lambda s: (s["sweep"] not in SECONDARY_SWEEPS, s["id"]),
+    )
     if not args.no_compare and args.ids is None:
         from push_lab.policy import compare
 

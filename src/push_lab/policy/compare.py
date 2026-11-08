@@ -8,7 +8,7 @@
 import argparse
 import json
 import sys
-from collections.abc import Sequence
+from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -18,11 +18,10 @@ import numpy.typing as npt
 
 from push_lab.data import paths
 from push_lab.policy import design
-from push_lab.policy.sweep import METRICS, setting_paths
+from push_lab.policy.sweep import METRICS, RUNS, setting_paths
 from push_lab.runtime import rounded, write_json
 
 FloatArray = npt.NDArray[np.float64]
-IntArray = npt.NDArray[np.int64]
 
 PRIMARY = {"H1": ("G", "S"), "H2": ("G2", "S"), "H3": ("G", "T"), "H4": ("T", "F")}
 SECONDARY = {
@@ -155,11 +154,105 @@ def flips(x: FloatArray, points: FloatArray, boot: FloatArray) -> list[dict[str,
     return out
 
 
+def flip_result(crossings: list[dict[str, Any]]) -> str:
+    if not crossings:
+        return "no flip in range"
+    return "flip" if any(c["resolved"] for c in crossings) else "not resolved"
+
+
 @dataclass
 class SettingResult:
     summary: dict[str, Any]
     boot: dict[str, FloatArray]
     points: dict[str, float]
+
+
+def grid_flips(
+    results: dict[int, SettingResult],
+    settings: dict[int, dict[str, Any]],
+    grid_ids: list[int],
+    names: Sequence[str],
+    keys: Sequence[str],
+    estimate: Callable[[SettingResult, str], Any],
+) -> dict[str, dict[str, Any]]:
+    """Flips of each comparison along each one-at-a-time grid with at least two points."""
+    out: dict[str, dict[str, Any]] = {}
+    for name in names:
+        members = sorted((g[1], i) for i in grid_ids for g in settings[i]["grid"] if g[0] == name)
+        if len(members) < 2:
+            continue
+        ids = [i for _, i in members]
+        x = np.array([settings[i]["values"][name] for i in ids])
+        out[name] = {}
+        for key in keys:
+            pts = np.array([results[i].points[key] for i in ids])
+            crossings = flips(x, pts, np.stack([results[i].boot[key] for i in ids], axis=1))
+            out[name][key] = {
+                "values": [rounded(v) for v in x],
+                "estimates": [estimate(results[i], key) for i in ids],
+                "crossings": crossings,
+                "result": flip_result(crossings),
+            }
+    return out
+
+
+def labeled_entry(
+    results: dict[int, SettingResult],
+    settings: dict[int, dict[str, Any]],
+    ids: list[int],
+    key: str,
+    average: dict[str, float],
+    p: float,
+) -> dict[str, Any]:
+    """Sweep average and per-setting verdicts of a registered comparison (METHODS 12.7)."""
+    entries = [results[i].summary["primary"][key] for i in ids]
+    verdicts = [e["verdict"] for e in entries]
+    return {
+        "sweep_average": average | {"p_value": rounded(p)},
+        "wins": verdicts.count("win"),
+        "losses": verdicts.count("loss"),
+        "neither": verdicts.count("neither"),
+        "median_half_width": rounded(
+            float(np.median([(e["ci_high"] - e["ci_low"]) / 2 for e in entries]))
+        ),
+        "losing_settings": [
+            {"id": i, "values": settings[i]["values"]}
+            for i, v in zip(ids, verdicts, strict=True)
+            if v == "loss"
+        ],
+    }
+
+
+def add_label(entry: dict[str, Any], rejected: bool | None) -> None:
+    """Holm decision and label; ``None`` when the run is incomplete."""
+    entry["holm_rejected"] = rejected
+    entry["label"] = (
+        label(entry["sweep_average"]["value"], rejected, entry["wins"], entry["losses"])
+        if rejected is not None
+        else "incomplete"
+    )
+
+
+def load_runs(
+    root: Path, frozen: dict[str, Any], runs: Path
+) -> Iterator[tuple[int, dict[str, Any], FloatArray]]:
+    """Id, run info and metrics of every finished setting of a frozen design."""
+    for s in frozen["settings"]:
+        npz, meta = setting_paths(root, s["id"], runs)
+        if not npz.exists():
+            continue
+        info = json.loads(meta.read_text("utf-8"))
+        with np.load(npz) as z:
+            metrics = z["metrics"].astype(np.float64)
+        yield s["id"], info, metrics
+
+
+def run_commit(infos: dict[int, dict[str, Any]]) -> str:
+    """The one commit every setting ran at."""
+    commits: set[str] = {info["commit"] for info in infos.values()}
+    if len(commits) != 1:
+        raise SystemExit(f"the settings come from {len(commits)} commits: {sorted(commits)}")
+    return commits.pop()
 
 
 def evaluate_setting(metrics: FloatArray, names: list[str], boot: Bootstrap) -> SettingResult:
@@ -237,9 +330,10 @@ def summarize(
     seed = frozen["bootstrap"]["settings_seed"]
 
     designed = {
-        sweep: sum(s["sweep"] == sweep for s in frozen["settings"]) for sweep in LABELED_SWEEPS
+        sweep: sum(s["sweep"] == sweep for s in frozen["settings"])
+        for sweep in sorted({s["sweep"] for s in frozen["settings"]})
     }
-    complete = all(len(by_sweep.get(k, [])) == n for k, n in designed.items())
+    complete = {sweep: len(by_sweep.get(sweep, [])) == n for sweep, n in designed.items()}
     labeled: dict[str, dict[str, Any]] = {}
     p_all: dict[str, float] = {}
     for sweep in LABELED_SWEEPS:
@@ -251,39 +345,14 @@ def summarize(
             boots = np.stack([results[i].boot[key] for i in ids])
             pts = np.array([results[i].points[key] for i in ids])
             avg, p, _ = sweep_average(boots, pts, seed)
-            verdicts = [results[i].summary["primary"][key]["verdict"] for i in ids]
-            half = [
-                (
-                    results[i].summary["primary"][key]["ci_high"]
-                    - results[i].summary["primary"][key]["ci_low"]
-                )
-                / 2
-                for i in ids
-            ]
-            labeled[sweep][key] = {
-                "sweep_average": avg | {"p_value": rounded(p)},
-                "wins": verdicts.count("win"),
-                "losses": verdicts.count("loss"),
-                "neither": verdicts.count("neither"),
-                "median_half_width": rounded(float(np.median(half))),
-                "losing_settings": [
-                    {"id": i, "values": settings[i]["values"]}
-                    for i, v in zip(ids, verdicts, strict=True)
-                    if v == "loss"
-                ],
-            }
+            labeled[sweep][key] = labeled_entry(results, settings, ids, key, avg, p)
             p_all[f"{sweep}.{key}"] = p
     # Labels and Holm need every registered setting; a partial run gets none
-    rejected = holm(p_all) if complete else {}
+    ready = all(complete.get(sweep, True) for sweep in LABELED_SWEEPS)
+    rejected = holm(p_all) if ready else {}
     for sweep, entries in labeled.items():
         for key, entry in entries.items():
-            ok = rejected.get(f"{sweep}.{key}")
-            entry["holm_rejected"] = ok
-            entry["label"] = (
-                label(entry["sweep_average"]["value"], ok, entry["wins"], entry["losses"])
-                if ok is not None
-                else "incomplete"
-            )
+            add_label(entry, rejected.get(f"{sweep}.{key}"))
             if key == "H2":
                 entry["note"] = H2_NOTE
 
@@ -298,32 +367,14 @@ def summarize(
         c = results[i].summary["daily_lift_F_over_N"]["band"]
         band[c] = band.get(c, 0) + 1
 
-    grid_flips: dict[str, dict[str, Any]] = {}
-    grid_ids = by_sweep.get("grid", [])
-    for name in frozen["names"]:
-        members = sorted(
-            ((g[1], i) for i in grid_ids for g in settings[i]["grid"] if g[0] == name),
-        )
-        if len(members) < 2:
-            continue
-        ids = [i for _, i in members]
-        x = np.array([settings[i]["values"][name] for i in ids])
-        grid_flips[name] = {}
-        for key in FLIP_COMPARISONS:
-            pts = np.array([results[i].points[key] for i in ids])
-            boots = np.stack([results[i].boot[key] for i in ids], axis=1)
-            crossings = flips(x, pts, boots)
-            grid_flips[name][key] = {
-                "values": [rounded(v) for v in x],
-                "estimates": [
-                    (results[i].summary["primary"] | results[i].summary["secondary"])[key]
-                    for i in ids
-                ],
-                "crossings": crossings,
-                "result": "no flip in range"
-                if not crossings
-                else ("flip" if any(c["resolved"] for c in crossings) else "not resolved"),
-            }
+    flipped = grid_flips(
+        results,
+        settings,
+        by_sweep.get("grid", []),
+        frozen["names"],
+        FLIP_COMPARISONS,
+        lambda r, key: (r.summary["primary"] | r.summary["secondary"])[key],
+    )
 
     fit_variability: dict[str, dict[str, Any]] = {}
     refits = by_sweep.get("refit", [])
@@ -351,16 +402,12 @@ def summarize(
         "note": "Simulator results with the sweep; settings are points drawn uniformly over "
         "the parameter box, not probabilities of the real world.",
         "p_value_resolution": rounded(2 / samples),
-        "complete": {
-            sweep: len(by_sweep.get(sweep, []))
-            == sum(s["sweep"] == sweep for s in frozen["settings"])
-            for sweep in sorted({s["sweep"] for s in frozen["settings"]})
-        },
+        "complete": complete,
         "primary": labeled,
         "primary_holm": {k: bool(v) for k, v in rejected.items()},
         "stress_verdicts": {"counts": stress, "H2_note": H2_NOTE},
         "band_F_over_N": {"bounds": list(BAND), "main_sweep_counts": band},
-        "flips": grid_flips,
+        "flips": flipped,
         "fit_variability": fit_variability,
         "score_diagnostics_median": diagnostics,
         "settings": [
@@ -389,20 +436,10 @@ def run(root: Path) -> dict[str, Any]:
     )
     results: dict[int, SettingResult] = {}
     infos: dict[int, dict[str, Any]] = {}
-    commits: set[str] = set()
-    for s in frozen["settings"]:
-        npz, meta = setting_paths(root, s["id"])
-        if not npz.exists():
-            continue
-        info = json.loads(meta.read_text("utf-8"))
-        commits.add(info["commit"])
-        with np.load(npz) as z:
-            metrics = z["metrics"].astype(np.float64)
-        results[s["id"]] = evaluate_setting(metrics, info["policies"], boot)
-        infos[s["id"]] = info
-    if len(commits) != 1:
-        raise SystemExit(f"the settings come from {len(commits)} commits: {sorted(commits)}")
-    out = {"commit": commits.pop()} | summarize(results, frozen, infos)
+    for sid, info, metrics in load_runs(root, frozen, RUNS):
+        results[sid] = evaluate_setting(metrics, info["policies"], boot)
+        infos[sid] = info
+    out = {"commit": run_commit(infos)} | summarize(results, frozen, infos)
     out["settings_run"] = len(results)
     out["settings_designed"] = len(frozen["settings"])
     return out

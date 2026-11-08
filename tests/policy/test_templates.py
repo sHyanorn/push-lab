@@ -178,7 +178,7 @@ def test_uniform_choices_follow_their_probabilities() -> None:
     counts = np.zeros(K)
     expected = np.zeros(K)
     for day in range(40):
-        _, probs = policy.probabilities(users, 0.0)
+        probs = policy.probabilities(users, 0.0)
         chosen = tp.inverse_cdf(probs, tp.choice_uniforms(1, day, 0, USERS))
         counts += np.bincount(chosen, minlength=K)
         expected += probs.sum(axis=0)
@@ -215,7 +215,7 @@ def test_the_penalty_lowers_recently_seen_templates() -> None:
     for kind in ("RD", "D0"):
         policy = tp.Templated(kind, slot, FAMILY, creator, rank, 1)
         policy._last_seen[0, 5] = 9.0  # template 5 reached user 0 one day ago
-        probs[kind] = policy.probabilities(users, 10.0)[1]
+        probs[kind] = policy.probabilities(users, 10.0)
     ratio = probs["RD"][0] / probs["RD"][0, 2]
     assert ratio[5] == pytest.approx(np.exp(-tp.PENALTY * 0.5 ** (1 / 15) / tp.TEMPERATURE))
     np.testing.assert_allclose(probs["D0"][0, 5], probs["D0"][0, 2])

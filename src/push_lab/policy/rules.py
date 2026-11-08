@@ -15,7 +15,6 @@ from push_lab.policy.gate import Kind, Models
 from push_lab.sim.env import Action, Observation
 from push_lab.sim.world import COIN_STREAM, HALF_STREAM, SLOTS, TEMPLATE_STREAM, TEMPLATES, stream
 
-FloatArray = npt.NDArray[np.float64]
 IntArray = npt.NDArray[np.int64]
 BoolArray = npt.NDArray[np.bool_]
 

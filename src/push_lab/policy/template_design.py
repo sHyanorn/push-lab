@@ -24,6 +24,7 @@ REPLICATES = 10
 REPLICATE_SEED = 201
 DESIGN_FILE = "template_design.json"
 PRIMARY = {"B1": ("RD", "U"), "B2": ("RD", "D0")}
+SETTING_LEVEL = 0.05 / len(PRIMARY)
 
 
 def _copy(s: dict[str, Any], sweep: str, **extra: Any) -> dict[str, Any]:
@@ -79,7 +80,7 @@ def build(root: Path, n_users: int) -> dict[str, Any]:
         "families": len(FAMILIES),
         "kinds": list(tp.KINDS),
         "primary": {k: list(v) for k, v in PRIMARY.items()},
-        "setting_level": 0.05 / len(PRIMARY),
+        "setting_level": SETTING_LEVEL,
         "metric": "opens per user over the 28 days, averaged over the run seeds",
         "bandit": {
             "penalty": tp.PENALTY,
@@ -93,8 +94,7 @@ def build(root: Path, n_users: int) -> dict[str, Any]:
 
 
 def load(root: Path) -> dict[str, Any]:
-    out: dict[str, Any] = json.loads((root / paths.RESULTS / DESIGN_FILE).read_text("utf-8"))
-    return out
+    return design.load(root, DESIGN_FILE)
 
 
 def main(argv: Sequence[str] | None = None) -> int:

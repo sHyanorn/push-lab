@@ -8,7 +8,6 @@ Run it alone: it uses one thread per process.
 
 import argparse
 import json
-import multiprocessing as mp
 import sys
 import time
 from collections.abc import Sequence
@@ -78,10 +77,8 @@ def user_metrics(out: env.Outcome, templates: int) -> FloatArray:
 
 def score_diagnostics(scores: FloatArray, copy: FloatArray) -> dict[str, float | None]:
     """Agreement of the learned scores with the drawn copy effects (none without a spread)."""
-    if np.ptp(copy) == 0:
-        return {"spearman": None, "top_overlap": None}
-    if np.ptp(scores) == 0:
-        # Full shrinkage: no ranking learned
+    # Without a drawn spread, or under full shrinkage, there is no ranking to compare
+    if np.ptp(copy) == 0 or np.ptp(scores) == 0:
         return {"spearman": None, "top_overlap": None}
     top_true = set(np.argsort(-copy, kind="stable")[:TOP].tolist())
     top_learned = set(np.argsort(-scores, kind="stable")[:TOP].tolist())
@@ -183,20 +180,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if json.loads(json.dumps(current)) != frozen or len(ctx.family) != frozen["templates"]:
         raise SystemExit("the design in results/ differs from the code or the catalog")
     del ctx
-    done = {s["id"] for s in frozen["settings"] if sweep.finished(args.root, s["id"], commit, RUNS)}
-    todo = [
-        s
-        for s in frozen["settings"]
-        if (args.ids is None or s["id"] in args.ids) and s["id"] not in done
-    ]
-    print(f"{len(todo)} settings to run at {commit}", flush=True)
-    start = time.perf_counter()
-    with mp.get_context("spawn").Pool(args.processes, _init, (args.root, commit)) as pool:
-        for count, (sid, seconds) in enumerate(pool.imap_unordered(_work, todo), 1):
-            elapsed = time.perf_counter() - start
-            print(
-                f"{count}/{len(todo)} setting {sid}: {seconds:.0f} s, {elapsed:.0f} s", flush=True
-            )
+    sweep.run_pending(args.root, frozen, commit, args.ids, args.processes, _init, _work, RUNS)
     if not args.no_compare and args.ids is None:
         from push_lab.policy import template_compare
 
