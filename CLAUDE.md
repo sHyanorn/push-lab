@@ -53,7 +53,7 @@ uv run python -m push_lab.report.build           # Rebuild results and the HTML 
 ## Hard rules
 
 - Every reported number carries its evidence tier (A, B or C) and a confidence interval
-- Ranking is evaluated on the random-exposure evaluation half only, never on rows the simulator was fitted on; uplift methods only on randomized trials
+- Ranking is evaluated on the random-exposure evaluation half only, never on outcomes the simulator was fitted on; uplift methods only on randomized trials
 - KuaiRand rows are filtered to `tab == 1`, where `is_click` has one meaning
 - Simulator results are never shown without the sensitivity sweep
 - Simulator comparisons are pre-registered in DECISIONS.md and pushed before they are run; results are reported as they come out
