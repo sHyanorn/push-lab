@@ -109,6 +109,8 @@ def copy_effects(
 
 # Purposes of keyed random streams (D032)
 EXPLORE_STREAM, TEMPLATE_STREAM, COIN_STREAM, HALF_STREAM, PERTURB_STREAM = 1, 2, 3, 4, 5
+# Uniforms shared by the template policies of M6 (METHODS 13.4)
+CHOICE_STREAM = 6
 
 
 def stream(purpose: int, *key: int) -> np.random.Generator:

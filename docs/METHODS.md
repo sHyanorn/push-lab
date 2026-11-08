@@ -532,7 +532,7 @@ A *round* $t$ is a delivered push to user $u$ at (day $d$, slot $s$); $A_t$ is t
 - **U, uniform**: $b_t(a) = 1/|A_t|$.
 - **RD, recovering difference softmax** (Yancey and Settles 2020, Eq. 1 to 4). At the first slot of each day, scores are recomputed from all rounds of earlier days of the run, pooled over users. For arm $a$, over the rounds with $a \in A_t$ and $\theta \le b_t(a) \le 1 - \theta$:
   $$\bar\mu_a^+ = \frac{\sum_{a_t = a} w_t^+ r_t}{\sum_{a_t = a} w_t^+},\; w_t^+ = b_t(a)^{-1}; \qquad \bar\mu_a^- = \frac{\sum_{a_t \ne a} w_t^- r_t}{\sum_{a_t \ne a} w_t^-},\; w_t^- = (1 - b_t(a))^{-1}$$
-  with Kish effective sizes $n_a^\pm = (\sum w)^2 / \sum w^2$ and $\mu_a$ the plain mean reward of the rounds where $a$ was eligible. Both means are shrunk toward $\mu_a$: $\hat\mu_a^\pm = (\bar\mu_a^\pm n_a^\pm + \mu_a m)/(n_a^\pm + m)$, and
+  with Kish effective sizes $n_a^\pm = (\sum w)^2 / \sum w^2$ and $\mu_a$ the plain mean reward of those rounds. Both means are shrunk toward $\mu_a$: $\hat\mu_a^\pm = (\bar\mu_a^\pm n_a^\pm + \mu_a m)/(n_a^\pm + m)$, and
   $$\hat s_a = \frac{\hat\mu_a^+ - \hat\mu_a^-}{\hat\mu_a^-}, \qquad s^*_{a,t} = \hat s_a - \gamma_b\, 0.5^{\Delta_{u,a}/h_b}, \qquad b_t(a) = \frac{e^{s^*_{a,t}/\tau}}{\sum_{a' \in A_t} e^{s^*_{a',t}/\tau}},$$
   where $\Delta_{u,a}$ is the time in days since $a$ was last delivered to $u$ (penalty 0 if never). An arm without rounds scores 0.
 - **D0, difference softmax without the penalty**: RD with $\gamma_b = 0$.

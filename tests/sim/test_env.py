@@ -253,6 +253,7 @@ def test_streams_of_one_seed_are_uncorrelated() -> None:
         "coin": world.stream(world.COIN_STREAM, seed, 0, 0).random(n),
         "half": world.stream(world.HALF_STREAM, seed, 0).random(n),
         "perturb": world.stream(world.PERTURB_STREAM, seed).standard_normal((n, SLOTS))[:, 0],
+        "choice": world.stream(world.CHOICE_STREAM, seed, 0, 0).random(n),
         "copy": np.random.default_rng(seed).standard_normal(n),
     }
     names = list(samples)
