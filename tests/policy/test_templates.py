@@ -241,3 +241,68 @@ def test_oracle_needs_the_truth() -> None:
     _, slot, creator, rank = INPUTS
     with pytest.raises(ValueError):
         tp.Templated("O", slot, FAMILY, creator, rank, 1)
+
+
+def test_finite_shrinkage_matches_the_formula() -> None:
+    # Two arms, uniform logging; arm 0 opened 30 of 100 times, arm 1 10 of 100
+    stats = tp.ArmStats(2)
+    chosen = np.repeat([0, 1], 100)
+    reward = np.concatenate([np.arange(100) < 30, np.arange(100) < 10]).astype(float)
+    stats.add(np.full((200, 2), 0.5), chosen, reward)
+    overall, mu_arm = 0.2, np.array([0.2, 0.2])
+    n = 100.0  # Kish size of 100 equal weights
+    excess = np.mean((np.array([0.3, 0.1]) - 0.2) ** 2) - np.mean(0.2 * 0.8 / n)
+    m = overall * (1 - overall) / excess - 1
+    plus = (np.array([0.3, 0.1]) * n + mu_arm * m) / (n + m)
+    minus = (np.array([0.1, 0.3]) * n + mu_arm * m) / (n + m)
+    np.testing.assert_allclose(stats.scores(), (plus - minus) / minus)
+    assert m == pytest.approx(0.16 / 0.0084 - 1)
+
+
+class _Recorder(tp.Templated):
+    """Keeps the probabilities each decision was drawn from."""
+
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        self.drawn: list[tuple[int, int, np.ndarray, np.ndarray]] = []
+
+    def act(self, obs: env.Observation) -> env.Action:
+        action = super().act(obs)
+        if self._pending and self._pending[-1][0] == obs.slot:
+            _, users, probs, _ = self._pending[-1]
+            self.drawn.append((obs.day, obs.slot, users, probs))
+        return action
+
+
+@pytest.mark.parametrize("kind", ["RD", "D0", "RAW"])
+def test_logged_propensity_is_the_drawn_probability(kind: tp.Kind) -> None:
+    params = Params(base_rate=0.2, copy_spread=0.2)
+    _, slot, creator, rank = INPUTS
+    policy = _Recorder(kind, slot, FAMILY, creator, rank, 7)
+    out = env.simulate(INPUTS[0], params, policy, env.draws(USERS, 7), WORLD_SEED, K)
+    checked = 0
+    for day, s, users, probs in policy.drawn:
+        k = out.template[day, s, users].astype(np.int64)
+        np.testing.assert_allclose(
+            out.propensity[day, s, users], probs[np.arange(len(users)), k], rtol=1e-6
+        )
+        checked += len(users)
+    assert checked == out.delivered.sum()
+    # After the first day the learned policies do not choose uniformly
+    late = [p for d, _, _, p in policy.drawn if d > 5]
+    assert np.ptp(np.concatenate(late)[np.concatenate(late) > 0]) > 0
+
+
+def test_choices_do_not_depend_on_the_same_day_outcomes() -> None:
+    params = Params(base_rate=0.2, copy_spread=0.2)
+    day = 10
+    draws = env.draws(USERS, 7)
+    changed = env.Draws(draws.open.copy(), draws.opt_out, draws.visit.copy())
+    changed.open[day] = 1 - changed.open[day]
+    changed.visit[day] = 1 - changed.visit[day]
+    runs = [
+        env.simulate(INPUTS[0], params, _policy("RD", params), d, WORLD_SEED, K)
+        for d in (draws, changed)
+    ]
+    assert not np.array_equal(runs[0].opened[day], runs[1].opened[day])
+    np.testing.assert_array_equal(runs[0].template[: day + 1], runs[1].template[: day + 1])
