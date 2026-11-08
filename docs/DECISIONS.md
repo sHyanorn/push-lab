@@ -57,6 +57,7 @@ Entries are in the order they were made. Some entries up to D048 were corrected 
 | D051 | The notebook is checked against its committed outputs | Active |
 | D052 | Reproduce workflow as built, and its first runs | Active |
 | D053 | Results differ across machines | Active |
+| D054 | Mean open probability of pushed items, measured after the fact | Active |
 
 ## D001 Python only, static report
 - Date: 2026-11-08
@@ -508,3 +509,8 @@ Entries are in the order they were made. Some entries up to D048 were corrected 
 - Date: 2026-11-08
 - The sample mode on a GitHub runner (ubuntu-latest, the same locked packages: CPython 3.14.10, torch 2.15.0+cpu, LightGBM 4.7.0, faiss-cpu 1.15.1) reproduced the Hillstrom part of the uplift evaluation exactly, and differed from the committed results in ranking, the simulator inputs and policy setting 0. The simulator's response model stopped early at 68 rounds against 51, so its outputs and every simulated policy downstream move; its held-out AUC was 0.693 against 0.694. In the container of D015 the same mode reproduced all four exactly (D052)
 - The committed results are those of the container of D015. No tolerance is set: the runner's numbers differ beyond rounding in fitted models and their downstream, so a tolerance would need its own study. The sample mode therefore exits with an error on GitHub runners, and its report of differences is the record of how far a rerun on another machine moves
+
+## D054 Mean open probability of pushed items, measured after the fact
+- Date: 2026-11-08
+- METHODS 11.5 cites a mean $p_0$ of about 0.28 for the items the policies push and attributes it to D024, which does not report it. Measured post hoc from the simulator inputs that `sim.build` writes (`data/processed/sim`), over all 27,285 users and the 112 day-slots: 0.277 for the cascade list the policies push and 0.277 for the two-tower list. The value agrees with the 0.28 the base-rate range was set from, so the range stands
+- Command: `uv run python -c "from pathlib import Path; from push_lab.data import paths; from push_lab.sim import inputs; i = inputs.Inputs.load(paths.processed_dir(Path('.'), 'sim') / inputs.CACHE); print({k: float(v.p0.mean()) for k, v in i.lists.items()})"`
