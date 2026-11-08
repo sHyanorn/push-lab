@@ -82,8 +82,12 @@ def bootstrap(logged: Logged, samples: int = SAMPLES, seed: int = 0) -> FloatArr
 def evaluate(logged: Logged, samples: int = SAMPLES, seed: int = 0) -> dict[str, object]:
     """Every estimator with its 95% percentile interval, the effective sample size and the
     largest weight."""
+    return summarize(logged, bootstrap(logged, samples, seed))
+
+
+def summarize(logged: Logged, boot: FloatArray) -> dict[str, object]:
+    """``evaluate`` with the resamples ``boot`` from ``bootstrap`` already drawn."""
     est = point(logged)
-    boot = bootstrap(logged, samples, seed)
     low, high = np.nanpercentile(boot, [2.5, 97.5], axis=0)
     return {
         # SPEC Section 5: estimators whose intervals do not overlap make the estimate inconclusive

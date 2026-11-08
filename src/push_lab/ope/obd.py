@@ -157,10 +157,28 @@ def outcome_model(
     return q_logged, q_target
 
 
-def logged(log: pd.DataFrame, items: pd.DataFrame, dist: FloatArray) -> est.Logged:
+def _weights(log: pd.DataFrame, dist: FloatArray) -> FloatArray:
+    """Target probability of each logged (item, position) over its logging propensity."""
     item = log["item_id"].to_numpy(dtype=np.int64)
     position = log["position"].to_numpy(dtype=np.int64) - 1
-    weight = dist[item, position] / log["propensity_score"].to_numpy()
+    weight: FloatArray = dist[item, position] / log["propensity_score"].to_numpy()
+    return weight
+
+
+def _ratio(
+    value: float, truth: float, boot: FloatArray, truth_boot: FloatArray
+) -> dict[str, float]:
+    """An estimate over the on-policy value, with the interval of the paired resamples."""
+    ratio = boot / truth_boot
+    return {
+        "value": value / truth,
+        "ci_low": float(np.percentile(ratio, 2.5)),
+        "ci_high": float(np.percentile(ratio, 97.5)),
+    }
+
+
+def logged(log: pd.DataFrame, items: pd.DataFrame, dist: FloatArray) -> est.Logged:
+    weight = _weights(log, dist)
     q_logged, q_target = outcome_model(log, items, dist)
     return est.Logged(
         log["click"].to_numpy(dtype=np.float64), weight, q_logged, q_target, impressions(log)
@@ -185,9 +203,9 @@ def validate(
     seed: int = BOOT_SEED,
 ) -> dict[str, Any]:
     data = logged(random_log, items, dist)
-    report: Any = est.evaluate(data, samples, seed)
-    truth, truth_boot = on_policy(bts_log, samples, seed + 1)
     boot = est.bootstrap(data, samples, seed)
+    report: Any = est.summarize(data, boot)
+    truth, truth_boot = on_policy(bts_log, samples, seed + 1)
     low, high = np.percentile(truth_boot, [2.5, 97.5])
     verdicts: dict[str, Any] = {}
     for i, name in enumerate(est.ESTIMATORS):
@@ -195,13 +213,8 @@ def validate(
         relative = np.abs(boot[:, i] - truth_boot) / truth_boot
         contains = e["ci_low"] <= truth <= e["ci_high"]
         median_error = float(np.median(relative))
-        ratio = boot[:, i] / truth_boot
         verdicts[name] = {
-            "ratio_to_on_policy": {
-                "value": e["value"] / truth,
-                "ci_low": float(np.percentile(ratio, 2.5)),
-                "ci_high": float(np.percentile(ratio, 97.5)),
-            },
+            "ratio_to_on_policy": _ratio(e["value"], truth, boot[:, i], truth_boot),
             "relative_error_median": median_error,
             "relative_error_interval": np.percentile(relative, [2.5, 97.5]).tolist(),
             "rmse": float(np.sqrt(np.mean((boot[:, i] - truth_boot) ** 2))),
@@ -230,9 +243,7 @@ def empirical_target(
     position = bts_log["position"].to_numpy(dtype=np.int64) - 1
     np.add.at(dist, (bts_log["item_id"].to_numpy(dtype=np.int64), position), 1)
     dist /= dist.sum(axis=0, keepdims=True)
-    item = random_log["item_id"].to_numpy(dtype=np.int64)
-    weight = dist[item, random_log["position"].to_numpy(dtype=np.int64) - 1]
-    weight = weight / random_log["propensity_score"].to_numpy()
+    weight = _weights(random_log, dist)
     clicks = random_log["click"].to_numpy(dtype=np.float64)
     zeros = np.zeros(len(clicks))
     data = est.Logged(clicks, weight, zeros, zeros, impressions(random_log))
@@ -240,14 +251,9 @@ def empirical_target(
     value = est.point(data)["IPS"]
     boot = est.bootstrap(data, samples, seed)[:, ips]
     truth, truth_boot = on_policy(bts_log, samples, seed + 1)
-    ratio = boot / truth_boot
     return {
         "note": "Post hoc: IPS against the BTS logs' empirical (item, position) frequencies",
-        "ratio_to_on_policy": {
-            "value": value / truth,
-            "ci_low": float(np.percentile(ratio, 2.5)),
-            "ci_high": float(np.percentile(ratio, 97.5)),
-        },
+        "ratio_to_on_policy": _ratio(value, truth, boot, truth_boot),
     }
 
 

@@ -38,7 +38,6 @@ RESULTS_FILE = "ope_carryover.json"
 RUNS = Path("runs") / "ope_carryover"
 # Two log seeds, outputs apart from the registered runs (D050)
 SMOKE = Path("runs") / "smoke" / "ope_carryover"
-SMOKE_HELP = "two log seeds; writes under results/runs/smoke for pipeline checks only"
 
 
 def settings() -> list[dict[str, Any]]:
@@ -87,6 +86,11 @@ def bias_resamples(estimates: FloatArray, truths: FloatArray, seed: int) -> Floa
     return out
 
 
+def _members(settings: list[dict[str, Any]], name: str) -> list[tuple[int, int]]:
+    """(Grid index, setting id) of the settings on the grid of ``name``, in grid order."""
+    return sorted((g[1], s["id"]) for s in settings for g in s["grid"] if g[0] == name)
+
+
 def summarize(
     grid: list[dict[str, Any]],
     logs: dict[int, dict[int, Any]],
@@ -97,12 +101,12 @@ def summarize(
     for s in grid:
         sid = s["id"]
         per_setting[sid] = {"id": sid, "values": s["values"], "grid": s["grid"], "targets": {}}
+        seeds = sorted(logs[sid])
         for target in sim.TARGETS:
             values = np.array(truths[sid][target]["visit"])
             t_value, t_se = float(values.mean()), float(values.std(ddof=1) / np.sqrt(len(values)))
             entry: dict[str, Any] = {"truth": {"value": t_value, "se": t_se}}
             for name in ("IPS", "DR"):
-                seeds = sorted(logs[sid])
                 ests = [logs[sid][seed][target]["visit"]["estimates"][name] for seed in seeds]
                 entry[name] = sim.validate(ests, t_value, t_se)
                 points = np.array([e["value"] for e in ests])
@@ -110,8 +114,7 @@ def summarize(
             per_setting[sid]["targets"][target] = entry
     flips: dict[str, Any] = {}
     for name in NAMES:
-        members = sorted((g[1], s["id"]) for s in grid for g in s["grid"] if g[0] == name)
-        ids = [sid for _, sid in members]
+        ids = [sid for _, sid in _members(grid, name)]
         x = np.array([per_setting[sid]["values"][name] for sid in ids])
         flips[name] = {"values": x.tolist()}
         for target in FOCUS:
@@ -126,9 +129,7 @@ def summarize(
                     "crossings": crossings,
                     # Paired change of the bias from the first to the last grid point
                     "change": compare.interval(pts[-1] - pts[0], b[:, -1] - b[:, 0]),
-                    "result": "no flip in range"
-                    if not crossings
-                    else ("flip" if any(c["resolved"] for c in crossings) else "not resolved"),
+                    "result": compare.flip_result(crossings),
                 }
     return {"settings": [per_setting[s["id"]] for s in grid], "flips": flips}
 
@@ -144,10 +145,10 @@ def orderings(result: dict[str, Any], folder: Path) -> dict[str, Any]:
     """Post hoc: along each grid, the true difference between two targets against its per-day
     estimate (mean over log seeds); reversed where both intervals exclude 0 with opposite signs."""
     settings = result["settings"]
+    by_id = {s["id"]: s for s in settings}
     out: dict[str, Any] = {}
     for name in NAMES:
-        members = sorted((g[1], s["id"]) for s in settings for g in s["grid"] if g[0] == name)
-        by_id = {s["id"]: s for s in settings}
+        members = _members(settings, name)
         entry: dict[str, Any] = {"values": [by_id[i]["values"][name] for _, i in members]}
         for a, b in PAIRS:
             pair: dict[str, Any] = {"truth": []} | {e: [] for e in ("DR", "IPS")}
@@ -155,7 +156,7 @@ def orderings(result: dict[str, Any], folder: Path) -> dict[str, Any]:
             for _, i in members:
                 ta, tb = by_id[i]["targets"][a]["truth"], by_id[i]["targets"][b]["truth"]
                 se = float(np.hypot(ta["se"], tb["se"]))
-                truth = _interval(ta["value"] - tb["value"], se, 1.959964)
+                truth = _interval(ta["value"] - tb["value"], se, sim.Z)
                 pair["truth"].append(truth)
                 logs = [
                     json.loads((folder / f"{i}_{seed}.json").read_text("utf-8"))
@@ -244,7 +245,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument(
         "--post-hoc", action="store_true", help="add the post hoc orderings to existing results"
     )
-    parser.add_argument("--smoke", action="store_true", help=SMOKE_HELP)
+    parser.add_argument("--smoke", action="store_true", help=sim.SMOKE_HELP)
     args = parser.parse_args(argv)
     target = args.root / paths.RESULTS / RESULTS_FILE
     commit = code_commit(args.root)

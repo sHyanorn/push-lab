@@ -47,6 +47,8 @@ RUNS = Path("runs") / "ope"
 # Two log seeds, outputs apart from the registered runs (D050)
 SMOKE = Path("runs") / "smoke" / "ope"
 SMOKE_HELP = "two log seeds; writes under results/runs/smoke for pipeline checks only"
+# Two-sided 97.5% quantile of the normal distribution
+Z = 1.959964
 WORLD_SEED = 10_100
 FOLDS = 2
 PER_SLOT = 1 / SLOTS
@@ -290,7 +292,7 @@ def exact_truth(ctx: Context, params: Params, target: str) -> dict[str, float]:
     return {"visit": float(visit.mean()), "opens": float(opens.mean())}
 
 
-def wilson(hits: int, n: int, z: float = 1.959964) -> tuple[float, float]:
+def wilson(hits: int, n: int, z: float = Z) -> tuple[float, float]:
     p = hits / n
     centre = (p + z**2 / (2 * n)) / (1 + z**2 / n)
     half = z * np.sqrt(p * (1 - p) / n + z**2 / (4 * n**2)) / (1 + z**2 / n)
@@ -310,13 +312,13 @@ def validate(estimates: list[dict[str, Any]], v: float, v_se: float) -> dict[str
         reasons.append("under-coverage")
     if low > 0.95:
         reasons.append("over-coverage")
-    if abs(bias) > 1.959964 * se:
+    if abs(bias) > Z * se:
         reasons.append("bias")
     return {
         "bias": {
             "value": float(bias),
-            "ci_low": float(bias - 1.959964 * se),
-            "ci_high": float(bias + 1.959964 * se),
+            "ci_low": float(bias - Z * se),
+            "ci_high": float(bias + Z * se),
         },
         "rmse": float(np.sqrt(np.mean((values - v) ** 2))),
         "coverage": {"value": hits / len(estimates), "ci_low": low, "ci_high": high},
