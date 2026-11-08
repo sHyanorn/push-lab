@@ -16,12 +16,12 @@ Hour estimates are for planning; the required core is about 85 hours. If behind,
 - [x] MIT license, README stub, `DATA_SOURCES.md` with attributions
 
 ## M1 Data (8 h)
-- [ ] KuaiRand-Pure download with checksum, conversion to Parquet, `tab == 1` filter
-- [ ] Hillstrom download; Criteo Uplift v2.1 from Hugging Face with a seeded 10% training sample
-- [ ] Open Bandit Dataset small sample download
-- [ ] Synthetic fixtures with the same schemas for CI
-- [ ] Data quality report: row counts, missing values, label rates by tab, treatment balance
-- [ ] Measure load times and memory; record in DECISIONS.md
+- [x] KuaiRand-Pure download with checksum, conversion to Parquet, `tab == 1` filter
+- [x] Hillstrom download; Criteo Uplift v2.1 from Hugging Face with a seeded 10% training sample
+- [x] Open Bandit Dataset small sample download
+- [x] Synthetic fixtures with the same schemas for CI
+- [x] Data quality report: row counts, missing values, label rates by tab, treatment balance
+- [x] Measure load times and memory; record in DECISIONS.md
 
 ## M2 Recall and ranking (15 h)
 - [ ] METHODS.md: split rules, two-tower loss with log-Q correction, cascade, metrics, ranking targets
