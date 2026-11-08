@@ -1,4 +1,5 @@
 {
+ "commit": "3f26e5d7a591ded72a9f2c55612bc239a8df79b8",
  "tier": "B for an estimator that passes; the check itself is on real data",
  "target": "BTS with the production prior of the Men's campaign, no updates",
  "bts_distribution": {
@@ -9,33 +10,36 @@
  "small": {
   "on_policy": {
    "value": 0.0069,
-   "ci_low": 0.0053,
-   "ci_high": 0.0085
+   "ci_low": 0.0053131501763924085,
+   "ci_high": 0.008504635699627904
   },
   "random_rows": 10000,
+  "random_impressions": 9390,
+  "bts_impressions": 9685,
   "random_clicks": 46,
   "bts_rows": 10000,
   "bts_clicks": 69,
+  "inconclusive": false,
   "estimates": {
    "DM": {
-    "value": 0.004462208987412252,
-    "ci_low": 0.004370402175711549,
-    "ci_high": 0.004561045284291133
+    "value": 0.004771663228680699,
+    "ci_low": 0.004645541973261443,
+    "ci_high": 0.0048965050734386725
    },
    "IPS": {
-    "value": 0.004540859800000001,
-    "ci_low": 0.00246099174,
-    "ci_high": 0.006929985484999999
+    "value": 0.0045408598,
+    "ci_low": 0.002408378378739517,
+    "ci_high": 0.007243123200708526
    },
    "SNIPS": {
-    "value": 0.0046110727242601405,
-    "ci_low": 0.0024831540675621356,
-    "ci_high": 0.006888060360429144
+    "value": 0.00461107272426015,
+    "ci_low": 0.002474714054009958,
+    "ci_high": 0.007388056980881261
    },
    "DR": {
-    "value": 0.004714878761930039,
-    "ci_low": 0.0025785499415178935,
-    "ci_high": 0.0071483153695035
+    "value": 0.004514835701843617,
+    "ci_low": 0.0024007417121832877,
+    "ci_high": 0.007296628896931585
    }
   },
   "effective_size": 2476.118691826204,
@@ -44,61 +48,61 @@
   "validation": {
    "DM": {
     "ratio_to_on_policy": {
-     "value": 0.6466969546974278,
-     "ci_low": 0.5266200915895848,
-     "ci_high": 0.8459941799846217
+     "value": 0.6915453954609709,
+     "ci_low": 0.5586961498757956,
+     "ci_high": 0.8995999592477218
     },
-    "relative_error_median": 0.3545735220043932,
+    "relative_error_median": 0.3121201181380343,
     "relative_error_interval": [
-     0.1540058200153783,
-     0.47337990841041516
+     0.1004000407522781,
+     0.4413038501242043
     ],
-    "rmse": 0.002589212988369274,
+    "rmse": 0.0023097246207203726,
     "interval_contains_on_policy": false,
     "validated": false
    },
    "IPS": {
     "ratio_to_on_policy": {
-     "value": 0.6580956231884059,
-     "ci_low": 0.34450692746242095,
-     "ci_high": 1.0825037099014778
+     "value": 0.6580956231884058,
+     "ci_low": 0.3515583153996429,
+     "ci_high": 1.1158416785347365
     },
-    "relative_error_median": 0.36463309221748397,
+    "relative_error_median": 0.35344594260547946,
     "relative_error_interval": [
-     0.031024693650793585,
-     0.655493072537579
+     0.02794779396866424,
+     0.6484416846003569
     ],
-    "rmse": 0.002787498793256426,
+    "rmse": 0.002796402137329659,
     "interval_contains_on_policy": true,
     "validated": true
    },
    "SNIPS": {
     "ratio_to_on_policy": {
-     "value": 0.6682714093130638,
-     "ci_low": 0.3511707654971136,
-     "ci_high": 1.1072178731199815
+     "value": 0.6682714093130653,
+     "ci_low": 0.35267009879566497,
+     "ci_high": 1.122686331174712
     },
-    "relative_error_median": 0.35390375752139314,
+    "relative_error_median": 0.34572445244282285,
     "relative_error_interval": [
-     0.020056968801543586,
-     0.6488292345028863
+     0.02538250695667855,
+     0.647329901204335
     ],
-    "rmse": 0.002733642185248793,
-    "interval_contains_on_policy": false,
-    "validated": false
+    "rmse": 0.0027467598783360017,
+    "interval_contains_on_policy": true,
+    "validated": true
    },
    "DR": {
     "ratio_to_on_policy": {
-     "value": 0.6833157625985563,
-     "ci_low": 0.36097921518905607,
-     "ci_high": 1.1013622293960093
+     "value": 0.6543240147599445,
+     "ci_low": 0.33951116406679954,
+     "ci_high": 1.109274691853234
     },
-    "relative_error_median": 0.33826258885337845,
+    "relative_error_median": 0.36124052727090483,
     "relative_error_interval": [
-     0.021229250190801612,
-     0.6390207848109438
+     0.026820541858013185,
+     0.6604888359332005
     ],
-    "rmse": 0.0026531518109584916,
+    "rmse": 0.002834480036497068,
     "interval_contains_on_policy": true,
     "validated": true
    }
@@ -107,33 +111,36 @@
  "full": {
   "on_policy": {
    "value": 0.006742727014339116,
-   "ci_low": 0.006668899119533995,
-   "ci_high": 0.00681949159421413
+   "ci_low": 0.006653521902141224,
+   "ci_high": 0.006839616079619463
   },
   "random_rows": 452949,
+  "random_impressions": 136474,
+  "bts_impressions": 1254978,
   "random_clicks": 2321,
   "bts_rows": 4077727,
   "bts_clicks": 27495,
+  "inconclusive": false,
   "estimates": {
    "DM": {
-    "value": 0.005926567486004195,
-    "ci_low": 0.005908019307783906,
-    "ci_high": 0.00594529501497226
+    "value": 0.005978278001109388,
+    "ci_low": 0.005943418624862554,
+    "ci_high": 0.006010642733059262
    },
    "IPS": {
-    "value": 0.00600730650912136,
-    "ci_low": 0.0055168595979900635,
-    "ci_high": 0.006479463941415038
+    "value": 0.006007306509121342,
+    "ci_low": 0.005455926292068979,
+    "ci_high": 0.006511524482557392
    },
    "SNIPS": {
-    "value": 0.00612317726372802,
-    "ci_low": 0.0056290289189843135,
-    "ci_high": 0.006615898599104717
+    "value": 0.006123177263722663,
+    "ci_low": 0.005563802644914273,
+    "ci_high": 0.0066340664309769894
    },
    "DR": {
-    "value": 0.006075889040908505,
-    "ci_low": 0.0055999129128126305,
-    "ci_high": 0.006547846555534314
+    "value": 0.006041581527642177,
+    "ci_low": 0.005517301098036345,
+    "ci_high": 0.006518905868105563
    }
   },
   "effective_size": 112213.08957107796,
@@ -142,61 +149,61 @@
   "validation": {
    "DM": {
     "ratio_to_on_policy": {
-     "value": 0.8789570560102355,
-     "ci_low": 0.8689041907956961,
-     "ci_high": 0.8891666720545165
+     "value": 0.886626136338599,
+     "ci_low": 0.8729545734767307,
+     "ci_high": 0.8991948127246088
     },
-    "relative_error_median": 0.12116898976150264,
+    "relative_error_median": 0.11349253459165823,
     "relative_error_interval": [
-     0.11083332794548348,
-     0.1310958092043039
+     0.10080518727539126,
+     0.1270454265232693
     ],
-    "rmse": 0.0008176639335486756,
+    "rmse": 0.0007679901648592754,
     "interval_contains_on_policy": false,
     "validated": false
    },
    "IPS": {
     "ratio_to_on_policy": {
-     "value": 0.8909312947634085,
-     "ci_low": 0.8169458010768341,
-     "ci_high": 0.9636180545873354
+     "value": 0.8909312947634057,
+     "ci_low": 0.80977395876837,
+     "ci_high": 0.9690720761504081
     },
-    "relative_error_median": 0.11053217340567467,
+    "relative_error_median": 0.11200950895454476,
     "relative_error_interval": [
-     0.036381945412664554,
-     0.18305419892316588
+     0.03103961207591107,
+     0.19022604123163006
     ],
-    "rmse": 0.0007745578694777389,
+    "rmse": 0.0007947395786788055,
     "interval_contains_on_policy": false,
     "validated": false
    },
    "SNIPS": {
     "ratio_to_on_policy": {
-     "value": 0.9081158484848105,
-     "ci_low": 0.8337625014863629,
-     "ci_high": 0.9828830295547776
+     "value": 0.908115848484016,
+     "ci_low": 0.8249097242337285,
+     "ci_high": 0.9871017273460013
     },
-    "relative_error_median": 0.09268014454278053,
+    "relative_error_median": 0.09529245362007352,
     "relative_error_interval": [
-     0.018013040426012882,
-     0.16623749851363703
+     0.015984054266676498,
+     0.1750902757662714
     ],
-    "rmse": 0.0006667572475184383,
+    "rmse": 0.0006889370993295708,
     "interval_contains_on_policy": false,
     "validated": false
    },
    "DR": {
     "ratio_to_on_policy": {
-     "value": 0.9011026292459252,
-     "ci_low": 0.8279766584178264,
-     "ci_high": 0.9731880617566887
+     "value": 0.896014552390171,
+     "ci_low": 0.8159625624347296,
+     "ci_high": 0.967859203272055
     },
-    "relative_error_median": 0.09975662385823816,
+    "relative_error_median": 0.10760180525602292,
     "relative_error_interval": [
-     0.02681193824331127,
-     0.17202334158217356
+     0.03216567819645289,
+     0.18403743756527033
     ],
-    "rmse": 0.0007090967765387336,
+    "rmse": 0.0007604273984607976,
     "interval_contains_on_policy": false,
     "validated": false
    }
