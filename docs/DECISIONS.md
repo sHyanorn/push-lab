@@ -117,3 +117,8 @@
 - `efSearch = 1024` meets the 0.99 requirement at both K. Ties do not explain the gap: 7,231 of the 7,583 item vectors are distinct and a tie-aware overlap gives the same numbers
 - At this catalog size exact search is faster (0.2 s). HNSW stays in the pipeline because it is what scales to KuaiRand-1K (optional); the evaluation reports both
 
+
+## D019 Model-internal truncation measures on a user sample
+- Date: 2026-11-08
+- Top-1 agreement, score regret and latency need the fine ranker's score for every catalog item. For all 13,500 evaluation users that is about 102M feature rows, beyond the memory budget. They are computed for 1,000 evaluation users drawn with `numpy.random.default_rng(0)`; survival needs no fine scores and covers every evaluation user
+- METHODS Section 4 says "per evaluation user"; this narrows the model-internal measures only, which carry no significance claims
