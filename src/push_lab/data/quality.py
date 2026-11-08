@@ -32,9 +32,18 @@ TRAIN_TOLERANCE = 0.01
 ARM_SHARE_RANGE = (0.45, 0.55)
 
 
-# Columns the checks need; other tables are small enough to load whole
-COLUMNS: dict[tuple[str, str], list[str]] = {
+_LOG_COLUMNS = ["tab", "is_click", "is_rand"]
+
+# Columns each check reads (None: the whole table); other tables get only the
+# schema and metadata checks
+COLUMNS: dict[tuple[str, str], list[str] | None] = {
+    ("kuairand", "log_standard_early"): _LOG_COLUMNS,
+    ("kuairand", "log_standard_late"): _LOG_COLUMNS,
+    ("kuairand", "log_random"): _LOG_COLUMNS,
+    ("hillstrom", "hillstrom"): None,
     ("criteo", "criteo"): ["treatment", "visit", "conversion", "train"],
+    ("obd", "random_men"): ["click", "propensity_score"],
+    ("obd", "bts_men"): ["click", "propensity_score"],
 }
 
 
@@ -83,7 +92,9 @@ def _table(
         "rows": n_rows,
         "missing_share": {c: _round(v / n_rows) for c, v in nulls.items() if v and n_rows},
     }
-    df = pd.read_parquet(path, columns=COLUMNS.get(key))
+    if key not in COLUMNS:
+        return None
+    df = pd.read_parquet(path, columns=COLUMNS[key])
     rows = PUBLISHED.get(f"{label}.rows")
     if published and rows is not None:
         report.check(n_rows == rows, f"{label}: {n_rows} rows, published {rows:.0f}")

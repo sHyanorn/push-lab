@@ -17,6 +17,8 @@ HILLSTROM_CONTROL = "No E-Mail"
 CRITEO_TRAIN_FRACTION = 0.1
 CRITEO_SEED = 0
 CRITEO_BLOCK_BYTES = 16 << 20
+# Rows buffered per Parquet row group
+CRITEO_ROW_GROUP = 1 << 20
 
 
 def _check_columns(names: list[str], schema: schemas.Schema, source: Path) -> None:
@@ -61,12 +63,22 @@ def convert_criteo(
         convert_options=pacsv.ConvertOptions(column_types=schemas.to_arrow(schemas.CRITEO)),
     )
     _check_columns(reader.schema.names, schemas.CRITEO, csv_gz)
+    pending: list[pa.RecordBatch] = []
     with pq.ParquetWriter(out, target) as writer:
         for batch in reader:
             train = pa.array(rng.random(batch.num_rows) < CRITEO_TRAIN_FRACTION)
-            columns = [*batch.columns, train]
-            writer.write_batch(pa.RecordBatch.from_arrays(columns, schema=target))
+            pending.append(pa.RecordBatch.from_arrays([*batch.columns, train], schema=target))
+            if sum(b.num_rows for b in pending) >= CRITEO_ROW_GROUP:
+                _write_group(writer, pending)
+                pending = []
+        if pending:
+            _write_group(writer, pending)
     return out
+
+
+def _write_group(writer: pq.ParquetWriter, batches: list[pa.RecordBatch]) -> None:
+    table = pa.Table.from_batches(batches)
+    writer.write_table(table, row_group_size=table.num_rows)
 
 
 def load_hillstrom(path: Path) -> pd.DataFrame:

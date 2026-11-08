@@ -17,7 +17,7 @@
 - KuaiRand-Pure for recall, ranking and the simulator: 47 MB, downloads non-interactively from Zenodo, and 1,186,059 of its rows are random exposures, enough to split by user between ranker evaluation and the simulator's response model
 - Only `tab == 1`: `is_click` means a click in the two-column UI and a valid play in the single-column UI, and 99% of random exposures are tab 1
 - Hillstrom for uplift in CI (4 MB). Contrast: women's e-mail against no e-mail
-- Criteo Uplift v2.1 from Hugging Face; scikit-uplift's `fetch_criteo` mirror returned 404 on 2026-11-08, and v1 has a known leak. Train on a 10% sample, evaluate on the remaining rows: Diemert et al. (2021) found methods indistinguishable below about 1M test points
+- Criteo Uplift v2.1 from Hugging Face; scikit-uplift's `fetch_criteo` mirror returned 404 on 2026-11-08, and v1 has a known leak. Train on a 10% sample, evaluate on the remaining rows: Diemert et al. (2021) found methods indistinguishable below about 1M test points. The sample is a boolean `train` column in the one Parquet file, drawn with seed 0
 - Open Bandit Dataset small sample, Men's campaign, for OPE validation: two logging policies with known propensities
 - Rejected: MIND (research-only license), X5 (no license, download may need login), KuaiRec (KuaiRand already provides random exposures)
 - Limitation: no dataset links push sends with consumption (SPEC Section 12)
@@ -72,7 +72,7 @@
 - Checksums: KuaiRand-Pure md5 as published by Zenodo; Criteo sha256 is the Git LFS object id published by Hugging Face; Hillstrom and the four Open Bandit Dataset files have no published checksum, so their sha256 was computed on 2026-11-08, the OBD files from a commit of the Open Bandit Pipeline repository pinned in `sources.py`
 - Hillstrom is fetched over plain HTTP: the host answers HTTPS with a self-signed default certificate. The pinned size and sha256 detect any change in transit or at the source, and the file is only read as CSV, so the risk is a failed download, not a silent one
 - Zenodo ignores Range requests and sends the whole file again; the downloader detects this and restarts the file
-- Criteo is converted in 16 MB CSV blocks: 64 MB blocks raised peak memory from 0.9 GB to 2.6 GB with no gain in speed
+- Criteo is converted in 16 MB CSV blocks: 64 MB blocks raised peak memory from 0.9 GB to 2.6 GB with no gain in speed. Blocks are buffered into row groups of about 1M rows, so a `train` filter can skip groups
 - Measured on 2026-11-08 in a cloud container (4 vCPU, 15 GB RAM, Linux 6.18, Python 3.14.10), from empty directories; peak memory is the maximum resident set size from GNU time; download times depend on the network
 
 | Step | Size | Time | Peak memory |
@@ -83,9 +83,9 @@
 | Download OBD sample | 6.6 MB | 0.8 s | 36 MB |
 | Prepare KuaiRand-Pure (extracted CSV 203 MB) | 42 MB Parquet | 2.0 s | 0.54 GB |
 | Prepare Hillstrom | 0.3 MB Parquet | 0.5 s | 0.26 GB |
-| Prepare Criteo | 252 MB Parquet | 11 s | 0.89 GB |
+| Prepare Criteo | 252 MB Parquet, 13 row groups | 10 s | 0.93 GB |
 | Prepare OBD sample | 0.5 MB Parquet | 0.6 s | 0.24 GB |
-| Quality report | | 0.8 s | 0.93 GB |
+| Quality report (reads only the columns it checks) | | 0.6 s | 0.46 GB |
 | Load KuaiRand random exposures, tab 1 (1,178,025 rows) | 170 MB in pandas | 0.1 s | 0.77 GB |
 | Load Criteo, all rows | 1.35 GB in pandas | 0.7 s | 4.7 GB |
 | Load Criteo, training sample (1,398,727 rows) | 134 MB in pandas | 0.5 s | 1.0 GB |
