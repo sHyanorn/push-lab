@@ -24,8 +24,65 @@
       "users": 2291,
       "tier": "A"
     },
-    "click_rate": 0.171158,
-    "mean_predicted": 0.168306,
+    "click_rate": {
+      "value": 0.171158,
+      "ci_low": 0.163176,
+      "ci_high": 0.179141,
+      "users": 2700,
+      "tier": "A"
+    },
+    "mean_predicted": {
+      "value": 0.168306,
+      "ci_low": 0.162372,
+      "ci_high": 0.173554,
+      "users": 2700,
+      "tier": "A"
+    },
+    "note": "validation users are held out from fitting but drive early stopping",
+    "feature_gain_share": {
+      "onehot_feat3": 0.256779,
+      "user_click_rate": 0.214156,
+      "onehot_feat8": 0.168305,
+      "user_long_rate": 0.129966,
+      "first_tag": 0.090491,
+      "tower_score": 0.060694,
+      "user_tag_click_rate": 0.023488,
+      "popularity_rank": 0.018654,
+      "video_duration": 0.0129,
+      "user_per_day": 0.008209,
+      "item_per_day": 0.006072,
+      "onehot_feat0": 0.003406,
+      "item_click_rate": 0.002018,
+      "onehot_feat7": 0.002007,
+      "upload_type": 0.001841,
+      "onehot_feat1": 0.000338,
+      "onehot_feat2": 0.000187,
+      "log_fans_user_num": 0.000155,
+      "log_follow_user_num": 8.5e-05,
+      "item_long_rate": 5.9e-05,
+      "onehot_feat11": 5.2e-05,
+      "user_active_degree": 5.1e-05,
+      "onehot_feat4": 4.4e-05,
+      "register_days": 4e-05,
+      "is_lowactive_period": 0.0,
+      "is_live_streamer": 0.0,
+      "is_video_author": 0.0,
+      "register_days_range": 0.0,
+      "onehot_feat5": 0.0,
+      "onehot_feat6": 0.0,
+      "onehot_feat9": 0.0,
+      "onehot_feat10": 0.0,
+      "onehot_feat12": 0.0,
+      "onehot_feat13": 0.0,
+      "onehot_feat14": 0.0,
+      "onehot_feat15": 0.0,
+      "onehot_feat16": 0.0,
+      "onehot_feat17": 0.0,
+      "log_friend_user_num": 0.0,
+      "video_type": 0.0,
+      "days_since_upload": 0.0,
+      "user_author_click_rate": 0.0
+    },
     "reliability_by_decile": [
       {
         "mean_predicted": 0.05252,
@@ -158,8 +215,9 @@
       "ci_low": 0.382774,
       "ci_high": 0.394431,
       "users": 27285,
-      "tier": "A",
-      "chance": 0.25
+      "tier": "descriptive",
+      "chance_if_independent": 0.29402,
+      "users_without_policy_period_rows": 2795
     },
     "hourly_activity_utc8": [
       0.033057,
@@ -188,6 +246,11 @@
       0.051126
     ],
     "lowest_activity_hour_utc8": 4,
+    "date_field_matches_local_date": {
+      "utc+7": 0.959466,
+      "utc+8": 0.992523,
+      "utc+9": 0.956335
+    },
     "timing_eta": {
       "0.02": 0.033334,
       "0.1": 0.163659,
@@ -255,30 +318,6 @@
         0.1
       ],
       "opt_out_stress": 0.005
-    },
-    "candidate_lists": {
-      "cascade": {
-        "p0_first_item": {
-          "p5": 0.080732,
-          "p25": 0.17025,
-          "p50": 0.287313,
-          "p75": 0.376128,
-          "p95": 0.488641
-        },
-        "p0_mean_over_list": 0.276751,
-        "tier": "model-internal"
-      },
-      "two_tower": {
-        "p0_first_item": {
-          "p5": 0.083084,
-          "p25": 0.181191,
-          "p50": 0.305381,
-          "p75": 0.392567,
-          "p95": 0.497463
-        },
-        "p0_mean_over_list": 0.277445,
-        "tier": "model-internal"
-      }
     }
   },
   "exploration": {
@@ -291,12 +330,12 @@
   },
   "quick_sample_users": 5000,
   "timings_s": {
-    "two_tower_fit_s_20220422": 25.89034,
-    "two_tower_fit_s_20220415": 19.29757,
-    "fine_fit_s": 4.0,
-    "response_fit_s": 4.8,
-    "candidates_s": 49.3,
-    "inputs_s": 104.9,
-    "one_run_all_users_s": 0.3
+    "two_tower_fit_s_20220422": 25.466094,
+    "two_tower_fit_s_20220415": 19.465496,
+    "fine_fit_s": 4.1,
+    "response_fit_s": 4.6,
+    "candidates_s": 48.9,
+    "inputs_s": 106.8,
+    "one_run_all_users_s": 0.4
   }
 }
