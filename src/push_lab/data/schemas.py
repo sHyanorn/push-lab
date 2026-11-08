@@ -128,5 +128,37 @@ KUAIRAND_VIDEOS_STATISTIC: Schema = {
 }
 
 
+HILLSTROM: Schema = {
+    "recency": _INT,
+    "history_segment": _STR,
+    "history": _FLOAT,
+    "mens": _INT,
+    "womens": _INT,
+    "zip_code": _STR,
+    "newbie": _INT,
+    "channel": _STR,
+    "segment": _STR,
+    "visit": _INT,
+    "conversion": _INT,
+    "spend": _FLOAT,
+}
+
+# Processed Hillstrom adds the treatment indicator for the chosen contrast
+HILLSTROM_PROCESSED: Schema = {**HILLSTROM, "treatment": _INT}
+
+_FLAG = pa.int8()
+
+CRITEO: Schema = {
+    **{f"f{i}": _FLOAT for i in range(12)},
+    "treatment": _FLAG,
+    "conversion": _FLAG,
+    "visit": _FLAG,
+    "exposure": _FLAG,
+}
+
+# Processed Criteo adds a seeded training-sample flag (D004)
+CRITEO_PROCESSED: Schema = {**CRITEO, "train": pa.bool_()}
+
+
 def to_arrow(schema: Schema) -> pa.Schema:
     return pa.schema(list(schema.items()))

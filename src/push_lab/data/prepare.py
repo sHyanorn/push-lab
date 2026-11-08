@@ -5,8 +5,8 @@ import sys
 from collections.abc import Callable, Sequence
 from pathlib import Path
 
-from push_lab.data import kuairand, paths
-from push_lab.data.sources import KUAIRAND_PURE
+from push_lab.data import kuairand, paths, uplift_trials
+from push_lab.data.sources import CRITEO_UPLIFT, HILLSTROM, KUAIRAND_PURE
 
 
 def _kuairand(root: Path) -> list[Path]:
@@ -16,8 +16,22 @@ def _kuairand(root: Path) -> list[Path]:
     )
 
 
+def _hillstrom(root: Path) -> list[Path]:
+    csv = paths.raw_dir(root, "hillstrom") / HILLSTROM.filename
+    out = paths.processed_dir(root, "hillstrom") / "hillstrom.parquet"
+    return [uplift_trials.convert_hillstrom(csv, out)]
+
+
+def _criteo(root: Path) -> list[Path]:
+    csv_gz = paths.raw_dir(root, "criteo") / CRITEO_UPLIFT.filename
+    out = paths.processed_dir(root, "criteo") / "criteo.parquet"
+    return [uplift_trials.convert_criteo(csv_gz, out)]
+
+
 PREPARERS: dict[str, Callable[[Path], list[Path]]] = {
     "kuairand": _kuairand,
+    "hillstrom": _hillstrom,
+    "criteo": _criteo,
 }
 
 
