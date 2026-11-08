@@ -55,7 +55,8 @@ def convert_criteo(
     out.parent.mkdir(parents=True, exist_ok=True)
     target = schemas.to_arrow(schemas.CRITEO_PROCESSED)
     reader = pacsv.open_csv(
-        pa.input_stream(csv_gz, compression="gzip"),
+        # pyarrow-stubs 20 types the argument narrower than pyarrow 26 accepts
+        pa.input_stream(csv_gz, compression="gzip"),  # type: ignore[arg-type]
         read_options=pacsv.ReadOptions(block_size=block_bytes),
         convert_options=pacsv.ConvertOptions(column_types=schemas.to_arrow(schemas.CRITEO)),
     )

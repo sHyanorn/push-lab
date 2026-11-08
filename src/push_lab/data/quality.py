@@ -73,7 +73,11 @@ def _table(
         group = meta.row_group(g)
         for c in range(group.num_columns):
             column = group.column(c)
-            nulls[column.path_in_schema] += column.statistics.null_count
+            stats = column.statistics
+            if stats is None or stats.null_count is None:
+                report.errors.append(f"{label}: no null-count statistics in {path.name}")
+                return None
+            nulls[column.path_in_schema] += stats.null_count
     n_rows = meta.num_rows
     report.tables[label] = {
         "rows": n_rows,

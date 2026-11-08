@@ -4,26 +4,27 @@ CI never downloads data. Tests and later milestones write this tree with
 ``write_processed`` and read it with the same loaders as the real data.
 """
 
-from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 
 from push_lab.data import kuairand, paths, schemas
 
-Generator = Callable[[np.random.Generator, int], pd.DataFrame]
+Columns = dict[str, list[Any] | npt.NDArray[Any]]
 
 N_USERS = 50
 N_VIDEOS = 80
 N_AUTHORS = 20
 
 
-def _fill(schema: schemas.Schema, rng: np.random.Generator, n: int) -> dict[str, object]:
+def _fill(schema: schemas.Schema, rng: np.random.Generator, n: int) -> Columns:
     """Type-correct default columns; table generators override the ones that matter."""
-    columns: dict[str, object] = {}
+    columns: Columns = {}
     for name, dtype in schema.items():
         if pa.types.is_floating(dtype):
             columns[name] = rng.random(n)
@@ -36,7 +37,7 @@ def _fill(schema: schemas.Schema, rng: np.random.Generator, n: int) -> dict[str,
     return columns
 
 
-def _frame(schema: schemas.Schema, columns: dict[str, object]) -> pd.DataFrame:
+def _frame(schema: schemas.Schema, columns: Columns) -> pd.DataFrame:
     table = pa.Table.from_pydict(columns, schema=schemas.to_arrow(schema))
     df: pd.DataFrame = table.to_pandas()
     return df
