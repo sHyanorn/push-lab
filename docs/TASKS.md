@@ -70,9 +70,9 @@ Hour estimates are for planning; the required core is about 85 hours. If behind,
 ## M7 Off-policy evaluation (8 h)
 - [x] METHODS.md: DM, IPS, SNIPS, DR
 - [x] Estimators with effective sample size and largest weight, tested on synthetic bandit data
-- [ ] Validation on Open Bandit Dataset (Men's campaign): random logs to BTS value, RMSE against the on-policy mean over bootstrap
-- [ ] Validation in the simulator: estimates from exploration logs against simulator truth, for policies near and far from the logging policy
-- [ ] Evidence matrix: each claim with its tier
+- [x] Validation on Open Bandit Dataset (Men's campaign): random logs to BTS value, RMSE against the on-policy mean over bootstrap
+- [x] Validation in the simulator: estimates from exploration logs against simulator truth, for policies near and far from the logging policy
+- [x] Evidence matrix: each claim with its tier
 
 ## M8 Presentation (6 h)
 - [ ] Demo notebook tells the core story

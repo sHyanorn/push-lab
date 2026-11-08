@@ -351,3 +351,22 @@
 - Unchanged: the estimators, outcome models, targets, rewards, users, world seed, log seeds 1,001 to 1,050, bootstrap, settings and the decision rule of METHODS 14.4, including that a failure of DR or IPS in the control for T, T½ or N makes the run an implementation failure
 - The OBD check is rerun only to add each estimate's ratio to the on-policy value with its paired-resample interval; every other OBD number must come out unchanged, which the rerun checks
 - Cost: about 22 minutes for the logs as before, plus about 1 minute for the 1,200 truth runs
+
+## D045 Amended simulator check: results
+- Date: 2026-11-08
+- Run alone at commit 553fad2 with the design of D044: 1,427 s on 4 processes, peak 4.3 GB. The OBD rerun before it reproduced every earlier OBD number and added each estimate's ratio to the on-policy value: on the full campaign IPS 0.891 (0.817 to 0.964) and DR 0.901 (0.828 to 0.973), on the small sample IPS 0.66 (0.34 to 1.08) and DR 0.68 (0.36 to 1.10)
+- Pre-registered results (METHODS 14.4, D044), Tier C, reported as they came out; bias of DR in active-day share with its 95% interval, coverage over 50 log seeds:
+
+| Target | Control (exact truth) | Reference (200 independent truth runs) |
+|---|---|---|
+| T | +0.0002 (−0.0003 to 0.0006), 1.00, validated | +0.0003 (−0.0002 to 0.0008), 1.00, validated |
+| T½ | +0.0004 (−0.0001 to 0.0009), 1.00, validated | −0.0091 (−0.0096 to −0.0086), 0.04, not validated |
+| R | −0.0000 (−0.0011 to 0.0010), 1.00, validated | −0.0001 (−0.0011 to 0.0008), 1.00, validated |
+| N | +0.0006 (−0.0001 to 0.0014), 1.00, validated | −0.0181 (−0.0189 to −0.0173), 0.00, not validated |
+| F | −0.0003 (−0.0022 to 0.0015), 0.98, validated | +0.0003 (−0.0017 to 0.0023), 0.98, validated |
+| T2 | −0.0015 (−0.0031 to 0.0001), 0.96, validated | +0.0182 (0.0166 to 0.0199), 0.18, not validated |
+
+- In the control, IPS, SNIPS and DR are validated for all six targets and DM for none, so the implementation check passes. At the reference, IPS and DR give the same verdicts as each other for every target: validated for T, R and F, not validated for T½, N and T2 (bias and under-coverage). SNIPS agrees; DM is biased everywhere except F
+- Reading: per-day OPE is accurate here for the targets that send about one push a day, as the logs do (T, R, F, even with weights up to 123), and biased for those whose volume differs: it underestimates half the volume by 1.6% and no pushes by 3.1%, and overestimates two pushes a day by 3.3% (DR; IPS within 0.1 points). Fatigue, annoyance, opt-out and return carry over across days and per-day weights cannot see them, so the bias favors sending more: a per-day estimate makes extra pushes look better than they are in the simulator. The expectation stated before the run named N and T2 as biased and T and T½ as close; T½ is biased too
+- Secondary reward, opens per user-day at the reference: DR is validated for T, R, N and F and not for T½ and T2 (bias +0.0057 opens per user-day for T2)
+- Both runs are reported: the first run's registered verdict (D043), an implementation failure caused by a truth estimate shared across targets, stands; the amended run passes its implementation check and gives the results above

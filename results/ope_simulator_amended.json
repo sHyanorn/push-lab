@@ -1,0 +1,1900 @@
+{
+ "commit": "553fad2928f7d84043db6e4e0db22e7c4f113328",
+ "tier": "C",
+ "note": "Estimates on simulator logs checked against simulator truth; nothing here is Tier B.",
+ "users": 5000,
+ "log_seeds": 50,
+ "truth": "exact in the control; 200 independent online runs per target otherwise",
+ "world_seed": 10100,
+ "control": {
+  "T": {
+   "visit": {
+    "truth": {
+     "value": 0.5850339722894013,
+     "se": 0.0,
+     "method": "exact"
+    },
+    "effective_size_median": 85849.50000000006,
+    "max_weight": 1.6303209121136026,
+    "DM": {
+     "bias": {
+      "value": 0.0008976097262348715,
+      "ci_low": 0.0004900067392898681,
+      "ci_high": 0.0013052127131798748
+     },
+     "rmse": 0.0017102386407854457,
+     "coverage": {
+      "value": 0.98,
+      "ci_low": 0.8950455630610349,
+      "ci_high": 0.9964607407674954
+     },
+     "mean_interval_width": 0.007864259922671132,
+     "verdict": "not validated",
+     "reasons": [
+      "bias"
+     ]
+    },
+    "IPS": {
+     "bias": {
+      "value": 6.095341863632253e-05,
+      "ci_low": -0.0005356149736784824,
+      "ci_high": 0.0006575218109511274
+     },
+     "rmse": 0.0021315122354961464,
+     "coverage": {
+      "value": 1.0,
+      "ci_low": 0.9286523998213857,
+      "ci_high": 0.9999999999999999
+     },
+     "mean_interval_width": 0.013283907195073875,
+     "verdict": "validated",
+     "reasons": []
+    },
+    "SNIPS": {
+     "bias": {
+      "value": 0.000191933998804239,
+      "ci_low": -0.0002703950898620727,
+      "ci_high": 0.0006542630874705507
+     },
+     "rmse": 0.0016623232963997835,
+     "coverage": {
+      "value": 1.0,
+      "ci_low": 0.9286523998213857,
+      "ci_high": 0.9999999999999999
+     },
+     "mean_interval_width": 0.012357193831262539,
+     "verdict": "validated",
+     "reasons": []
+    },
+    "DR": {
+     "bias": {
+      "value": 0.0001782652094372006,
+      "ci_low": -0.000273572725210048,
+      "ci_high": 0.0006301031440844491
+     },
+     "rmse": 0.0016235529360422865,
+     "coverage": {
+      "value": 1.0,
+      "ci_low": 0.9286523998213857,
+      "ci_high": 0.9999999999999999
+     },
+     "mean_interval_width": 0.01230851691419522,
+     "verdict": "validated",
+     "reasons": []
+    }
+   },
+   "opens": {
+    "truth": {
+     "value": 0.017087192565993437,
+     "se": 0.0,
+     "method": "exact"
+    },
+    "effective_size_median": 85849.50000000006,
+    "max_weight": 1.6303209121136026,
+    "DM": {
+     "bias": {
+      "value": 0.00016864394473145236,
+      "ci_low": 3.992080033225618e-05,
+      "ci_high": 0.00029736708913064854
+     },
+     "rmse": 0.0004896897935348049,
+     "coverage": {
+      "value": 0.44,
+      "ci_low": 0.31162199120253675,
+      "ci_high": 0.576939720818897
+     },
+     "mean_interval_width": 0.0005362840786615867,
+     "verdict": "not validated",
+     "reasons": [
+      "under-coverage",
+      "bias"
+     ]
+    },
+    "IPS": {
+     "bias": {
+      "value": 0.0001040756462696267,
+      "ci_low": -1.7569512505334755e-05,
+      "ci_high": 0.00022572080504458818
+     },
+     "rmse": 0.00044674698186451475,
+     "coverage": {
+      "value": 0.96,
+      "ci_low": 0.8653990920638485,
+      "ci_high": 0.9889611157718264
+     },
+     "mean_interval_width": 0.0017988320461046028,
+     "verdict": "validated",
+     "reasons": []
+    },
+    "SNIPS": {
+     "bias": {
+      "value": 0.00010795532013125816,
+      "ci_low": -1.3558064156334862e-05,
+      "ci_high": 0.0002294687044188512
+     },
+     "rmse": 0.0004472099748794698,
+     "coverage": {
+      "value": 0.96,
+      "ci_low": 0.8653990920638485,
+      "ci_high": 0.9889611157718264
+     },
+     "mean_interval_width": 0.0017902259282732145,
+     "verdict": "validated",
+     "reasons": []
+    },
+    "DR": {
+     "bias": {
+      "value": 0.00011132897968820984,
+      "ci_low": -1.0773372159242713e-05,
+      "ci_high": 0.0002334313315356624
+     },
+     "rmse": 0.00045007415388834924,
+     "coverage": {
+      "value": 0.96,
+      "ci_low": 0.8653990920638485,
+      "ci_high": 0.9889611157718264
+     },
+     "mean_interval_width": 0.0017934386592669805,
+     "verdict": "validated",
+     "reasons": []
+    }
+   }
+  },
+  "T_half": {
+   "visit": {
+    "truth": {
+     "value": 0.5814054183058525,
+     "se": 0.0,
+     "method": "exact"
+    },
+    "effective_size_median": 77268.59727968869,
+    "max_weight": 2.807774904195648,
+    "DM": {
+     "bias": {
+      "value": 0.003001397811205564,
+      "ci_low": 0.0025828621671350805,
+      "ci_high": 0.0034199334552760473
+     },
+     "rmse": 0.003353029782826819,
+     "coverage": {
+      "value": 0.74,
+      "ci_low": 0.6044684262151608,
+      "ci_high": 0.8412847256991044
+     },
+     "mean_interval_width": 0.007888340136719407,
+     "verdict": "not validated",
+     "reasons": [
+      "under-coverage",
+      "bias"
+     ]
+    },
+    "IPS": {
+     "bias": {
+      "value": 0.000614411624623501,
+      "ci_low": -7.2945097765753e-05,
+      "ci_high": 0.001301768347012755
+     },
+     "rmse": 0.0025306104290636067,
+     "coverage": {
+      "value": 0.98,
+      "ci_low": 0.8950455630610349,
+      "ci_high": 0.9964607407674954
+     },
+     "mean_interval_width": 0.013812246975139598,
+     "verdict": "validated",
+     "reasons": []
+    },
+    "SNIPS": {
+     "bias": {
+      "value": 0.0003922128798135027,
+      "ci_low": -0.0001073782500422574,
+      "ci_high": 0.0008918040096692628
+     },
+     "rmse": 0.0018268854248777173,
+     "coverage": {
+      "value": 1.0,
+      "ci_low": 0.9286523998213857,
+      "ci_high": 0.9999999999999999
+     },
+     "mean_interval_width": 0.012631266897484082,
+     "verdict": "validated",
+     "reasons": []
+    },
+    "DR": {
+     "bias": {
+      "value": 0.00041135007876891283,
+      "ci_low": -6.337655695998375e-05,
+      "ci_high": 0.0008860767144978094
+     },
+     "rmse": 0.0017446698506149076,
+     "coverage": {
+      "value": 1.0,
+      "ci_low": 0.9286523998213857,
+      "ci_high": 0.9999999999999999
+     },
+     "mean_interval_width": 0.012559801379063014,
+     "verdict": "validated",
+     "reasons": []
+    }
+   },
+   "opens": {
+    "truth": {
+     "value": 0.008543596282996719,
+     "se": 0.0,
+     "method": "exact"
+    },
+    "effective_size_median": 77268.59727968869,
+    "max_weight": 2.807774904195648,
+    "DM": {
+     "bias": {
+      "value": 0.0011264704817174065,
+      "ci_low": 0.0010517128000867757,
+      "ci_high": 0.0012012281633480373
+     },
+     "rmse": 0.001157679983189199,
+     "coverage": {
+      "value": 0.0,
+      "ci_low": 0.0,
+      "ci_high": 0.07134760017861413
+     },
+     "mean_interval_width": 0.0003582573483591927,
+     "verdict": "not validated",
+     "reasons": [
+      "under-coverage",
+      "bias"
+     ]
+    },
+    "IPS": {
+     "bias": {
+      "value": 5.203782313481335e-05,
+      "ci_low": -8.784756252667378e-06,
+      "ci_high": 0.00011286040252229409
+     },
+     "rmse": 0.00022337349093225738,
+     "coverage": {
+      "value": 0.96,
+      "ci_low": 0.8653990920638485,
+      "ci_high": 0.9889611157718264
+     },
+     "mean_interval_width": 0.0008994160230523014,
+     "verdict": "validated",
+     "reasons": []
+    },
+    "SNIPS": {
+     "bias": {
+      "value": 4.884708672714573e-05,
+      "ci_low": -1.2551869347689833e-05,
+      "ci_high": 0.0001102460428019813
+     },
+     "rmse": 0.0002246606188878727,
+     "coverage": {
+      "value": 0.96,
+      "ci_low": 0.8653990920638485,
+      "ci_high": 0.9889611157718264
+     },
+     "mean_interval_width": 0.0009064086026035356,
+     "verdict": "validated",
+     "reasons": []
+    },
+    "DR": {
+     "bias": {
+      "value": 5.387979503901179e-05,
+      "ci_low": -7.778797283213102e-06,
+      "ci_high": 0.00011553838736123668
+     },
+     "rmse": 0.00022670891280198577,
+     "coverage": {
+      "value": 0.96,
+      "ci_low": 0.8653990920638485,
+      "ci_high": 0.9889611157718264
+     },
+     "mean_interval_width": 0.0008977653796048309,
+     "verdict": "validated",
+     "reasons": []
+    }
+   }
+  },
+  "R": {
+   "visit": {
+    "truth": {
+     "value": 0.5847630882914293,
+     "se": 0.0,
+     "method": "exact"
+    },
+    "effective_size_median": 18311.11502180317,
+    "max_weight": 123.45679012345676,
+    "DM": {
+     "bias": {
+      "value": 0.0014309751296348594,
+      "ci_low": 0.0009802356397468361,
+      "ci_high": 0.0018817146195228827
+     },
+     "rmse": 0.0021538777121996103,
+     "coverage": {
+      "value": 0.88,
+      "ci_low": 0.7619518250454469,
+      "ci_high": 0.9438239988188064
+     },
+     "mean_interval_width": 0.007850415436659408,
+     "verdict": "not validated",
+     "reasons": [
+      "under-coverage",
+      "bias"
+     ]
+    },
+    "IPS": {
+     "bias": {
+      "value": -5.3219174136920344e-05,
+      "ci_low": -0.0015094137181089911,
+      "ci_high": 0.0014029753698351505
+     },
+     "rmse": 0.005201062610771189,
+     "coverage": {
+      "value": 0.96,
+      "ci_low": 0.8653990920638485,
+      "ci_high": 0.9889611157718264
+     },
+     "mean_interval_width": 0.023762080293044337,
+     "verdict": "validated",
+     "reasons": []
+    },
+    "SNIPS": {
+     "bias": {
+      "value": -3.6919470154384015e-05,
+      "ci_low": -0.0009752060406962504,
+      "ci_high": 0.0009013671003874823
+     },
+     "rmse": 0.003351288384613262,
+     "coverage": {
+      "value": 1.0,
+      "ci_low": 0.9286523998213857,
+      "ci_high": 0.9999999999999999
+     },
+     "mean_interval_width": 0.01759512118326534,
+     "verdict": "validated",
+     "reasons": []
+    },
+    "DR": {
+     "bias": {
+      "value": -4.930114344203762e-05,
+      "ci_low": -0.0010788436980415114,
+      "ci_high": 0.0009802414111574362
+     },
+     "rmse": 0.0036773357308847758,
+     "coverage": {
+      "value": 1.0,
+      "ci_low": 0.9286523998213857,
+      "ci_high": 0.9999999999999999
+     },
+     "mean_interval_width": 0.017127424082099184,
+     "verdict": "validated",
+     "reasons": []
+    }
+   },
+   "opens": {
+    "truth": {
+     "value": 0.016534488852671832,
+     "se": 0.0,
+     "method": "exact"
+    },
+    "effective_size_median": 18311.11502180317,
+    "max_weight": 123.45679012345676,
+    "DM": {
+     "bias": {
+      "value": 0.001788432937579916,
+      "ci_low": 0.001618797388741393,
+      "ci_high": 0.001958068486418439
+     },
+     "rmse": 0.0018882662606217382,
+     "coverage": {
+      "value": 0.02,
+      "ci_low": 0.003539259232504602,
+      "ci_high": 0.10495443693896496
+     },
+     "mean_interval_width": 0.0005093083116949357,
+     "verdict": "not validated",
+     "reasons": [
+      "under-coverage",
+      "bias"
+     ]
+    },
+    "IPS": {
+     "bias": {
+      "value": 0.00015578002033778474,
+      "ci_low": -0.0001872150294901902,
+      "ci_high": 0.0004987750701657596
+     },
+     "rmse": 0.001234870125143289,
+     "coverage": {
+      "value": 0.98,
+      "ci_low": 0.8950455630610349,
+      "ci_high": 0.9964607407674954
+     },
+     "mean_interval_width": 0.004972918719920299,
+     "verdict": "validated",
+     "reasons": []
+    },
+    "SNIPS": {
+     "bias": {
+      "value": 0.0001565937188904229,
+      "ci_low": -0.00018685857393307054,
+      "ci_high": 0.0005000460117139164
+     },
+     "rmse": 0.0012365929145421622,
+     "coverage": {
+      "value": 0.96,
+      "ci_low": 0.8653990920638485,
+      "ci_high": 0.9889611157718264
+     },
+     "mean_interval_width": 0.0049072306036506905,
+     "verdict": "validated",
+     "reasons": []
+    },
+    "DR": {
+     "bias": {
+      "value": 0.00017753983861476183,
+      "ci_low": -0.0001710404266326838,
+      "ci_high": 0.0005261201038622074
+     },
+     "rmse": 0.001257547945703677,
+     "coverage": {
+      "value": 0.96,
+      "ci_low": 0.8653990920638485,
+      "ci_high": 0.9889611157718264
+     },
+     "mean_interval_width": 0.004912849652002335,
+     "verdict": "validated",
+     "reasons": []
+    }
+   }
+  },
+  "N": {
+   "visit": {
+    "truth": {
+     "value": 0.5777768643223037,
+     "se": 0.0,
+     "method": "exact"
+    },
+    "effective_size_median": 24940.500000000007,
+    "max_weight": 5.615549808391296,
+    "DM": {
+     "bias": {
+      "value": 0.005105185896175368,
+      "ci_low": 0.0046189624300274216,
+      "ci_high": 0.005591409362323315
+     },
+     "rmse": 0.005392449262894151,
+     "coverage": {
+      "value": 0.26,
+      "ci_low": 0.15871527430089563,
+      "ci_high": 0.39553157378483916
+     },
+     "mean_interval_width": 0.007911122393686744,
+     "verdict": "not validated",
+     "reasons": [
+      "under-coverage",
+      "bias"
+     ]
+    },
+    "IPS": {
+     "bias": {
+      "value": 0.0011678698306174518,
+      "ci_low": -0.00020818587743012297,
+      "ci_high": 0.0025439255386650265
+     },
+     "rmse": 0.005051432150912861,
+     "coverage": {
+      "value": 0.96,
+      "ci_low": 0.8653990920638485,
+      "ci_high": 0.9889611157718264
+     },
+     "mean_interval_width": 0.02085801715312309,
+     "verdict": "validated",
+     "reasons": []
+    },
+    "SNIPS": {
+     "bias": {
+      "value": 0.0005945669359085359,
+      "ci_low": -0.0002447108235414643,
+      "ci_high": 0.001433844695358536
+     },
+     "rmse": 0.003055874664409238,
+     "coverage": {
+      "value": 1.0,
+      "ci_low": 0.9286523998213857,
+      "ci_high": 0.9999999999999999
+     },
+     "mean_interval_width": 0.01617789017209207,
+     "verdict": "validated",
+     "reasons": []
+    },
+    "DR": {
+     "bias": {
+      "value": 0.000644434948100292,
+      "ci_low": -0.00014107456140520958,
+      "ci_high": 0.0014299444576057936
+     },
+     "rmse": 0.0028785073865669835,
+     "coverage": {
+      "value": 1.0,
+      "ci_low": 0.9286523998213857,
+      "ci_high": 0.9999999999999999
+     },
+     "mean_interval_width": 0.015832334771293907,
+     "verdict": "validated",
+     "reasons": []
+    }
+   },
+   "opens": {
+    "truth": {
+     "value": 0.0,
+     "se": 0.0,
+     "method": "exact"
+    },
+    "effective_size_median": 24940.500000000007,
+    "max_weight": 5.615549808391296,
+    "DM": {
+     "bias": {
+      "value": 0.002084297018703363,
+      "ci_low": 0.002036867243341454,
+      "ci_high": 0.0021317267940652715
+     },
+     "rmse": 0.002091169238610047,
+     "coverage": {
+      "value": 0.0,
+      "ci_low": 0.0,
+      "ci_high": 0.07134760017861413
+     },
+     "mean_interval_width": 0.00023638060285996915,
+     "verdict": "not validated",
+     "reasons": [
+      "under-coverage",
+      "bias"
+     ]
+    },
+    "IPS": {
+     "bias": {
+      "value": 0.0,
+      "ci_low": 0.0,
+      "ci_high": 0.0
+     },
+     "rmse": 0.0,
+     "coverage": {
+      "value": 1.0,
+      "ci_low": 0.9286523998213857,
+      "ci_high": 0.9999999999999999
+     },
+     "mean_interval_width": 0.0,
+     "verdict": "validated",
+     "reasons": []
+    },
+    "SNIPS": {
+     "bias": {
+      "value": 0.0,
+      "ci_low": 0.0,
+      "ci_high": 0.0
+     },
+     "rmse": 0.0,
+     "coverage": {
+      "value": 1.0,
+      "ci_low": 0.9286523998213857,
+      "ci_high": 0.9999999999999999
+     },
+     "mean_interval_width": 0.0,
+     "verdict": "validated",
+     "reasons": []
+    },
+    "DR": {
+     "bias": {
+      "value": -3.569389610192323e-06,
+      "ci_low": -1.2249700746381981e-05,
+      "ci_high": 5.110921525997334e-06
+     },
+     "rmse": 3.1206485598517654e-05,
+     "coverage": {
+      "value": 0.98,
+      "ci_low": 0.8950455630610349,
+      "ci_high": 0.9964607407674954
+     },
+     "mean_interval_width": 0.0001487199827018214,
+     "verdict": "validated",
+     "reasons": []
+    }
+   }
+  },
+  "F": {
+   "visit": {
+    "truth": {
+     "value": 0.5849770449495644,
+     "se": 0.0,
+     "method": "exact"
+    },
+    "effective_size_median": 3873.075466579804,
+    "max_weight": 69.25844763682599,
+    "DM": {
+     "bias": {
+      "value": 0.0005820678670557244,
+      "ci_low": 7.135197083668404e-05,
+      "ci_high": 0.001092783763274765
+     },
+     "rmse": 0.0019146403715889525,
+     "coverage": {
+      "value": 0.98,
+      "ci_low": 0.8950455630610349,
+      "ci_high": 0.9964607407674954
+     },
+     "mean_interval_width": 0.007877078802252569,
+     "verdict": "not validated",
+     "reasons": [
+      "bias"
+     ]
+    },
+    "IPS": {
+     "bias": {
+      "value": -0.0007804691942837616,
+      "ci_low": -0.0038903011600873926,
+      "ci_high": 0.0023293627715198694
+     },
+     "rmse": 0.011134134687150856,
+     "coverage": {
+      "value": 0.96,
+      "ci_low": 0.8653990920638485,
+      "ci_high": 0.9889611157718264
+     },
+     "mean_interval_width": 0.048997663183105805,
+     "verdict": "validated",
+     "reasons": []
+    },
+    "SNIPS": {
+     "bias": {
+      "value": -0.0006449754299587829,
+      "ci_low": -0.002557272650233044,
+      "ci_high": 0.001267321790315478
+     },
+     "rmse": 0.006860145242903922,
+     "coverage": {
+      "value": 0.98,
+      "ci_low": 0.8950455630610349,
+      "ci_high": 0.9964607407674954
+     },
+     "mean_interval_width": 0.03241869779495287,
+     "verdict": "validated",
+     "reasons": []
+    },
+    "DR": {
+     "bias": {
+      "value": -0.00034970489893348944,
+      "ci_low": -0.0021967984817011614,
+      "ci_high": 0.0014973886838341827
+     },
+     "rmse": 0.006606146496688926,
+     "coverage": {
+      "value": 0.98,
+      "ci_low": 0.8950455630610349,
+      "ci_high": 0.9964607407674954
+     },
+     "mean_interval_width": 0.03121582434686318,
+     "verdict": "validated",
+     "reasons": []
+    }
+   },
+   "opens": {
+    "truth": {
+     "value": 0.016915699555834333,
+     "se": 0.0,
+     "method": "exact"
+    },
+    "effective_size_median": 3873.075466579804,
+    "max_weight": 69.25844763682599,
+    "DM": {
+     "bias": {
+      "value": 0.0020782205193573405,
+      "ci_low": 0.0018034034575866776,
+      "ci_high": 0.0023530375811280035
+     },
+     "rmse": 0.0022983380009046895,
+     "coverage": {
+      "value": 0.02,
+      "ci_low": 0.003539259232504602,
+      "ci_high": 0.10495443693896496
+     },
+     "mean_interval_width": 0.000622913498419717,
+     "verdict": "not validated",
+     "reasons": [
+      "under-coverage",
+      "bias"
+     ]
+    },
+    "IPS": {
+     "bias": {
+      "value": -0.0002191776711600625,
+      "ci_low": -0.0007246957699069165,
+      "ci_high": 0.00028634042758679144
+     },
+     "rmse": 0.0018187100927570647,
+     "coverage": {
+      "value": 1.0,
+      "ci_low": 0.9286523998213857,
+      "ci_high": 0.9999999999999999
+     },
+     "mean_interval_width": 0.007885062402652347,
+     "verdict": "validated",
+     "reasons": []
+    },
+    "SNIPS": {
+     "bias": {
+      "value": -0.0002186368360949341,
+      "ci_low": -0.0007102785886390007,
+      "ci_high": 0.0002730049164491325
+     },
+     "rmse": 0.0017694551733881355,
+     "coverage": {
+      "value": 0.98,
+      "ci_low": 0.8950455630610349,
+      "ci_high": 0.9964607407674954
+     },
+     "mean_interval_width": 0.00782686864208002,
+     "verdict": "validated",
+     "reasons": []
+    },
+    "DR": {
+     "bias": {
+      "value": -0.0001688547327777408,
+      "ci_low": -0.0006543322051650125,
+      "ci_high": 0.0003166227396095308
+     },
+     "rmse": 0.0017420825597384943,
+     "coverage": {
+      "value": 0.98,
+      "ci_low": 0.8950455630610349,
+      "ci_high": 0.9964607407674954
+     },
+     "mean_interval_width": 0.0078750319224889,
+     "verdict": "validated",
+     "reasons": []
+    }
+   }
+  },
+  "T2": {
+   "visit": {
+    "truth": {
+     "value": 0.5920044850546639,
+     "se": 0.0,
+     "method": "exact"
+    },
+    "effective_size_median": 6957.499999999999,
+    "max_weight": 20.107291249401104,
+    "DM": {
+     "bias": {
+      "value": -0.0029001945562016074,
+      "ci_low": -0.0034403639810293247,
+      "ci_high": -0.00236002513137389
+     },
+     "rmse": 0.003483243778230984,
+     "coverage": {
+      "value": 0.72,
+      "ci_low": 0.5833487619095525,
+      "ci_high": 0.8252582940118571
+     },
+     "mean_interval_width": 0.007823421481657043,
+     "verdict": "not validated",
+     "reasons": [
+      "under-coverage",
+      "bias"
+     ]
+    },
+    "IPS": {
+     "bias": {
+      "value": -0.00215135131314359,
+      "ci_low": -0.004597509027062127,
+      "ci_high": 0.00029480640077494697
+     },
+     "rmse": 0.008997425279528813,
+     "coverage": {
+      "value": 0.94,
+      "ci_low": 0.8378290820312557,
+      "ci_high": 0.9793850298115638
+     },
+     "mean_interval_width": 0.03689070363176723,
+     "verdict": "validated",
+     "reasons": []
+    },
+    "SNIPS": {
+     "bias": {
+      "value": -0.0014649741156275153,
+      "ci_low": -0.003226229814061792,
+      "ci_high": 0.0002962815828067614
+     },
+     "rmse": 0.006458653509609229,
+     "coverage": {
+      "value": 0.92,
+      "ci_low": 0.8116175297192756,
+      "ci_high": 0.9684504861306886
+     },
+     "mean_interval_width": 0.02512386833565209,
+     "verdict": "validated",
+     "reasons": []
+    },
+    "DR": {
+     "bias": {
+      "value": -0.001483998264266262,
+      "ci_low": -0.003107020989439247,
+      "ci_high": 0.0001390244609067229
+     },
+     "rmse": 0.005983561667820308,
+     "coverage": {
+      "value": 0.96,
+      "ci_low": 0.8653990920638485,
+      "ci_high": 0.9889611157718264
+     },
+     "mean_interval_width": 0.02423405091927877,
+     "verdict": "validated",
+     "reasons": []
+    }
+   },
+   "opens": {
+    "truth": {
+     "value": 0.03381664075201332,
+     "se": 0.0,
+     "method": "exact"
+    },
+    "effective_size_median": 6957.499999999999,
+    "max_weight": 20.107291249401104,
+    "DM": {
+     "bias": {
+      "value": -0.0012829475847104949,
+      "ci_low": -0.0016529469024169701,
+      "ci_high": -0.0009129482670040196
+     },
+     "rmse": 0.0018417887178423463,
+     "coverage": {
+      "value": 0.12,
+      "ci_low": 0.056176001181193605,
+      "ci_high": 0.23804817495455316
+     },
+     "mean_interval_width": 0.0009753830474259508,
+     "verdict": "not validated",
+     "reasons": [
+      "under-coverage",
+      "bias"
+     ]
+    },
+    "IPS": {
+     "bias": {
+      "value": 0.00011584946644016547,
+      "ci_low": -0.00036944416349898515,
+      "ci_high": 0.0006011430963793161
+     },
+     "rmse": 0.0017370907719296853,
+     "coverage": {
+      "value": 0.98,
+      "ci_low": 0.8950455630610349,
+      "ci_high": 0.9964607407674954
+     },
+     "mean_interval_width": 0.008743224729275295,
+     "verdict": "validated",
+     "reasons": []
+    },
+    "SNIPS": {
+     "bias": {
+      "value": 0.00015103580907582098,
+      "ci_low": -0.00030210873135410124,
+      "ci_high": 0.0006041803495057432
+     },
+     "rmse": 0.0016254354368531458,
+     "coverage": {
+      "value": 1.0,
+      "ci_low": 0.9286523998213857,
+      "ci_high": 0.9999999999999999
+     },
+     "mean_interval_width": 0.008651450073756069,
+     "verdict": "validated",
+     "reasons": []
+    },
+    "DR": {
+     "bias": {
+      "value": 0.00011959781471883313,
+      "ci_low": -0.0003458800261439054,
+      "ci_high": 0.0005850756555815717
+     },
+     "rmse": 0.0016667478148102094,
+     "coverage": {
+      "value": 1.0,
+      "ci_low": 0.9286523998213857,
+      "ci_high": 0.9999999999999999
+     },
+     "mean_interval_width": 0.008660454898498208,
+     "verdict": "validated",
+     "reasons": []
+    }
+   }
+  }
+ },
+ "reference": {
+  "T": {
+   "visit": {
+    "truth": {
+     "value": 0.5648129642857143,
+     "se": 8.670238492798112e-05,
+     "method": "200 independent online runs"
+    },
+    "effective_size_median": 85849.50000000006,
+    "max_weight": 1.6303209121136026,
+    "DM": {
+     "bias": {
+      "value": 0.0006949045863208214,
+      "ci_low": 0.0002723852767000004,
+      "ci_high": 0.0011174238959416425
+     },
+     "rmse": 0.0015465127605815393,
+     "coverage": {
+      "value": 0.96,
+      "ci_low": 0.8653990920638485,
+      "ci_high": 0.9889611157718264
+     },
+     "mean_interval_width": 0.007544114097736358,
+     "verdict": "not validated",
+     "reasons": [
+      "bias"
+     ]
+    },
+    "IPS": {
+     "bias": {
+      "value": 0.00015914330709321245,
+      "ci_low": -0.0004359294557487221,
+      "ci_high": 0.000754216069935147
+     },
+     "rmse": 0.002043006154397597,
+     "coverage": {
+      "value": 1.0,
+      "ci_low": 0.9286523998213857,
+      "ci_high": 0.9999999999999999
+     },
+     "mean_interval_width": 0.01301411237441772,
+     "verdict": "validated",
+     "reasons": []
+    },
+    "SNIPS": {
+     "bias": {
+      "value": 0.00028562189613123845,
+      "ci_low": -0.00018534851560246177,
+      "ci_high": 0.0007565923078649387
+     },
+     "rmse": 0.0015945485313657584,
+     "coverage": {
+      "value": 1.0,
+      "ci_low": 0.9286523998213857,
+      "ci_high": 0.9999999999999999
+     },
+     "mean_interval_width": 0.012147761606811533,
+     "verdict": "validated",
+     "reasons": []
+    },
+    "DR": {
+     "bias": {
+      "value": 0.0002910773617171847,
+      "ci_low": -0.00017311176954899635,
+      "ci_high": 0.0007552664929833657
+     },
+     "rmse": 0.0015699811213221375,
+     "coverage": {
+      "value": 1.0,
+      "ci_low": 0.9286523998213857,
+      "ci_high": 0.9999999999999999
+     },
+     "mean_interval_width": 0.012070807217773172,
+     "verdict": "validated",
+     "reasons": []
+    }
+   },
+   "opens": {
+    "truth": {
+     "value": 0.013208857142857144,
+     "se": 2.2867137082792955e-05,
+     "method": "200 independent online runs"
+    },
+    "effective_size_median": 85849.50000000006,
+    "max_weight": 1.6303209121136026,
+    "DM": {
+     "bias": {
+      "value": 0.00021539294533911603,
+      "ci_low": 8.653239683938959e-05,
+      "ci_high": 0.00034425349383884247
+     },
+     "rmse": 0.0004822639332977601,
+     "coverage": {
+      "value": 0.22,
+      "ci_low": 0.1275391591451957,
+      "ci_high": 0.35241549695482816
+     },
+     "mean_interval_width": 0.00045397231279156334,
+     "verdict": "not validated",
+     "reasons": [
+      "under-coverage",
+      "bias"
+     ]
+    },
+    "IPS": {
+     "bias": {
+      "value": 0.00011645438080948312,
+      "ci_low": -6.556622478375712e-06,
+      "ci_high": 0.00023946538409734194
+     },
+     "rmse": 0.0004253854569929778,
+     "coverage": {
+      "value": 0.96,
+      "ci_low": 0.8653990920638485,
+      "ci_high": 0.9889611157718264
+     },
+     "mean_interval_width": 0.0015826689608823968,
+     "verdict": "validated",
+     "reasons": []
+    },
+    "SNIPS": {
+     "bias": {
+      "value": 0.00011952976515107461,
+      "ci_low": -3.973120394026966e-06,
+      "ci_high": 0.00024303265069617618
+     },
+     "rmse": 0.0004280481468131137,
+     "coverage": {
+      "value": 0.94,
+      "ci_low": 0.8378290820312557,
+      "ci_high": 0.9793850298115638
+     },
+     "mean_interval_width": 0.001582697269381212,
+     "verdict": "validated",
+     "reasons": []
+    },
+    "DR": {
+     "bias": {
+      "value": 0.00012049422190328098,
+      "ci_low": -3.0008413018861124e-06,
+      "ci_high": 0.00024398928510844807
+     },
+     "rmse": 0.0004282896959800758,
+     "coverage": {
+      "value": 0.98,
+      "ci_low": 0.8950455630610349,
+      "ci_high": 0.9964607407674954
+     },
+     "mean_interval_width": 0.0015804828973873847,
+     "verdict": "validated",
+     "reasons": []
+    }
+   }
+  },
+  "T_half": {
+   "visit": {
+    "truth": {
+     "value": 0.5715010357142858,
+     "se": 8.860020254743804e-05,
+     "method": "200 independent online runs"
+    },
+    "effective_size_median": 77268.59727968869,
+    "max_weight": 2.807774904195648,
+    "DM": {
+     "bias": {
+      "value": -0.007105425686439126,
+      "ci_low": -0.007561909588871729,
+      "ci_high": -0.006648941784006524
+     },
+     "rmse": 0.007263635383170168,
+     "coverage": {
+      "value": 0.02,
+      "ci_low": 0.003539259232504602,
+      "ci_high": 0.10495443693896496
+     },
+     "mean_interval_width": 0.007554968303670329,
+     "verdict": "not validated",
+     "reasons": [
+      "under-coverage",
+      "bias"
+     ]
+    },
+    "IPS": {
+     "bias": {
+      "value": -0.008925396349846237,
+      "ci_low": -0.009647206561857014,
+      "ci_high": -0.00820358613783546
+     },
+     "rmse": 0.009269510764780362,
+     "coverage": {
+      "value": 0.22,
+      "ci_low": 0.1275391591451957,
+      "ci_high": 0.35241549695482816
+     },
+     "mean_interval_width": 0.013554743933122303,
+     "verdict": "not validated",
+     "reasons": [
+      "under-coverage",
+      "bias"
+     ]
+    },
+    "SNIPS": {
+     "bias": {
+      "value": -0.00914042653559155,
+      "ci_low": -0.009679284671249662,
+      "ci_high": -0.00860156839993344
+     },
+     "rmse": 0.009320223073133365,
+     "coverage": {
+      "value": 0.04,
+      "ci_low": 0.011038884228173514,
+      "ci_high": 0.13460090793615148
+     },
+     "mean_interval_width": 0.012337465240865255,
+     "verdict": "not validated",
+     "reasons": [
+      "under-coverage",
+      "bias"
+     ]
+    },
+    "DR": {
+     "bias": {
+      "value": -0.009127620096658351,
+      "ci_low": -0.009645216200051288,
+      "ci_high": -0.008610023993265414
+     },
+     "rmse": 0.009292259641110594,
+     "coverage": {
+      "value": 0.04,
+      "ci_low": 0.011038884228173514,
+      "ci_high": 0.13460090793615148
+     },
+     "mean_interval_width": 0.012271472777081863,
+     "verdict": "not validated",
+     "reasons": [
+      "under-coverage",
+      "bias"
+     ]
+    }
+   },
+   "opens": {
+    "truth": {
+     "value": 0.007525571428571429,
+     "se": 1.5398041501564047e-05,
+     "method": "200 independent online runs"
+    },
+    "effective_size_median": 77268.59727968869,
+    "max_weight": 2.807774904195648,
+    "DM": {
+     "bias": {
+      "value": 0.0001309080329607703,
+      "ci_low": 5.3539774252077263e-05,
+      "ci_high": 0.00020827629166946332
+     },
+     "rmse": 0.00028613271141784215,
+     "coverage": {
+      "value": 0.34,
+      "ci_low": 0.2243694914541036,
+      "ci_high": 0.478461740603053
+     },
+     "mean_interval_width": 0.00031525644908411574,
+     "verdict": "not validated",
+     "reasons": [
+      "under-coverage",
+      "bias"
+     ]
+    },
+    "IPS": {
+     "bias": {
+      "value": -0.0008629156667381158,
+      "ci_low": -0.0009276578861741665,
+      "ci_high": -0.0007981734473020651
+     },
+     "rmse": 0.00088683213685282,
+     "coverage": {
+      "value": 0.0,
+      "ci_low": 0.0,
+      "ci_high": 0.07134760017861413
+     },
+     "mean_interval_width": 0.0007913344804411984,
+     "verdict": "not validated",
+     "reasons": [
+      "under-coverage",
+      "bias"
+     ]
+    },
+    "SNIPS": {
+     "bias": {
+      "value": -0.0008653637064483946,
+      "ci_low": -0.0009306483705539683,
+      "ci_high": -0.000800079042342821
+     },
+     "rmse": 0.000889720077535711,
+     "coverage": {
+      "value": 0.0,
+      "ci_low": 0.0,
+      "ci_high": 0.07134760017861413
+     },
+     "mean_interval_width": 0.0007933874783447557,
+     "verdict": "not validated",
+     "reasons": [
+      "under-coverage",
+      "bias"
+     ]
+    },
+    "DR": {
+     "bias": {
+      "value": -0.0008631765024213669,
+      "ci_low": -0.0009296365913709003,
+      "ci_high": -0.0007967164134718334
+     },
+     "rmse": 0.0008887049136909109,
+     "coverage": {
+      "value": 0.0,
+      "ci_low": 0.0,
+      "ci_high": 0.07134760017861413
+     },
+     "mean_interval_width": 0.0007899402377544049,
+     "verdict": "not validated",
+     "reasons": [
+      "under-coverage",
+      "bias"
+     ]
+    }
+   }
+  },
+  "R": {
+   "visit": {
+    "truth": {
+     "value": 0.5647489285714287,
+     "se": 7.859661134646426e-05,
+     "method": "200 independent online runs"
+    },
+    "effective_size_median": 18311.11502180317,
+    "max_weight": 123.45679012345676,
+    "DM": {
+     "bias": {
+      "value": 0.001020095541277466,
+      "ci_low": 0.0005353610588546081,
+      "ci_high": 0.0015048300237003238
+     },
+     "rmse": 0.0019326266445386386,
+     "coverage": {
+      "value": 0.94,
+      "ci_low": 0.8378290820312557,
+      "ci_high": 0.9793850298115638
+     },
+     "mean_interval_width": 0.007532451870863353,
+     "verdict": "not validated",
+     "reasons": [
+      "bias"
+     ]
+    },
+    "IPS": {
+     "bias": {
+      "value": -0.00012458351799793377,
+      "ci_low": -0.0015128597223428642,
+      "ci_high": 0.0012636926863469967
+     },
+     "rmse": 0.0049291760323409975,
+     "coverage": {
+      "value": 0.96,
+      "ci_low": 0.8653990920638485,
+      "ci_high": 0.9889611157718264
+     },
+     "mean_interval_width": 0.023275888738105124,
+     "verdict": "validated",
+     "reasons": []
+    },
+    "SNIPS": {
+     "bias": {
+      "value": -0.00010892782437776916,
+      "ci_low": -0.0009827222489627125,
+      "ci_high": 0.0007648666002071743
+     },
+     "rmse": 0.0030738026066473496,
+     "coverage": {
+      "value": 1.0,
+      "ci_low": 0.9286523998213857,
+      "ci_high": 0.9999999999999999
+     },
+     "mean_interval_width": 0.017557711154675172,
+     "verdict": "validated",
+     "reasons": []
+    },
+    "DR": {
+     "bias": {
+      "value": -0.00014124797959602642,
+      "ci_low": -0.0010917710634606058,
+      "ci_high": 0.000809275104268553
+     },
+     "rmse": 0.003352885363477617,
+     "coverage": {
+      "value": 1.0,
+      "ci_low": 0.9286523998213857,
+      "ci_high": 0.9999999999999999
+     },
+     "mean_interval_width": 0.01696187947129548,
+     "verdict": "validated",
+     "reasons": []
+    }
+   },
+   "opens": {
+    "truth": {
+     "value": 0.01264625,
+     "se": 2.1283906121257074e-05,
+     "method": "200 independent online runs"
+    },
+    "effective_size_median": 18311.11502180317,
+    "max_weight": 123.45679012345676,
+    "DM": {
+     "bias": {
+      "value": 0.0015262413134470819,
+      "ci_low": 0.0013871941685384144,
+      "ci_high": 0.0016652884583557494
+     },
+     "rmse": 0.0015980716206603746,
+     "coverage": {
+      "value": 0.0,
+      "ci_low": 0.0,
+      "ci_high": 0.07134760017861413
+     },
+     "mean_interval_width": 0.0004264512647643551,
+     "verdict": "not validated",
+     "reasons": [
+      "under-coverage",
+      "bias"
+     ]
+    },
+    "IPS": {
+     "bias": {
+      "value": 3.8721390328812916e-05,
+      "ci_low": -0.0002666239435757563,
+      "ci_high": 0.0003440667242333821
+     },
+     "rmse": 0.0010810076792877395,
+     "coverage": {
+      "value": 0.98,
+      "ci_low": 0.8950455630610349,
+      "ci_high": 0.9964607407674954
+     },
+     "mean_interval_width": 0.004289787879819062,
+     "verdict": "validated",
+     "reasons": []
+    },
+    "SNIPS": {
+     "bias": {
+      "value": 3.816943781827058e-05,
+      "ci_low": -0.00026324741051122,
+      "ci_high": 0.00033958628614776115
+     },
+     "rmse": 0.0010668318818122977,
+     "coverage": {
+      "value": 0.96,
+      "ci_low": 0.8653990920638485,
+      "ci_high": 0.9889611157718264
+     },
+     "mean_interval_width": 0.00425381695404606,
+     "verdict": "validated",
+     "reasons": []
+    },
+    "DR": {
+     "bias": {
+      "value": 5.569006902813971e-05,
+      "ci_low": -0.00025106985806129664,
+      "ci_high": 0.00036244999611757605
+     },
+     "rmse": 0.0010868414939594333,
+     "coverage": {
+      "value": 0.94,
+      "ci_low": 0.8378290820312557,
+      "ci_high": 0.9793850298115638
+     },
+     "mean_interval_width": 0.0042574912179098555,
+     "verdict": "validated",
+     "reasons": []
+    }
+   }
+  },
+  "N": {
+   "visit": {
+    "truth": {
+     "value": 0.5777211785714286,
+     "se": 8.551622812688204e-05,
+     "method": "200 independent online runs"
+    },
+    "effective_size_median": 24940.500000000007,
+    "max_weight": 5.615549808391296,
+    "DM": {
+     "bias": {
+      "value": -0.014437827387768887,
+      "ci_low": -0.014965591606574093,
+      "ci_high": -0.01391006316896368
+     },
+     "rmse": 0.014548037503431888,
+     "coverage": {
+      "value": 0.0,
+      "ci_low": 0.0,
+      "ci_high": 0.07134760017861413
+     },
+     "mean_interval_width": 0.007562027224851291,
+     "verdict": "not validated",
+     "reasons": [
+      "under-coverage",
+      "bias"
+     ]
+    },
+    "IPS": {
+     "bias": {
+      "value": -0.017542007435349616,
+      "ci_low": -0.018916524384343877,
+      "ci_high": -0.016167490486355355
+     },
+     "rmse": 0.018206118364596464,
+     "coverage": {
+      "value": 0.06,
+      "ci_low": 0.020614970188436152,
+      "ci_high": 0.16217091796874428
+     },
+     "mean_interval_width": 0.0205092112878819,
+     "verdict": "not validated",
+     "reasons": [
+      "under-coverage",
+      "bias"
+     ]
+    },
+    "SNIPS": {
+     "bias": {
+      "value": -0.01809700644074852,
+      "ci_low": -0.018964652124455077,
+      "ci_high": -0.017229360757041963
+     },
+     "rmse": 0.018350635210975692,
+     "coverage": {
+      "value": 0.0,
+      "ci_low": 0.0,
+      "ci_high": 0.07134760017861413
+     },
+     "mean_interval_width": 0.016004721302780345,
+     "verdict": "not validated",
+     "reasons": [
+      "under-coverage",
+      "bias"
+     ]
+    },
+    "DR": {
+     "bias": {
+      "value": -0.0180783889836037,
+      "ci_low": -0.01888943746362267,
+      "ci_high": -0.01726734050358473
+     },
+     "rmse": 0.018299191777763027,
+     "coverage": {
+      "value": 0.0,
+      "ci_low": 0.0,
+      "ci_high": 0.07134760017861413
+     },
+     "mean_interval_width": 0.015633942557451055,
+     "verdict": "not validated",
+     "reasons": [
+      "under-coverage",
+      "bias"
+     ]
+    }
+   },
+   "opens": {
+    "truth": {
+     "value": 0.0,
+     "se": 0.0,
+     "method": "200 independent online runs"
+    },
+    "effective_size_median": 24940.500000000007,
+    "max_weight": 5.615549808391296,
+    "DM": {
+     "bias": {
+      "value": 0.0018887088348681468,
+      "ci_low": 0.0018458322750696632,
+      "ci_high": 0.0019315853946666305
+     },
+     "rmse": 0.0018949065665644696,
+     "coverage": {
+      "value": 0.0,
+      "ci_low": 0.0,
+      "ci_high": 0.07134760017861413
+     },
+     "mean_interval_width": 0.00021990271875089388,
+     "verdict": "not validated",
+     "reasons": [
+      "under-coverage",
+      "bias"
+     ]
+    },
+    "IPS": {
+     "bias": {
+      "value": 0.0,
+      "ci_low": 0.0,
+      "ci_high": 0.0
+     },
+     "rmse": 0.0,
+     "coverage": {
+      "value": 1.0,
+      "ci_low": 0.9286523998213857,
+      "ci_high": 0.9999999999999999
+     },
+     "mean_interval_width": 0.0,
+     "verdict": "validated",
+     "reasons": []
+    },
+    "SNIPS": {
+     "bias": {
+      "value": 0.0,
+      "ci_low": 0.0,
+      "ci_high": 0.0
+     },
+     "rmse": 0.0,
+     "coverage": {
+      "value": 1.0,
+      "ci_low": 0.9286523998213857,
+      "ci_high": 0.9999999999999999
+     },
+     "mean_interval_width": 0.0,
+     "verdict": "validated",
+     "reasons": []
+    },
+    "DR": {
+     "bias": {
+      "value": -4.561512460289304e-06,
+      "ci_low": -1.3350731364015093e-05,
+      "ci_high": 4.2277064434364845e-06
+     },
+     "rmse": 3.172033939669199e-05,
+     "coverage": {
+      "value": 0.98,
+      "ci_low": 0.8950455630610349,
+      "ci_high": 0.9964607407674954
+     },
+     "mean_interval_width": 0.00013777196992383127,
+     "verdict": "validated",
+     "reasons": []
+    }
+   }
+  },
+  "F": {
+   "visit": {
+    "truth": {
+     "value": 0.56457875,
+     "se": 8.553925113370131e-05,
+     "method": "200 independent online runs"
+    },
+    "effective_size_median": 3873.075466579804,
+    "max_weight": 69.25844763682599,
+    "DM": {
+     "bias": {
+      "value": 0.0005123333533386676,
+      "ci_low": -2.0611502341225823e-05,
+      "ci_high": 0.0010452782090185609
+     },
+     "rmse": 0.0018780100559098408,
+     "coverage": {
+      "value": 0.96,
+      "ci_low": 0.8653990920638485,
+      "ci_high": 0.9889611157718264
+     },
+     "mean_interval_width": 0.007549781347702258,
+     "verdict": "validated",
+     "reasons": []
+    },
+    "IPS": {
+     "bias": {
+      "value": -0.00015379190695574696,
+      "ci_low": -0.00329738692056568,
+      "ci_high": 0.002989803106654186
+     },
+     "rmse": 0.011212407773159277,
+     "coverage": {
+      "value": 0.96,
+      "ci_low": 0.8653990920638485,
+      "ci_high": 0.9889611157718264
+     },
+     "mean_interval_width": 0.04819661600113542,
+     "verdict": "validated",
+     "reasons": []
+    },
+    "SNIPS": {
+     "bias": {
+      "value": -2.1795501995214295e-05,
+      "ci_low": -0.0021120739803378286,
+      "ci_high": 0.0020684829763474
+     },
+     "rmse": 0.007441397770916843,
+     "coverage": {
+      "value": 0.98,
+      "ci_low": 0.8950455630610349,
+      "ci_high": 0.9964607407674954
+     },
+     "mean_interval_width": 0.032672654361760846,
+     "verdict": "validated",
+     "reasons": []
+    },
+    "DR": {
+     "bias": {
+      "value": 0.000294134716361083,
+      "ci_low": -0.0017383856917860831,
+      "ci_high": 0.002326655124508249
+     },
+     "rmse": 0.0072403744310200234,
+     "coverage": {
+      "value": 0.98,
+      "ci_low": 0.8950455630610349,
+      "ci_high": 0.9964607407674954
+     },
+     "mean_interval_width": 0.03138423662270597,
+     "verdict": "validated",
+     "reasons": []
+    }
+   },
+   "opens": {
+    "truth": {
+     "value": 0.013115892857142857,
+     "se": 2.2172446102484323e-05,
+     "method": "200 independent online runs"
+    },
+    "effective_size_median": 3873.075466579804,
+    "max_weight": 69.25844763682599,
+    "DM": {
+     "bias": {
+      "value": 0.0018517645116178129,
+      "ci_low": 0.0015860797259016463,
+      "ci_high": 0.0021174492973339795
+     },
+     "rmse": 0.0020749308287913606,
+     "coverage": {
+      "value": 0.0,
+      "ci_low": 0.0,
+      "ci_high": 0.07134760017861413
+     },
+     "mean_interval_width": 0.0005263663206115668,
+     "verdict": "not validated",
+     "reasons": [
+      "under-coverage",
+      "bias"
+     ]
+    },
+    "IPS": {
+     "bias": {
+      "value": -9.532195349278884e-05,
+      "ci_low": -0.0005988682345530572,
+      "ci_high": 0.00040822432756747954
+     },
+     "rmse": 0.0017942365869393745,
+     "coverage": {
+      "value": 0.96,
+      "ci_low": 0.8653990920638485,
+      "ci_high": 0.9889611157718264
+     },
+     "mean_interval_width": 0.0070105992390683295,
+     "verdict": "validated",
+     "reasons": []
+    },
+    "SNIPS": {
+     "bias": {
+      "value": -9.594482687474808e-05,
+      "ci_low": -0.000587443486691264,
+      "ci_high": 0.00039555383294176784
+     },
+     "rmse": 0.0017511399848725042,
+     "coverage": {
+      "value": 0.98,
+      "ci_low": 0.8950455630610349,
+      "ci_high": 0.9964607407674954
+     },
+     "mean_interval_width": 0.006951892876554871,
+     "verdict": "validated",
+     "reasons": []
+    },
+    "DR": {
+     "bias": {
+      "value": -5.076465099109091e-05,
+      "ci_low": -0.0005493859527637278,
+      "ci_high": 0.000447856650781546
+     },
+     "rmse": 0.0017747728345581726,
+     "coverage": {
+      "value": 0.98,
+      "ci_low": 0.8950455630610349,
+      "ci_high": 0.9964607407674954
+     },
+     "mean_interval_width": 0.006993062587756331,
+     "verdict": "validated",
+     "reasons": []
+    }
+   }
+  },
+  "T2": {
+   "visit": {
+    "truth": {
+     "value": 0.5501104642857143,
+     "se": 8.980694773513549e-05,
+     "method": "200 independent online runs"
+    },
+    "effective_size_median": 6957.499999999999,
+    "max_weight": 20.107291249401104,
+    "DM": {
+     "bias": {
+      "value": 0.017738649954718633,
+      "ci_low": 0.017195722703292834,
+      "ci_high": 0.01828157720614443
+     },
+     "rmse": 0.017833240385960118,
+     "coverage": {
+      "value": 0.0,
+      "ci_low": 0.0,
+      "ci_high": 0.07134760017861413
+     },
+     "mean_interval_width": 0.007533317669067976,
+     "verdict": "not validated",
+     "reasons": [
+      "under-coverage",
+      "bias"
+     ]
+    },
+    "IPS": {
+     "bias": {
+      "value": 0.017699333306106624,
+      "ci_low": 0.015306989106704449,
+      "ci_high": 0.0200916775055088
+     },
+     "rmse": 0.019643708789235718,
+     "coverage": {
+      "value": 0.48,
+      "ci_low": 0.3479713519089993,
+      "ci_high": 0.6148825520981452
+     },
+     "mean_interval_width": 0.03627297891988384,
+     "verdict": "not validated",
+     "reasons": [
+      "under-coverage",
+      "bias"
+     ]
+    },
+    "SNIPS": {
+     "bias": {
+      "value": 0.01836051848457343,
+      "ci_low": 0.016602451079663044,
+      "ci_high": 0.020118585889483814
+     },
+     "rmse": 0.019394287053462748,
+     "coverage": {
+      "value": 0.18,
+      "ci_low": 0.09770192623042152,
+      "ci_high": 0.30796053788389155
+     },
+     "mean_interval_width": 0.025191733871921675,
+     "verdict": "not validated",
+     "reasons": [
+      "under-coverage",
+      "bias"
+     ]
+    },
+    "DR": {
+     "bias": {
+      "value": 0.018244301211054914,
+      "ci_low": 0.01661041537721693,
+      "ci_high": 0.019878187044892897
+     },
+     "rmse": 0.019144486960492795,
+     "coverage": {
+      "value": 0.18,
+      "ci_low": 0.09770192623042152,
+      "ci_high": 0.30796053788389155
+     },
+     "mean_interval_width": 0.024284353312973506,
+     "verdict": "not validated",
+     "reasons": [
+      "under-coverage",
+      "bias"
+     ]
+    }
+   },
+   "opens": {
+    "truth": {
+     "value": 0.020017892857142856,
+     "se": 2.6102104478751702e-05,
+     "method": "200 independent online runs"
+    },
+    "effective_size_median": 6957.499999999999,
+    "max_weight": 20.107291249401104,
+    "DM": {
+     "bias": {
+      "value": 0.004698147075792077,
+      "ci_low": 0.004374052981971323,
+      "ci_high": 0.005022241169612832
+     },
+     "rmse": 0.004835184371733328,
+     "coverage": {
+      "value": 0.0,
+      "ci_low": 0.0,
+      "ci_high": 0.07134760017861413
+     },
+     "mean_interval_width": 0.0007931709134235343,
+     "verdict": "not validated",
+     "reasons": [
+      "under-coverage",
+      "bias"
+     ]
+    },
+    "IPS": {
+     "bias": {
+      "value": 0.005633265836735898,
+      "ci_low": 0.005151138176830641,
+      "ci_high": 0.006115393496641155
+     },
+     "rmse": 0.005887724047681487,
+     "coverage": {
+      "value": 0.14,
+      "ci_low": 0.0695083338917044,
+      "ci_high": 0.2618619382368978
+     },
+     "mean_interval_width": 0.007562136803636366,
+     "verdict": "not validated",
+     "reasons": [
+      "under-coverage",
+      "bias"
+     ]
+    },
+    "SNIPS": {
+     "bias": {
+      "value": 0.005659932789872337,
+      "ci_low": 0.005195447273251674,
+      "ci_high": 0.006124418306493001
+     },
+     "rmse": 0.005895203812584957,
+     "coverage": {
+      "value": 0.12,
+      "ci_low": 0.056176001181193605,
+      "ci_high": 0.23804817495455316
+     },
+     "mean_interval_width": 0.007465193812300648,
+     "verdict": "not validated",
+     "reasons": [
+      "under-coverage",
+      "bias"
+     ]
+    },
+    "DR": {
+     "bias": {
+      "value": 0.005656849534426484,
+      "ci_low": 0.00518661474567837,
+      "ci_high": 0.006127084323174599
+     },
+     "rmse": 0.00589805759595926,
+     "coverage": {
+      "value": 0.14,
+      "ci_low": 0.0695083338917044,
+      "ci_high": 0.2618619382368978
+     },
+     "mean_interval_width": 0.007502116564493233,
+     "verdict": "not validated",
+     "reasons": [
+      "under-coverage",
+      "bias"
+     ]
+    }
+   }
+  }
+ },
+ "timings_s": 1422.7
+}
