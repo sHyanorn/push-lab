@@ -402,7 +402,7 @@ def chart_figure(
     fmt: Callable[[dict[str, Any]], str] = lambda e: interval(e, 4, signed=True)  # noqa: E731
     chart = svg.line_chart(xs, series, x_title, y_title, caption, fmt)
     rows = [[g(x), *(fmt(s.points[k]) for s in series)] for k, x in enumerate(xs)]
-    data = table((x_title, *(s.name for s in series)), rows, "data")
+    data = table((x_title, *(s.name for s in series)), rows, "data", nowrap=(0,))
     badge = f' <span class="tag">{escape(tag)}</span>' if tag else ""
     return (
         f"<figure><figcaption>{escape(caption)}{badge}</figcaption>"
@@ -458,7 +458,7 @@ def finding_two(results: dict[str, Any], f: dict[str, str]) -> str:
         + p(text.F2_SCOPE, f, "scope")
         + p(text.F2_BODY, f)
         + p(text.F2_GATES, f)
-        + table(SWEEP_HEAD, sweep_rows(results, POLICY_ROWS), nowrap=(4,))
+        + table(SWEEP_HEAD, sweep_rows(results, POLICY_ROWS), nowrap=(0, 4))
         + f'<p class="scope">{escape(text.SPREAD_NOTE)}</p>'
         + losing(results["policy"]["primary"]["main"], ("H1", "H2", "H3", "H4"))
         + shows_limits(text.F2_SHOWS, text.F2_LIMITS, f)
@@ -472,7 +472,7 @@ def finding_three(results: dict[str, Any], f: dict[str, str]) -> str:
         + p(text.F3_SCOPE, f, "scope")
         + p(text.F3_BODY, f)
         + p(text.F3_OBD_MISMATCH, f)
-        + table(TIER_A_HEAD, tier_a_rows(results), nowrap=(2,))
+        + table(TIER_A_HEAD, tier_a_rows(results), nowrap=(0, 2))
         + shows_limits(text.F3_SHOWS, text.F3_LIMITS, f)
         + "</section>"
     )
@@ -483,7 +483,8 @@ def losing(primary: dict[str, Any], ids: Sequence[str]) -> str:
     rows = [
         [i, ", ".join(str(s["id"]) for s in primary[i]["losing_settings"]) or "none"] for i in ids
     ]
-    return f"<details><summary>{text.LOSING}</summary>{table(('Id', 'Settings'), rows)}</details>"
+    settings = table(("Id", "Settings"), rows, nowrap=(0,))
+    return f"<details><summary>{text.LOSING}</summary>{settings}</details>"
 
 
 def templates_section(results: dict[str, Any], f: dict[str, str]) -> str:
@@ -491,7 +492,7 @@ def templates_section(results: dict[str, Any], f: dict[str, str]) -> str:
         f'<section id="templates"><h2>{escape(text.TPL_TITLE)}</h2>'
         + p(text.TPL_SCOPE, f, "scope")
         + p(text.TPL_BODY, f)
-        + table(SWEEP_HEAD, sweep_rows(results, TEMPLATE_ROWS), nowrap=(4,))
+        + table(SWEEP_HEAD, sweep_rows(results, TEMPLATE_ROWS), nowrap=(0, 4))
         + losing(results["templates"]["primary"], ("B1", "B2"))
         + p(text.TPL_LIMITS, f)
         + f'<p><span class="tag">{text.RATING_TAG}</span> {escape(fill(text.TPL_RATING, f))}</p>'
@@ -556,14 +557,14 @@ table{border-collapse:collapse;font-size:14px;width:100%}
 th,td{text-align:left;vertical-align:top;padding:6px 10px;border-bottom:1px solid var(--grid)}
 th{color:var(--ink-2);font-weight:600;white-space:nowrap}
 td{font-variant-numeric:tabular-nums}
-td:first-child,td.nw{white-space:nowrap}
+td.nw{white-space:nowrap}
 .reading{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0 0}
 .reading div{background:var(--surface);border:1px solid var(--ring);border-radius:8px;
 padding:12px 14px}
 .reading dt{font-weight:600;font-size:14px;margin-bottom:4px}.reading dd{margin:0}
 .sub{display:block;color:var(--muted);font-size:12px;margin-top:2px;overflow-wrap:anywhere}
 .matrix td.value{min-width:190px}
-.matrix td:first-child{white-space:normal;overflow-wrap:anywhere;min-width:7rem}
+.matrix td:first-child{overflow-wrap:anywhere;min-width:7rem}
 footer{margin-top:64px;color:var(--muted);font-size:14px}
 @media (max-width:640px){.reading{grid-template-columns:1fr}h1{font-size:24px}
 .chart{min-width:600px}figure{padding:12px}}
@@ -609,7 +610,7 @@ def html(results: dict[str, Any]) -> str:
         + f"<p>{escape(text.MATRIX_NOTE)}</p>"
         + matrix_table(matrix_rows(results))
         + f"<h2>{escape(text.TIERS_HEAD)}</h2>"
-        + table(TIER_HEAD, tier_rows(results))
+        + table(TIER_HEAD, tier_rows(results), nowrap=(0,))
         + "</section>"
         + f"<footer>{docs}</footer></main>"
     )

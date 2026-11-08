@@ -1,4 +1,5 @@
 import ast
+import html
 import itertools
 import re
 import shutil
@@ -77,6 +78,13 @@ def test_render_readme_needs_every_block() -> None:
                 "story": "y",
             },
         )
+
+
+def test_only_short_cells_are_kept_on_one_line() -> None:
+    page = build.html(build.load(ROOT))
+    cells = [html.unescape(c) for c in re.findall(r'<td class="nw">(.*?)</td>', page)]
+    assert cells
+    assert max(len(c) for c in cells) <= 32
 
 
 def test_number_formatting() -> None:
