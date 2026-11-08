@@ -1,0 +1,422 @@
+{
+ "families": [
+  "Creator update",
+  "Popular now",
+  "Personal pick",
+  "Short or long watch",
+  "Welcome back",
+  "Time of day"
+ ],
+ "placeholders": {
+  "creator_videos": [
+   "1 video",
+   "2 videos",
+   "3 videos",
+   "4 videos",
+   "5 videos",
+   "6 videos",
+   "7 videos",
+   "8 videos",
+   "9 videos",
+   "10 videos",
+   "11 videos",
+   "12 videos",
+   "13 videos",
+   "14 videos",
+   "15 videos",
+   "16 videos",
+   "17 videos",
+   "18 videos",
+   "19 videos",
+   "20+ videos"
+  ],
+  "top_n": [
+   "top 10",
+   "top 50",
+   "top 100"
+  ],
+  "duration": [
+   "under 30 seconds",
+   "under a minute",
+   "1 to 3 minutes",
+   "3 to 10 minutes",
+   "over 10 minutes"
+  ],
+  "days_away": [
+   "2 days",
+   "3 days",
+   "4 days",
+   "5 days",
+   "6 days",
+   "a week or more"
+  ],
+  "time_of_day": [
+   "this morning",
+   "at lunch",
+   "this evening",
+   "tonight"
+  ]
+ },
+ "templates": [
+  {
+   "id": 0,
+   "family": 0,
+   "title": "A creator you've watched before",
+   "body": "You've watched {creator_videos} from them. Here's another one picked for you."
+  },
+  {
+   "id": 1,
+   "family": 1,
+   "title": "Popular on the app lately",
+   "body": "We picked a video that's in the {top_n} most watched recently. Take a look?"
+  },
+  {
+   "id": 2,
+   "family": 2,
+   "title": "A video picked for you",
+   "body": "Our recommender found something it thinks you might enjoy. Take a look."
+  },
+  {
+   "id": 3,
+   "family": 3,
+   "title": "A pick for you, {duration} long",
+   "body": "We think this one suits you. Tap to watch when it works for you."
+  },
+  {
+   "id": 4,
+   "family": 4,
+   "title": "Welcome back!",
+   "body": "It's been {days_away}. We picked a video we think you'll like."
+  },
+  {
+   "id": 5,
+   "family": 5,
+   "title": "Something to watch {time_of_day}",
+   "body": "We picked a video we think you'll enjoy. Tap to watch."
+  },
+  {
+   "id": 6,
+   "family": 0,
+   "title": "Back to a familiar creator",
+   "body": "After {creator_videos} from this creator, we picked one more for you."
+  },
+  {
+   "id": 7,
+   "family": 1,
+   "title": "This one's in the {top_n}",
+   "body": "It's been one of the most watched videos on the app lately. Tap to see why."
+  },
+  {
+   "id": 8,
+   "family": 2,
+   "title": "Something new in your feed",
+   "body": "We lined up a video we think suits you. Tap to watch when you have a moment."
+  },
+  {
+   "id": 9,
+   "family": 3,
+   "title": "Got a moment?",
+   "body": "This video takes {duration} to watch. Tap whenever you're ready."
+  },
+  {
+   "id": 10,
+   "family": 4,
+   "title": "A video picked for you",
+   "body": "You've been away for {days_away}, so here's something to start with."
+  },
+  {
+   "id": 11,
+   "family": 5,
+   "title": "Your video pick is ready",
+   "body": "We chose this one for you to watch {time_of_day}. Have a look when you can."
+  },
+  {
+   "id": 12,
+   "family": 0,
+   "title": "More from a creator you've seen",
+   "body": "You've already watched {creator_videos} by them. Want to see another?"
+  },
+  {
+   "id": 13,
+   "family": 1,
+   "title": "A video people keep watching",
+   "body": "It's among the {top_n} most watched videos recently, and we think you might like it."
+  },
+  {
+   "id": 14,
+   "family": 2,
+   "title": "Your next watch is ready",
+   "body": "We chose this one with you in mind. See if it hits the spot."
+  },
+  {
+   "id": 15,
+   "family": 3,
+   "title": "Runs {duration}",
+   "body": "A video picked for you based on what you watch. Have a look."
+  },
+  {
+   "id": 16,
+   "family": 4,
+   "title": "Ready when you are",
+   "body": "After {days_away} away, a new video is waiting in your feed."
+  },
+  {
+   "id": 17,
+   "family": 5,
+   "title": "A short break {time_of_day}?",
+   "body": "Here's a video picked with you in mind. Tap to play."
+  },
+  {
+   "id": 18,
+   "family": 0,
+   "title": "You've seen {creator_videos} from them",
+   "body": "Here's another video from the same creator, picked with you in mind."
+  },
+  {
+   "id": 19,
+   "family": 1,
+   "title": "Curious what's popular?",
+   "body": "Here's a pick from the {top_n} most watched videos on the app lately."
+  },
+  {
+   "id": 20,
+   "family": 2,
+   "title": "Got a minute?",
+   "body": "Here's a short video we picked for you. Give it a try."
+  },
+  {
+   "id": 21,
+   "family": 3,
+   "title": "Your next video is ready",
+   "body": "Watch time: {duration}. Tap to start whenever it suits you."
+  },
+  {
+   "id": 22,
+   "family": 4,
+   "title": "Your feed has something new",
+   "body": "It's been {days_away} since your last visit. Take a look at this pick."
+  },
+  {
+   "id": 23,
+   "family": 5,
+   "title": "Picked for you",
+   "body": "A video we think fits your mood {time_of_day}. Open the app to watch."
+  },
+  {
+   "id": 24,
+   "family": 0,
+   "title": "Same creator, another video",
+   "body": "Your history shows {creator_videos} watched from this creator. Take a look at this one."
+  },
+  {
+   "id": 25,
+   "family": 1,
+   "title": "Straight from the {top_n}",
+   "body": "A recent favorite on the app, picked with you in mind. Tap to watch."
+  },
+  {
+   "id": 26,
+   "family": 2,
+   "title": "Fresh pick, just for you",
+   "body": "Tap in and see the video your recommendations chose for you today."
+  },
+  {
+   "id": 27,
+   "family": 3,
+   "title": "Here's how long it takes",
+   "body": "Just {duration} of your time for a video we picked for you."
+  },
+  {
+   "id": 28,
+   "family": 4,
+   "title": "Fancy a quick watch?",
+   "body": "It's been {days_away}. We lined up a video that might suit you."
+  },
+  {
+   "id": 29,
+   "family": 5,
+   "title": "Got a minute {time_of_day}?",
+   "body": "There's a video waiting for you. It's just a quick tap away."
+  },
+  {
+   "id": 30,
+   "family": 0,
+   "title": "A familiar creator in your feed",
+   "body": "You've watched {creator_videos} from this creator so far. Here's one more."
+  },
+  {
+   "id": 31,
+   "family": 1,
+   "title": "See what others are watching",
+   "body": "This video has made the {top_n} recently. Open the app to check it out."
+  },
+  {
+   "id": 32,
+   "family": 2,
+   "title": "We think you might like this",
+   "body": "Based on what you watch, this video seemed like a good fit for you."
+  },
+  {
+   "id": 33,
+   "family": 3,
+   "title": "Picked with you in mind",
+   "body": "It's {duration} from start to finish. Tap to play."
+  },
+  {
+   "id": 34,
+   "family": 4,
+   "title": "Hello again",
+   "body": "One video, chosen for you after {days_away} away. Tap to watch."
+  },
+  {
+   "id": 35,
+   "family": 5,
+   "title": "Fresh pick in your feed",
+   "body": "We found a video that might suit you {time_of_day}. Take a look."
+  },
+  {
+   "id": 36,
+   "family": 0,
+   "title": "Picked from a creator you watch",
+   "body": "Based on the {creator_videos} you've watched from them, we think you'll like this."
+  },
+  {
+   "id": 37,
+   "family": 1,
+   "title": "Popular on the app",
+   "body": "One of the {top_n} most watched videos lately is waiting for you."
+  },
+  {
+   "id": 38,
+   "family": 2,
+   "title": "Ready when you are",
+   "body": "A video is waiting in your feed, picked to match your taste."
+  },
+  {
+   "id": 39,
+   "family": 3,
+   "title": "Length check: {duration}",
+   "body": "Good to know before you tap. This video was chosen for you."
+  },
+  {
+   "id": 40,
+   "family": 4,
+   "title": "Back after {days_away}?",
+   "body": "Here's a video we picked to help you get started again."
+  },
+  {
+   "id": 41,
+   "family": 5,
+   "title": "Something new to watch",
+   "body": "Take a moment for yourself {time_of_day} with a video we picked for you."
+  },
+  {
+   "id": 42,
+   "family": 0,
+   "title": "Remember this creator?",
+   "body": "You watched {creator_videos} from them. There's another one waiting for you."
+  },
+  {
+   "id": 43,
+   "family": 1,
+   "title": "Your pick from the {top_n}",
+   "body": "We chose a popular video for you from what's been watched most recently."
+  },
+  {
+   "id": 44,
+   "family": 2,
+   "title": "Curious what we found?",
+   "body": "Open the app to see a video selected especially for you."
+  },
+  {
+   "id": 45,
+   "family": 3,
+   "title": "Something to watch",
+   "body": "We found a video for you that lasts {duration}."
+  },
+  {
+   "id": 46,
+   "family": 4,
+   "title": "A little something to watch",
+   "body": "We chose this video for you. It's been {days_away} since you last looked in."
+  },
+  {
+   "id": 47,
+   "family": 5,
+   "title": "Watch something good {time_of_day}",
+   "body": "We lined up a video we think you'll like. Tap to see it."
+  },
+  {
+   "id": 48,
+   "family": 0,
+   "title": "Your watch history says hi",
+   "body": "{creator_videos} from this creator so far. Here's another to add to the list."
+  },
+  {
+   "id": 49,
+   "family": 1,
+   "title": "A crowd favorite for you",
+   "body": "This one ranks in the {top_n} on the app lately. Give it a watch!"
+  },
+  {
+   "id": 50,
+   "family": 2,
+   "title": "A little something to watch",
+   "body": "We set aside a short video we hope you'll enjoy. Have a look."
+  },
+  {
+   "id": 51,
+   "family": 3,
+   "title": "Plan your watch",
+   "body": "Expect {duration} for this one. Open it whenever suits you."
+  },
+  {
+   "id": 52,
+   "family": 4,
+   "title": "Take a short break with us",
+   "body": "It's been {days_away}. A video picked just for you is ready to play."
+  },
+  {
+   "id": 53,
+   "family": 5,
+   "title": "Ready when you are",
+   "body": "A video picked for you {time_of_day} is waiting in the app."
+  },
+  {
+   "id": 54,
+   "family": 0,
+   "title": "Another one from this creator!",
+   "body": "Since you've watched {creator_videos} by them, this pick seemed like a good fit."
+  },
+  {
+   "id": 55,
+   "family": 1,
+   "title": "Lots of views lately",
+   "body": "This video is in the {top_n} most watched recently. See what the fuss is about."
+  },
+  {
+   "id": 56,
+   "family": 2,
+   "title": "Picked with you in mind",
+   "body": "This one made it to the top of your recommendations. Want to see it?"
+  },
+  {
+   "id": 57,
+   "family": 3,
+   "title": "Ready when you are",
+   "body": "One video, {duration} long, picked from what you like to watch."
+  },
+  {
+   "id": 58,
+   "family": 4,
+   "title": "Your next video is ready",
+   "body": "We noticed it's been {days_away}. This one was picked with you in mind."
+  },
+  {
+   "id": 59,
+   "family": 5,
+   "title": "A little something for you",
+   "body": "Take a break {time_of_day} with a video we chose based on what you like."
+  }
+ ]
+}

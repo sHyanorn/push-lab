@@ -1,0 +1,89 @@
+{
+ "templates": 60,
+ "requested_per_family": 16,
+ "kept_per_family": 10,
+ "filters": [
+  "schema",
+  "charset",
+  "placeholders",
+  "length",
+  "banned",
+  "near_duplicate"
+ ],
+ "counts": {
+  "Creator update": {
+   "returned": 16,
+   "schema": 0,
+   "charset": 0,
+   "placeholders": 0,
+   "length": 0,
+   "banned": 0,
+   "near_duplicate": 0,
+   "passed": 16,
+   "kept": 10
+  },
+  "Popular now": {
+   "returned": 16,
+   "schema": 0,
+   "charset": 0,
+   "placeholders": 0,
+   "length": 0,
+   "banned": 0,
+   "near_duplicate": 0,
+   "passed": 16,
+   "kept": 10
+  },
+  "Personal pick": {
+   "returned": 16,
+   "schema": 0,
+   "charset": 0,
+   "placeholders": 0,
+   "length": 0,
+   "banned": 0,
+   "near_duplicate": 0,
+   "passed": 16,
+   "kept": 10
+  },
+  "Short or long watch": {
+   "returned": 16,
+   "schema": 0,
+   "charset": 0,
+   "placeholders": 0,
+   "length": 0,
+   "banned": 0,
+   "near_duplicate": 0,
+   "passed": 16,
+   "kept": 10
+  },
+  "Welcome back": {
+   "returned": 16,
+   "schema": 0,
+   "charset": 0,
+   "placeholders": 0,
+   "length": 0,
+   "banned": 0,
+   "near_duplicate": 0,
+   "passed": 16,
+   "kept": 10
+  },
+  "Time of day": {
+   "returned": 16,
+   "schema": 0,
+   "charset": 0,
+   "placeholders": 0,
+   "length": 0,
+   "banned": 0,
+   "near_duplicate": 0,
+   "passed": 16,
+   "kept": 10
+  }
+ },
+ "banned_matches": {},
+ "usage": {
+  "cache_creation_input_tokens": 0,
+  "cache_read_input_tokens": 0,
+  "input_tokens": 5667,
+  "output_tokens": 12898
+ },
+ "note": "Descriptive counts of one generation run; no simulator result reads the text"
+}
