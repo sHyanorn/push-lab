@@ -241,8 +241,8 @@ def ope_entries(root: Path) -> list[dict[str, Any]]:
                 "tier": "C",
                 "statement": "First simulator check (D043): registered verdict 'implementation "
                 "failure', since IPS and DR failed the no-carryover control for T-half and N; "
-                "against exact truths computed afterwards the biases contain 0, consistent with a "
-                "chance false alarm among 12 unadjusted tests",
+                "post hoc, against exact truths computed afterwards, the biases contain 0, "
+                "consistent with a chance false alarm among 12 unadjusted tests",
                 "source": {"file": "results/ope_simulator.json", "path": ["control"]},
                 "status": "verdict",
             }

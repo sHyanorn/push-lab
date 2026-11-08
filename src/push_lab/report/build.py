@@ -92,6 +92,49 @@ def crossing(flip: dict[str, Any], decimals: int) -> str:
     return interval(only | {"value": only["at"]}, decimals)
 
 
+def check_readings(results: dict[str, Any]) -> None:
+    """Readings the prose states in words; a rerun that changes one fails the build."""
+    c = claims(results)
+    policy = results["policy"]
+    labels = {
+        "H1": "worse on average",
+        "H2": "beats in most sampled settings",
+        "H4": "no detectable difference",
+        "H4-af": "worse on average",
+        "B1": "beats in most sampled settings",
+    }
+    for key, label in labels.items():
+        if c[key]["label"] != label:
+            raise ValueError(f"{key} is now labeled {c[key]['label']!r}")
+    if c["B2"]["holm_rejected"] or not c["B2"]["ci_low"] < 0 < c["B2"]["ci_high"]:
+        raise ValueError("B2 is no longer undetectable")
+    if c["C2"]["ci_high"] >= 0 or c["U4"]["ci_high"] >= 0:
+        raise ValueError("C2 or U4 no longer goes against expectation")
+    if any(c[f"OBD-ratio-{e}"]["ci_high"] >= 1 for e in ("IPS", "DR")):
+        raise ValueError("an OBD interval now reaches the on-policy value")
+    reference_b1 = results["templates"]["seed_variability"]["B1"]["mean_over_triples"]
+    if not reference_b1["ci_low"] < 0 < reference_b1["ci_high"]:
+        raise ValueError("B1 at the reference is no longer undetectable")
+    fn_flips = {n for n, f in policy["flips"].items() if f["F-N"]["result"] == "flip"}
+    if fn_flips != {"annoyance", "base_rate"}:
+        raise ValueError(f"F-N now flips along {sorted(fn_flips)}")
+    resolved = {
+        (n, h)
+        for n, f in policy["flips"].items()
+        for h in ("H1", "H2", "H3", "H4")
+        if any(x["resolved"] for x in f[h]["crossings"])
+    }
+    if resolved != {("annoyance", "H3")}:
+        raise ValueError(f"resolved crossings of H1 to H4 are now {sorted(resolved)}")
+    band = policy["band_F_over_N"]["main_sweep_counts"]
+    if band["below"] * 2 <= sum(band.values()):
+        raise ValueError("most settings are no longer below the band")
+    carry = results["ope_carryover"]["flips"]
+    for name in ("fatigue_elasticity", "opt_out", "return_boost", "novelty"):
+        if any(carry[name][k]["result"] == "flip" for k in carry[name] if k != "values"):
+            raise ValueError(f"the OPE bias now flips along {name}")
+
+
 # Facts: every number the prose uses -------------------------------------------------------
 
 
@@ -115,8 +158,19 @@ def facts(results: dict[str, Any]) -> dict[str, str]:
     rating = copy["rating"]
     seeds = results["templates"]["seed_variability"]
     n_main = sum(s["sweep"] == "main" for s in policy["settings"])
+    check_readings(results)
+    ref = reference_setting(results)["policies"]
     return {
         "no_tier_b": results["evidence"]["note"],
+        "crossing_note": text.CROSSING_NOTE,
+        "h2_note": text.H2_NOTE,
+        "ope_grids": str(len(carry["post_hoc"]["orderings"])),
+        "opens_w1_t": interval(ref["T"]["opens_week1"], 3),
+        "opens_w1_g": interval(ref["G"]["opens_week1"], 3),
+        "active_w4_f": interval(ref["F"]["active_week4"], 2),
+        "active_w4_n": interval(ref["N"]["active_week4"], 2),
+        "h3_losses": str(c["H3"]["losses"]),
+        "h4_half": num(policy["primary"]["main"]["H4"]["median_half_width"], 3),
         "ope_range": f"{g(grid[0])} to {g(grid[-1])}",
         "ope_settings": str(len(carry["settings"])),
         "ref_annoyance": g(results["policy_design"]["reference"]["annoyance"]),
@@ -249,6 +303,10 @@ def matrix_detail(claim: dict[str, Any]) -> str:
         parts.append(f"reversed at {claim['reversed_settings']} settings")
     if "post_hoc_empirical_target" in claim:
         parts.append(f"post hoc {auto_interval(claim['post_hoc_empirical_target'])}")
+    if claim["id"] in ("H2", "H2-af"):
+        parts.append(text.H2_NOTE)
+    if claim["id"] in ("B1", "B2"):
+        parts.append(text.TPL_LIMITS)
     return "; ".join(parts)
 
 
@@ -374,7 +432,7 @@ def ope_ordering(results: dict[str, Any]) -> tuple[list[float], list[svg.Series]
     ]
 
 
-BIAS_CAPTION = "DR bias against simulator truth, active-day share"
+BIAS_CAPTION = "Carryover sweep (D048): DR bias against simulator truth, active-day share"
 ORDERING_CAPTION = "No pushes minus one a day, active-day share"
 
 
@@ -401,6 +459,8 @@ def finding_two(results: dict[str, Any], f: dict[str, str]) -> str:
         + p(text.F2_BODY, f)
         + p(text.F2_GATES, f)
         + table(SWEEP_HEAD, sweep_rows(results, POLICY_ROWS), nowrap=(4,))
+        + f'<p class="scope">{escape(text.SPREAD_NOTE)}</p>'
+        + losing(results["policy"]["primary"]["main"], ("H1", "H2", "H3", "H4"))
         + shows_limits(text.F2_SHOWS, text.F2_LIMITS, f)
         + "</section>"
     )
@@ -418,14 +478,23 @@ def finding_three(results: dict[str, Any], f: dict[str, str]) -> str:
     )
 
 
+def losing(primary: dict[str, Any], ids: Sequence[str]) -> str:
+    """Ids of the main-sweep settings where each comparison loses (METHODS 12.7)."""
+    rows = [
+        [i, ", ".join(str(s["id"]) for s in primary[i]["losing_settings"]) or "none"] for i in ids
+    ]
+    return f"<details><summary>{text.LOSING}</summary>{table(('Id', 'Settings'), rows)}</details>"
+
+
 def templates_section(results: dict[str, Any], f: dict[str, str]) -> str:
     return (
         f'<section id="templates"><h2>{escape(text.TPL_TITLE)}</h2>'
         + p(text.TPL_SCOPE, f, "scope")
         + p(text.TPL_BODY, f)
         + table(SWEEP_HEAD, sweep_rows(results, TEMPLATE_ROWS), nowrap=(4,))
+        + losing(results["templates"]["primary"], ("B1", "B2"))
         + p(text.TPL_LIMITS, f)
-        + p(text.TPL_RATING, f)
+        + f'<p><span class="tag">{text.RATING_TAG}</span> {escape(fill(text.TPL_RATING, f))}</p>'
         + "</section>"
     )
 
@@ -600,8 +669,13 @@ def readme_blocks(results: dict[str, Any]) -> dict[str, str]:
         ),
         start=1,
     ):
+        table_md = ""
+        if k == 2:
+            compact = [[r[0], r[2], r[3], r[4]] for r in sweep_rows(results, POLICY_ROWS[:4])]
+            head = ("Id (main sweep)", "Label", "Sweep average", "Wins / losses / neither")
+            table_md = md_table(head, compact) + "\n\n"
         findings.append(
-            f"### {k}. {title}\n\n*{fill(scope, f)}*\n\n{fill(body, f)} {extra}\n\n"
+            f"### {k}. {title}\n\n*{fill(scope, f)}*\n\n{fill(body, f)} {extra}\n\n{table_md}"
             f"- **{text.SHOWS}:** {fill(shows, f)}\n- **{text.LIMITS}:** {fill(limits, f)}"
         )
     return {

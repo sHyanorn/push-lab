@@ -550,7 +550,7 @@
   {
    "id": "OPE-first-run",
    "tier": "C",
-   "statement": "First simulator check (D043): registered verdict 'implementation failure', since IPS and DR failed the no-carryover control for T-half and N; against exact truths computed afterwards the biases contain 0, consistent with a chance false alarm among 12 unadjusted tests",
+   "statement": "First simulator check (D043): registered verdict 'implementation failure', since IPS and DR failed the no-carryover control for T-half and N; post hoc, against exact truths computed afterwards, the biases contain 0, consistent with a chance false alarm among 12 unadjusted tests",
    "source": {
     "file": "results/ope_simulator.json",
     "path": [

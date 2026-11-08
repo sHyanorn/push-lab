@@ -9,8 +9,8 @@ import pytest
 from push_lab.report import build, svg, text
 
 ROOT = Path(__file__).parents[2]
-# Identifiers such as H1, T2, C2, U4 or D046, and the interval level
-ALLOWED = re.compile(r"\b[A-Z]{1,3}\d{1,3}\b|95%")
+# Identifiers such as H1, T2, C2, U4 or D046, section references and the interval level
+ALLOWED = re.compile(r"\b[A-Z]{1,3}\d{1,3}\b|95%|METHODS \d+(\.\d+)?")
 
 
 def _strings(path: Path) -> list[str]:
