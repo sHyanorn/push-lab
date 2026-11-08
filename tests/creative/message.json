@@ -1,0 +1,14 @@
+{
+ "id": "msg_recorded",
+ "type": "message",
+ "role": "assistant",
+ "model": "recorded-model",
+ "content": [
+  {"type": "thinking", "thinking": "", "signature": "sig"},
+  {"type": "text", "text": "{\"variants\": [{\"title\": \"Back after {days_away}\", \"body\": \"Here is a video picked for your return.\"}, {\"title\": \"Missing piece\", \"body\": \"Only a title and a body here.\", \"extra\": 1}]}"}
+ ],
+ "stop_reason": "end_turn",
+ "stop_sequence": null,
+ "stop_details": null,
+ "usage": {"input_tokens": 812, "output_tokens": 2304, "cache_creation_input_tokens": 0, "cache_read_input_tokens": 0, "service_tier": "standard"}
+}
