@@ -1,0 +1,16 @@
+.DS_Store
+.env
+.env.*
+*.log
+.idea/
+.vscode/
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+data/raw/
+data/processed/
+results/
