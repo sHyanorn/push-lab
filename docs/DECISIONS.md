@@ -223,3 +223,11 @@
 - NumPy's seed sequence ignores trailing zeros: `default_rng([s, 0, 0])` gives the same numbers as `default_rng(s)`. The exploration policy keyed its coins by `[seed, day, slot]`, so at day 0, slot 0 they were the open draws of `env.draws(seed)` whenever the two seeds were equal. Found while testing the M5 policies, where it raised the open rate of the first slot from 0.13 to 0.38 in a synthetic run. In M4 only the timing run of `sim.build` used equal seeds, and no outcome of it was reported
 - Every keyed stream is now `default_rng([purpose, *key, 1])` (`world.stream`): the leading purpose separates uses and the closing 1 keeps trailing zeros from being dropped. Integer seeds used in one run (world copy effects and draws) are kept distinct by the sweep design; profile noise uses a keyed stream. A test checks that the exploration, template, coin, half-day and noise streams and the open, opt-out and visit draws of one seed are uncorrelated at day 0, slot 0
 - Checked: rerunning `sim.build` after the fix reproduces `data/processed/sim/inputs.npz` bit for bit and changes only the timings in `results/simulator.json`, so the committed M4 results are not affected
+
+## D033 Changes to the design before it was frozen
+- Date: 2026-11-08
+- Made after the independent code review and before `results/policy_design.json` was committed or any policy ran on evaluation users
+- Evaluation run seeds are 101 to 103 instead of the 1 to R written in METHODS 12.6: seeds 1 and 2 already select the fit and diagnostic users, and every integer seed of the design should have one use (D032)
+- The secondary budget $b = 1$ is dropped: with one push a day allowed to every eligible user, S, G and G2 send to the same users at the same slot and are one policy
+- F's slot is the largest share of the perturbed profile averaged over users, as implemented; METHODS 12.2 now says so instead of "population share", which 11.1 uses for pooled counts
+- Every setting records the code commit it ran with; the runner refuses a modified working tree and will not resume over settings from another commit. `results/policy.json` gets labels and Holm decisions only when all main and annoyance-free settings are present

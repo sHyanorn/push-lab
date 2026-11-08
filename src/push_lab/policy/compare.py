@@ -185,7 +185,7 @@ def evaluate_setting(metrics: FloatArray, names: list[str], boot: Bootstrap) -> 
         p: {metric: interval(point[f"{p}.{metric}"], b[f"{p}.{metric}"]) for metric in METRICS}
         for p in names
     }
-    comparisons = {}
+    comparisons: dict[str, Any] = {}
     for key in PRIMARY:
         d = f"diff.{key}"
         pv = p_value(b[d])
@@ -193,20 +193,22 @@ def evaluate_setting(metrics: FloatArray, names: list[str], boot: Bootstrap) -> 
             "p_value": _r(pv),
             "verdict": verdict(point[d], pv),
         }
+    comparisons["H2"]["note"] = H2_NOTE
     secondary = {key: interval(point[f"diff.{key}"], b[f"diff.{key}"]) for key in SECONDARY}
     per_push = {}
     for p in PER_PUSH:
         num, den = f"gain.{p}", f"{p}.delivered"
         if point[den] > 0:
             per_push[p] = interval(point[num] / point[den], b[num] / b[den])
-    gain_f, base = b["diff.F-N"], b["N.active_days"]
-    lift = interval(point["diff.F-N"] / point["N.active_days"], gain_f / base)
+    lift_boot = b["diff.F-N"] / b["N.active_days"]
+    lift = interval(point["diff.F-N"] / point["N.active_days"], lift_boot)
+    lift_low, lift_high = np.percentile(lift_boot, [2.5, 97.5])
     summary = {
         "policies": policies,
         "primary": comparisons,
         "secondary": secondary,
         "active_days_per_push_over_N": per_push,
-        "daily_lift_F_over_N": lift | {"band": band_class(lift["ci_low"], lift["ci_high"])},
+        "daily_lift_F_over_N": lift | {"band": band_class(lift_low, lift_high)},
     }
     kept = {k: b[f"diff.{k}"] for k in (*PRIMARY, *SECONDARY)}
     points = {k: float(point[f"diff.{k}"]) for k in (*PRIMARY, *SECONDARY)}
@@ -234,6 +236,10 @@ def summarize(
         by_sweep.setdefault(settings[sid]["sweep"], []).append(sid)
     seed = frozen["bootstrap"]["settings_seed"]
 
+    designed = {
+        sweep: sum(s["sweep"] == sweep for s in frozen["settings"]) for sweep in LABELED_SWEEPS
+    }
+    complete = all(len(by_sweep.get(k, [])) == n for k, n in designed.items())
     labeled: dict[str, dict[str, Any]] = {}
     p_all: dict[str, float] = {}
     for sweep in LABELED_SWEEPS:
@@ -267,20 +273,26 @@ def summarize(
                 ],
             }
             p_all[f"{sweep}.{key}"] = p
-    rejected = holm(p_all)
-    for name, ok in rejected.items():
-        sweep, key = name.split(".")
-        entry = labeled[sweep][key]
-        entry["holm_rejected"] = ok
-        entry["label"] = label(entry["sweep_average"]["value"], ok, entry["wins"], entry["losses"])
-        if key == "H2":
-            entry["note"] = H2_NOTE
+    # Labels and Holm need every registered setting; a partial run gets none
+    rejected = holm(p_all) if complete else {}
+    for sweep, entries in labeled.items():
+        for key, entry in entries.items():
+            ok = rejected.get(f"{sweep}.{key}")
+            entry["holm_rejected"] = ok
+            entry["label"] = (
+                label(entry["sweep_average"]["value"], ok, entry["wins"], entry["losses"])
+                if ok is not None
+                else "incomplete"
+            )
+            if key == "H2":
+                entry["note"] = H2_NOTE
 
-    stress = {}
+    stress: dict[str, dict[str, Any]] = {}
     if by_sweep.get("stress"):
         for key in PRIMARY:
             verdicts = [results[i].summary["primary"][key]["verdict"] for i in by_sweep["stress"]]
             stress[key] = {v: verdicts.count(v) for v in ("win", "loss", "neither")}
+        stress["H2"]["note"] = H2_NOTE
 
     band: dict[str, int] = {}
     for i in by_sweep.get("main", []):

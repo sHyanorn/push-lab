@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -59,7 +60,8 @@ def test_run_setting_outputs(
     for k in ("S", "G", "G2"):
         assert delivered[k].sum() == pytest.approx(delivered["S"].sum(), rel=0.02)
         assert delivered[k].sum() <= 100 * DAYS
-        assert delivered[f"{k}_b1"].sum() > delivered[k].sum()
+        assert (metrics[names.index(f"{k}_lambda"), col["delivered"]] <= DAYS).all()
+        assert delivered[f"{k}_lambda"].sum() <= delivered[k].sum() + 1e-9
     assert set(info["diagnostics"]) >= {
         "spearman_S",
         "spearman_G",
@@ -90,3 +92,33 @@ def test_compare_summarizes_the_settings(
     }
     assert sum(summary["stress_verdicts"]["H1"].values()) == 1
     json.dumps(summary)
+
+
+def test_a_partial_run_gets_no_labels(ran: Ran) -> None:
+    chosen, out = ran
+    boot = compare.Bootstrap(200, samples=200, seed=0)
+    results = {
+        sid: compare.evaluate_setting(m.astype(np.float64), info["policies"], boot)
+        for sid, (m, info) in out.items()
+    }
+    missing = chosen[0] | {"id": 999, "point": 1}
+    frozen = {
+        "settings": [*chosen, missing],
+        "bootstrap": {"settings_seed": 1},
+        "names": list(design.NAMES),
+    }
+    summary = compare.summarize(results, frozen, {sid: info for sid, (_, info) in out.items()})
+    assert summary["primary"]["main"]["H1"]["label"] == "incomplete"
+    assert summary["primary_holm"] == {}
+
+
+def test_resume_refuses_settings_from_another_commit(tmp_path: Path) -> None:
+    npz, meta = sweep.setting_paths(tmp_path, 3)
+    npz.parent.mkdir(parents=True)
+    assert not sweep.finished(tmp_path, 3, "abc")
+    np.savez(npz, metrics=np.zeros(1))
+    assert not sweep.finished(tmp_path, 3, "abc")
+    meta.write_text(json.dumps({"commit": "abc"}))
+    assert sweep.finished(tmp_path, 3, "abc")
+    with pytest.raises(SystemExit, match="commit"):
+        sweep.finished(tmp_path, 3, "def")

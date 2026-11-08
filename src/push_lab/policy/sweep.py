@@ -9,6 +9,7 @@ import argparse
 import json
 import multiprocessing as mp
 import os
+import subprocess
 import sys
 import time
 from collections.abc import Sequence
@@ -32,7 +33,7 @@ FloatArray = npt.NDArray[np.float64]
 IntArray = npt.NDArray[np.int64]
 
 PRIMARY = ("N", "R", "F", "T", "T_half", "T_two_tower", "S", "G", "G2")
-SECONDARY = (*(f"{k}_b1" for k in KINDS), *(f"{k}_lambda" for k in KINDS))
+SECONDARY = tuple(f"{k}_lambda" for k in KINDS)
 METRICS = ("active_days", "active_week4", "opens_week1", "opens", "delivered", "opted_out")
 SECONDARY_SWEEPS = ("main",)
 RUNS = Path("runs") / "policy"
@@ -45,7 +46,6 @@ class Context:
     fit: IntArray
     diagnostic: IntArray
     budget: float = design.BUDGET
-    secondary_budget: float = design.SECONDARY_BUDGET
     threads: int = 1
 
     def population(self, users: IntArray, name: str = "cascade") -> env.Population:
@@ -183,7 +183,7 @@ def run_setting(ctx: Context, s: dict[str, Any]) -> tuple[FloatArray, dict[str, 
                     models,
                     ev_static,
                     kind,  # type: ignore[arg-type]
-                    ctx.secondary_budget if variant == "b1" else ctx.budget,
+                    ctx.budget,
                     r,
                     multiplier=lam[kind] if variant == "lambda" else None,
                 )
@@ -206,11 +206,12 @@ def setting_paths(root: Path, setting_id: int) -> tuple[Path, Path]:
 
 _CONTEXT: Context | None = None
 _ROOT: Path | None = None
+_COMMIT = ""
 
 
-def _init(root: Path) -> None:
-    global _CONTEXT, _ROOT
-    _ROOT = root
+def _init(root: Path, commit: str) -> None:
+    global _CONTEXT, _ROOT, _COMMIT
+    _ROOT, _COMMIT = root, commit
     _CONTEXT = load_context(root)
 
 
@@ -220,9 +221,36 @@ def _work(s: dict[str, Any]) -> tuple[int, float]:
     values, info = run_setting(_CONTEXT, s)
     npz, meta = setting_paths(_ROOT, s["id"])
     npz.parent.mkdir(parents=True, exist_ok=True)
-    np.savez_compressed(npz, metrics=values.astype(np.float32))
-    meta.write_text(json.dumps(info, indent=1) + "\n", encoding="utf-8")
+    meta.write_text(json.dumps(info | {"commit": _COMMIT}, indent=1) + "\n", encoding="utf-8")
+    # The archive marks a finished setting, so it is written last and moved into place whole
+    partial = npz.with_name(npz.stem + ".partial.npz")
+    np.savez_compressed(partial, metrics=values.astype(np.float32))
+    os.replace(partial, npz)
     return s["id"], time.perf_counter() - start
+
+
+def finished(root: Path, setting_id: int, commit: str) -> bool:
+    """A setting is done when both files exist; done under another commit is an error."""
+    npz, meta = setting_paths(root, setting_id)
+    if not (npz.exists() and meta.exists()):
+        return False
+    ran = json.loads(meta.read_text("utf-8")).get("commit")
+    if ran != commit:
+        raise SystemExit(f"setting {setting_id} ran with commit {ran}, not {commit}")
+    return True
+
+
+def code_commit(root: Path) -> str:
+    """HEAD, refusing a working tree whose code differs from it."""
+
+    def git(*a: str) -> str:
+        return subprocess.run(
+            ["git", *a], cwd=root, capture_output=True, text=True, check=True
+        ).stdout.strip()
+
+    if git("status", "--porcelain", "--", "src", "pyproject.toml", "uv.lock"):
+        raise SystemExit("commit the code before running the sweep")
+    return git("rev-parse", "HEAD")
 
 
 def load_context(root: Path) -> Context:
@@ -236,7 +264,7 @@ def load_context(root: Path) -> Context:
     )
 
 
-def check_design(root: Path, frozen: dict[str, Any], n_users: int) -> None:
+def check_design(frozen: dict[str, Any], n_users: int) -> None:
     """Stop if the code no longer reproduces the frozen design."""
     current = design.build(n_users)
     if json.loads(json.dumps(current)) != frozen:
@@ -253,23 +281,25 @@ def main(argv: Sequence[str] | None = None) -> int:
     for var in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS"):
         os.environ[var] = "1"
     frozen = design.load(args.root)
-    inp_users = len(np.load(paths.processed_dir(args.root, "sim") / inputs.CACHE)["user_ids"])
-    check_design(args.root, frozen, inp_users)
+    commit = code_commit(args.root)
+    # Load once here so a broken cache fails before any worker starts
+    ctx = load_context(args.root)
+    check_design(frozen, len(ctx.inputs.user_ids))
+    del ctx
     todo = [
         s
         for s in frozen["settings"]
-        if (args.ids is None or s["id"] in args.ids)
-        and not setting_paths(args.root, s["id"])[0].exists()
+        if (args.ids is None or s["id"] in args.ids) and not finished(args.root, s["id"], commit)
     ]
     # Settings with secondary policies take longest; start them first
     todo.sort(key=lambda s: (s["sweep"] not in SECONDARY_SWEEPS, s["id"]))
-    print(f"{len(todo)} settings to run", flush=True)
+    print(f"{len(todo)} settings to run at {commit}", flush=True)
     start = time.perf_counter()
-    with mp.get_context("spawn").Pool(args.processes, _init, (args.root,)) as pool:
+    with mp.get_context("spawn").Pool(args.processes, _init, (args.root, commit)) as pool:
         for done, (sid, seconds) in enumerate(pool.imap_unordered(_work, todo), 1):
             elapsed = time.perf_counter() - start
             print(f"{done}/{len(todo)} setting {sid}: {seconds:.0f} s, {elapsed:.0f} s", flush=True)
-    if not args.no_compare:
+    if not args.no_compare and args.ids is None:
         from push_lab.policy import compare
 
         compare.main(["--root", str(args.root)])

@@ -390,7 +390,7 @@ The environment passes feedback in `Observation` (D027). Every policy plans day 
 |---|---|---|
 | N | No pushes | nothing |
 | R | Each slot independently with probability 1/4 (one a day on average, no daily cap); coins from their own stream | nothing |
-| F | One push a day at the slot with the largest population share of the setting's perturbed policy profile (21:00 at $\Delta = 0$) | population shares of the perturbed profile |
+| F | One push a day at the slot with the largest share of the setting's perturbed policy profile averaged over all users (21:00 at $\Delta = \xi = 0$) | mean of the perturbed profile |
 | T | One push a day at the user's best slot under the perturbed policy profile | policy profile |
 | T½ | T's slot, for a seeded random half of users each day (secondary, separates volume from targeting in H3) | policy profile |
 | S | Response threshold: user-day score $\max_s \hat p(x_{u,d,s})$ | 12.1 |
@@ -411,7 +411,7 @@ S, G and G2 all send at $s^*_{u,d} = \arg\max_s \hat p(x_{u,d,s})$: the share of
 
 The scores target the same-day visit; return, fatigue, annoyance and opt-out act on later days and enter only through the features and the budget. This myopia is a stated limitation. Two biases act on S, G and G2 alike: the logging policy's other pushes on the same day, and histories the logs never contain (for example ten days without a delivery).
 
-**Score diagnostics** (secondary): on 2,000 users drawn from the 12,285 users outside the fit and evaluation sets, an exploration run with the setting's parameters gives the true same-day uplift of each (user, day, slot), $p_{u,d,s}\,(1 - v_{u,d})$ with $p$ from 11.2 and $v$ from 11.4; the report gives the Spearman correlation of each score with it and the share of user-days on which $s^*$ is the true best slot.
+**Score diagnostics** (secondary): on 2,000 users drawn from the 12,285 users outside the fit and evaluation sets, an exploration run with the setting's parameters gives the true same-day uplift of each (user, day, slot), $p_{u,d,s}\,(1 - v_{u,d})$ with $p$ from 11.2 and $v$ from 11.4; the report gives the Spearman correlation of each score with it and the share of user-days on which $s^*$ is the true best slot. The true best slot includes the effect of the template drawn for each slot, which no policy can predict, so this share understates slot accuracy when the copy spread is large.
 
 ### 12.4 Budget and the Lagrange multiplier
 
@@ -437,7 +437,7 @@ At $\Delta = \xi = 0$ the profile equals `profile_policy`, which already differs
 - *Stress sweep*: the same 64 settings with $\kappa_o = 0.005$, outside the evidence; reported apart and never pooled.
 - *One-at-a-time grid*: from the reference setting with $\Delta = \xi = 0$, each of the 13 parameters at 5 evenly spaced points of its range, endpoints included, others at their reference values; 61 distinct settings.
 - *Fit variability*: at the reference setting, models refitted on 10 exploration run seeds.
-- *Seeds*: per setting a world seed, an exploration run seed, a perturbation seed and evaluation run seeds $1, \dots, R$ with $R = 3$, shared by every policy of the setting so differences are paired on common random numbers. $R$ was set from timing on synthetic inputs of full size: about 2 to 3 hours on 4 processes with $R = 3$, about 3 to 4 with $R = 5$ (D031).
+- *Seeds*: per setting a world seed, an exploration run seed, a perturbation seed and evaluation run seeds 101, 102 and 103 ($R = 3$; D033), shared by every policy of the setting so differences are paired on common random numbers. $R$ was set from timing on synthetic inputs of full size: about 2 to 3 hours on 4 processes with $R = 3$, about 3 to 4 with $R = 5$ (D031).
 - *Freezing*: every design point and seed is written to `results/policy_design.json` by the design code and committed and pushed before any policy runs on evaluation users.
 
 ### 12.7 Metrics, comparisons and decision rule
@@ -453,7 +453,7 @@ At $\Delta = \xi = 0$ the profile equals `profile_policy`, which already differs
 | H3 | G at $b = 0.5$ against T | Does the gate keep more users active with half the volume? |
 | H4 | T against F | Does the user's own best slot beat one fixed slot? |
 
-**Secondary** (intervals, no tests): G − N, T − N, F − N; H3 split as (G − T½) + (T½ − T); G2 − T; L1, T on the cascade list against T on the two-tower list; S, G, G2 at $b = 1$ and with one multiplier; opens per user in week 1 and in total; active days in week 4; delivered pushes per user; share opted out by day 28; active days per delivered push; score diagnostics (12.3); fit variability, the SD of each $\Delta_h$ over the 10 refits against its bootstrap SE.
+**Secondary** (intervals, no tests): G − N, T − N, F − N; H3 split as (G − T½) + (T½ − T); G2 − T; L1, T on the cascade list against T on the two-tower list; S, G, G2 with one multiplier; opens per user in week 1 and in total; active days in week 4; delivered pushes per user; share opted out by day 28; active days per delivered push; score diagnostics (12.3); fit variability, the SD of each $\Delta_h$ over the 10 refits against its bootstrap SE.
 
 **Bootstrap** (D029). 10,000 resamples of the 5,000 users (seed 0); the same resampled user sets serve every setting. Per setting $j$ and comparison $h$: $\Delta_{h,j}$ is the mean per-user difference, with its percentile interval and the two-sided p-value of the Conventions; this interval is conditional on the setting's fitted models. Sweep average $\bar\Delta_h$, the unweighted mean over the 64 settings: each resample also draws 64 settings with replacement, so its interval covers the choice of settings and, through their different seeds, model-fit and world randomness.
 

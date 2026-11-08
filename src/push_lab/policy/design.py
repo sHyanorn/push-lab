@@ -37,7 +37,6 @@ EVAL_SEEDS = (101, 102, 103)
 FIT_USERS, FIT_SEED = 10_000, 1
 DIAGNOSTIC_USERS, DIAGNOSTIC_SEED = 2_000, 2
 BUDGET = 0.5
-SECONDARY_BUDGET = 1.0
 BOOTSTRAP_SAMPLES, BOOTSTRAP_SEED, SETTINGS_SEED = 10_000, 0, 1
 # Integer seeds of one setting must differ from each other (D032)
 WORLD, EXPLORE, PERTURB, DIAGNOSTIC = 10_000, 20_000, 40_000, 50_000
@@ -127,7 +126,6 @@ def build(n_users: int) -> dict[str, Any]:
         "ranges": {n: list(RANGES[n]) for n in NAMES},
         "reference": {n: float(REFERENCE[n]) for n in NAMES},
         "budget": BUDGET,
-        "secondary_budget": SECONDARY_BUDGET,
         "bootstrap": {
             "samples": BOOTSTRAP_SAMPLES,
             "seed": BOOTSTRAP_SEED,
