@@ -66,6 +66,32 @@
 - Date: 2026-11-08
 - Rationale: if one activity profile drove both the policy and the simulator, the policy would win by construction. The simulator uses profiles from 04-22 to 05-08, the policy estimates its own from 04-08 to 04-21, and the sweep adds a shift and noise on top
 
+## D015 Data layout, sources and measured cost
+- Date: 2026-11-08
+- Layout: downloads in `data/raw/<dataset>/`, Parquet tables in `data/processed/<dataset>/`, both ignored by git; the quality report in `results/data_quality.json` is committed (D016)
+- Checksums: KuaiRand-Pure md5 as published by Zenodo; Criteo sha256 is the Git LFS object id published by Hugging Face; Hillstrom and the four Open Bandit Dataset files have no published checksum, so their sha256 was computed on 2026-11-08, the OBD files from a commit of the Open Bandit Pipeline repository pinned in `sources.py`
+- Hillstrom is fetched over plain HTTP: the host answers HTTPS with a self-signed default certificate. The pinned size and sha256 detect any change in transit or at the source, and the file is only read as CSV, so the risk is a failed download, not a silent one
+- Zenodo ignores Range requests and sends the whole file again; the downloader detects this and restarts the file
+- Criteo is converted in 16 MB CSV blocks: 64 MB blocks raised peak memory from 0.9 GB to 2.6 GB with no gain in speed
+- Measured on 2026-11-08 in a cloud container (4 vCPU, 15 GB RAM, Linux 6.18, Python 3.14.10), from empty directories; peak memory is the maximum resident set size from GNU time; download times depend on the network
+
+| Step | Size | Time | Peak memory |
+|---|---|---|---|
+| Download KuaiRand-Pure | 47.4 MB | 36 s | 34 MB |
+| Download Hillstrom | 4.0 MB | 0.5 s | 34 MB |
+| Download Criteo | 311 MB | 12 s | 34 MB |
+| Download OBD sample | 6.6 MB | 0.8 s | 36 MB |
+| Prepare KuaiRand-Pure (extracted CSV 203 MB) | 42 MB Parquet | 2.0 s | 0.54 GB |
+| Prepare Hillstrom | 0.3 MB Parquet | 0.5 s | 0.26 GB |
+| Prepare Criteo | 252 MB Parquet | 11 s | 0.89 GB |
+| Prepare OBD sample | 0.5 MB Parquet | 0.6 s | 0.24 GB |
+| Quality report | | 0.8 s | 0.93 GB |
+| Load KuaiRand random exposures, tab 1 (1,178,025 rows) | 170 MB in pandas | 0.1 s | 0.77 GB |
+| Load Criteo, all rows | 1.35 GB in pandas | 0.7 s | 4.7 GB |
+| Load Criteo, training sample (1,398,727 rows) | 134 MB in pandas | 0.5 s | 1.0 GB |
+
+- Full Criteo scoring in M3 should read only the columns it needs or go in row batches; the whole table in pandas peaks at 4.7 GB
+
 ## D016 Data quality checks
 - Date: 2026-11-08
 - Errors (the command exits with status 1): a missing processed table; a Parquet schema that differs from the shared schema; a row count that differs from the published figure (KuaiRand-Pure logs 1,141,112, 295,497 and 1,186,059 rows, 27,285 users; Criteo 13,979,592 rows); `is_rand` not 1 on every random-exposure row or not 0 on every standard-log row; Criteo treatment share more than 0.005 from the published 0.85; Criteo training share more than 0.01 from 0.1; Hillstrom treatment share outside 0.45 to 0.55; an OBD propensity outside (0, 1], or a random-policy propensity that is not 1/34
