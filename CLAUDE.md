@@ -25,7 +25,7 @@ src/push_lab/
 data/creative/  Committed generated copy and its manifest
 results/        Committed aggregated results (JSON); per-run output in results/runs/ is ignored
 tests/
-notebooks/      Demo notebook
+notebooks/      Demo notebook, checked against a fresh run
 ```
 
 ## Working practices
@@ -47,7 +47,10 @@ uv run python -m push_lab.data.prepare           # Convert them to Parquet in da
 uv run python -m push_lab.data.quality           # Write results/data_quality.json
 uv run python -m push_lab.rank.evaluate          # Write results/ranking.json
 uv run python -m push_lab.creative.generate --model <model-id>  # One-off; needs ANTHROPIC_API_KEY
-uv run python -m push_lab.report.build           # Rebuild results and the HTML report
+uv run python -m push_lab.report.evidence        # Rebuild results/evidence.json
+uv run python -m push_lab.report.build           # Report in site/ and the README numbers
+uv run python -m push_lab.report.notebook --update  # Rerun the demo notebook and store its outputs
+uv run python -m push_lab.reproduce synthetic    # Pipeline on fixtures (overwrites results/; fresh checkout)
 ```
 
 ## Hard rules
