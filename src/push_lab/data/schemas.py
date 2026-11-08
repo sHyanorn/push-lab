@@ -160,5 +160,31 @@ CRITEO: Schema = {
 CRITEO_PROCESSED: Schema = {**CRITEO, "train": pa.bool_()}
 
 
+OBD_MEN_ACTIONS = 34
+
+# The CSV files start with an unnamed pandas index column
+OBD_LOG_RAW: Schema = {
+    "": _INT,
+    "timestamp": _STR,
+    "item_id": _INT,
+    "position": _INT,
+    "click": _INT,
+    "propensity_score": _FLOAT,
+    **{f"user_feature_{i}": _STR for i in range(4)},
+    **{f"user-item_affinity_{i}": _FLOAT for i in range(OBD_MEN_ACTIONS)},
+}
+
+OBD_LOG: Schema = {name.replace("-", "_"): dtype for name, dtype in OBD_LOG_RAW.items() if name}
+
+OBD_ITEMS_RAW: Schema = {
+    "": _INT,
+    "item_id": _INT,
+    "item_feature_0": _FLOAT,
+    **{f"item_feature_{i}": _STR for i in range(1, 4)},
+}
+
+OBD_ITEMS: Schema = {name: dtype for name, dtype in OBD_ITEMS_RAW.items() if name}
+
+
 def to_arrow(schema: Schema) -> pa.Schema:
     return pa.schema(list(schema.items()))

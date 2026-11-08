@@ -5,7 +5,7 @@ import sys
 from collections.abc import Callable, Sequence
 from pathlib import Path
 
-from push_lab.data import kuairand, paths, uplift_trials
+from push_lab.data import kuairand, obd, paths, uplift_trials
 from push_lab.data.sources import CRITEO_UPLIFT, HILLSTROM, KUAIRAND_PURE
 
 
@@ -28,10 +28,15 @@ def _criteo(root: Path) -> list[Path]:
     return [uplift_trials.convert_criteo(csv_gz, out)]
 
 
+def _obd(root: Path) -> list[Path]:
+    return obd.convert(paths.raw_dir(root, "obd"), paths.processed_dir(root, "obd"))
+
+
 PREPARERS: dict[str, Callable[[Path], list[Path]]] = {
     "kuairand": _kuairand,
     "hillstrom": _hillstrom,
     "criteo": _criteo,
+    "obd": _obd,
 }
 
 
