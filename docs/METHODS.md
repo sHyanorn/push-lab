@@ -577,3 +577,87 @@ A *round* $t$ is a delivered push to user $u$ at (day $d$, slot $s$); $A_t$ is t
 - Kish, L. (1965). *Survey Sampling*. Wiley.
 
 **Code.** `creative/` (`families.py`, `filters.py`, `generate.py`: `python -m push_lab.creative.generate --model <id>`), `policy/templates.py` (U, RD, D0, RAW, O), `policy/template_design.py`, `policy/template_sweep.py`, writing `results/copy.json` and `results/templates.json`. **Tests.** Each filter rule on hand-made accepts and rejects; every committed template passes the filters and fills from fixture data within the length limits; the generation script against a hand-made response in the API's format; the RD estimator against a hand-computed two-arm example, and with uniform logging $\bar\mu_a^-$ equals the mean over the other eligible arms; with $\sigma = \gamma = 0$ every template policy gives the same opens on the same draws; the logged probabilities match the softmax and empirical choices match them within sampling error; U, D0, RD and RAW share the uniform of each (user, day, slot); a policy cannot read the current day's opens; fixed seeds give identical results.
+
+---
+
+## 14. Off-policy evaluation
+
+**Problem.** Estimate the value of a policy that was never run from logs of another policy with known propensities, and find out where such estimates can be trusted. An estimate gets Tier B only when it is computed on real logs with an estimator first checked against a known answer on real data (SPEC Section 5). The only real logs with two policies and known propensities here are the Open Bandit Dataset (OBD); every estimate on simulator logs, and every check against simulator truth, is Tier C.
+
+### 14.1 Estimators
+
+Logged rounds $i = 1, \dots, n$ with context $x_i$, action $a_i$ drawn by the logging policy with probability $b_i = b(a_i \mid x_i)$, and reward $r_i$. A target policy $\pi$ gives each action a probability $\pi(a \mid x_i)$; the weight is $w_i = \pi(a_i \mid x_i) / b_i$. With an outcome model $\hat q(x, a)$ and $\hat q(x, \pi) = \sum_a \pi(a \mid x)\, \hat q(x, a)$:
+
+$$
+\hat V_{\text{DM}} = \frac1n \sum_i \hat q(x_i, \pi), \quad
+\hat V_{\text{IPS}} = \frac1n \sum_i w_i r_i, \quad
+\hat V_{\text{SNIPS}} = \frac{\sum_i w_i r_i}{\sum_i w_i}, \quad
+\hat V_{\text{DR}} = \hat V_{\text{DM}} + \frac1n \sum_i w_i \big(r_i - \hat q(x_i, a_i)\big).
+$$
+
+- Assumptions: the logged propensities are the true ones; overlap, $b(a \mid x) > 0$ wherever $\pi(a \mid x) > 0$; rewards of a round depend only on its context and action (no carryover). IPS is unbiased under these; SNIPS trades a small bias for lower variance; DM is unbiased only if $\hat q$ is right; DR is unbiased if either the propensities or $\hat q$ is right (Dudík et al. 2011).
+- $\hat q$ is a LightGBM classifier with the base model of Section 8, fitted with 2-fold cross-fitting by user (each fold's rows scored by the model fitted on the other fold), so no round is scored by a model that saw it.
+- No clipping or switching: every weight is used as is. Each estimate is reported with the effective sample size $(\sum w)^2 / \sum w^2$ and the largest weight.
+- Intervals: bootstrap over the units that make rounds dependent (users in the simulator, impressions in OBD), 1,000 resamples, 95% percentile, with $\hat q$ held fixed. Holding $\hat q$ fixed leaves its fitting noise out of each interval, so a single interval understates the variance of DM and DR; coverage over many log seeds (14.3) exposes this, and under-coverage of DM or DR is read first as this cause. The four estimators are reported side by side; when their intervals do not overlap the estimate is reported as inconclusive (SPEC Section 5).
+
+**Code.** `ope/estimators.py`. **Tests.** On synthetic bandit data with a known policy value: IPS and DR within their bootstrap intervals of the truth over many seeds; with $\pi = b$, IPS equals the on-policy mean and every weight is 1; DR equals DM when $\hat q$ is exact; SNIPS is invariant to scaling all weights; ESS equals $n$ for equal weights.
+
+### 14.2 Validation on the Open Bandit Dataset (real data)
+
+- Data: the committed small sample, Men's campaign, 10,000 impressions logged by uniform random (`random_men`, propensity $1/34$ per item and position) and 10,000 by Bernoulli Thompson sampling (`bts_men`). Each row is an item shown at one of three positions with a click label.
+- Target: the BTS policy. Its probability of each (item, position) is computed as in the Open Bandit Pipeline at the pinned commit (Saito et al. 2021): $10^6$ draws from the production Beta prior of the Men's campaign, each ranking the 34 items by their draws and placing the top three at positions 1 to 3. The policy is context-free, so the probabilities are the same in every round. A test checks the prior against the pinned file.
+- Known answer: the on-policy value, the click rate of the BTS logs, with a bootstrap interval.
+- Estimates: DM, IPS, SNIPS and DR of the BTS value from the random logs; $\hat q$ uses the user features, user-item affinities, item features and position.
+- Validation measure: for each estimator, the relative error $|\hat V - V| / V$ and its distribution over 1,000 paired resamples of both logs (RMSE and the share of resamples where the estimate's interval contains $V$), and whether the estimate's interval overlaps the on-policy interval.
+- Limitation stated with every small-sample OBD number: the sample has 46 clicks in the random logs and 69 in the BTS logs, so the check has low power: it can show a gross failure, not a small bias.
+- Secondary, the full Men's campaign (SPEC optional item 6): the same check on all its random and BTS impressions, downloaded once locally and never in CI; the same rule applies with a larger sample (D042).
+- An estimator that passes is *validated on OBD* (14.4), and its OBD estimate of the BTS value is the project's Tier B result.
+
+**Code.** `ope/obd.py` (`python -m push_lab.ope.obd`, writes `results/ope_obd.json`).
+
+### 14.3 Validation in the simulator
+
+**Logs.** The exploration policy of 11.7 on the 5,000 evaluation users, at the setting's parameters. A round is a user-day; its action is the vector of the four slot send decisions, $a \in \{0, 1\}^4$, with probability $b(a \mid u, d) = \prod_s p_s^{a_s} (1 - p_s)^{1 - a_s}$, $p_s = 0.775$ at the user's best slot under the policy profile and $0.075$ elsewhere. Templates are uniform in the logs and in every target, so their probabilities cancel and are not part of the action. The logs record the vector, its probability, the per-slot send probabilities, and the user-day reward. Context features are those of 12.3 at the first slot of the day, built from the logged history.
+
+**Reward.** Primary: whether the user visited on day $d$ (active day). Secondary: opens on day $d$.
+
+**Targets** (all with uniform templates), from near to far from the logging policy:
+
+| Id | Target | $\pi$ | Largest weight |
+|---|---|---|---|
+| T | one push at the best slot | deterministic | 1.6 |
+| T½ | T on a seeded half of user-days, else nothing | stochastic | 2.8 |
+| R | each slot with probability 1/4 | stochastic | 123 |
+| N | no pushes | deterministic | 5.6 |
+| F | one push at the fixed slot of 12.2 | deterministic | 69 (users whose best slot differs) |
+| T2 | pushes at the two best slots | deterministic | 20 |
+
+The smallest propensity of one slot-and-template action, $0.075/60 = 0.00125$, does not enter, since templates cancel. The smallest probability of a user-day vector is $0.225 \times 0.075^3 \approx 0.0001$ (the three other slots without the best one); only R can choose it, with weight 123, the largest of any target.
+
+**Truth.** Each target runs online on the same 5,000 users at the same setting with 20 run seeds; its value is the mean reward per user-day, averaged over the seeds, with a t interval.
+
+**Settings and seeds.**
+- *No-carryover control*: the reference with $\epsilon_f = \epsilon_v = \kappa_o = \kappa_r = \gamma = 0$, so a day's reward depends only on that day's context and action; here every estimator but DM should be unbiased, which checks the implementation.
+- *Reference*: the reference setting (11.5) with $\Delta = \xi = 0$. Fatigue, annoyance, opt-out and return carry over across days, so a target's own history differs from the logged one; per-day OPE cannot see this, and the size of the resulting bias is what the check measures.
+- 50 log seeds per setting (run seeds 1,001 to 1,050), world seed 10,100 as in the grid of 12.6, truth run seeds 2,001 to 2,020.
+
+**Validation measures**, per setting, target and estimator, over the 50 log seeds: bias $= \overline{\hat V} - V$ with a t interval, RMSE, and coverage, the share of seeds whose 95% bootstrap interval contains $V$, with a Wilson interval.
+
+### 14.4 Pre-registered decision rule
+
+- *Validated in the simulator* (per setting, target and estimator): the Wilson 95% interval of coverage contains 0.95, and the bias interval contains 0. Otherwise *not validated*, with the reason (under-coverage, bias or both).
+- *Primary results*: the validation verdicts of DR and IPS for each target at the reference setting. The control setting is reported first, as an implementation check; if DR or IPS is not validated there for T, T½ or N, the simulator results are reported as an implementation failure and not interpreted.
+- *Validated on OBD*: the estimate's 95% interval contains the on-policy value and the median relative error over resamples is below 0.5. The threshold is loose because of the sample size.
+- Expectation stated before any run: in the control setting all estimators but DM validated for every target; at the reference, IPS and DR biased for N and T2, whose volumes differ most from the logs, and close for T and T½.
+- No Holm correction: these are validation verdicts, not comparisons between policies; every verdict is reported, none is dropped.
+
+**References.**
+- Dudík, M., Langford, J., Li, L. (2011). Doubly Robust Policy Evaluation and Learning. *ICML 2011*. https://arxiv.org/abs/1103.4601
+- Swaminathan, A., Joachims, T. (2015). The Self-Normalized Estimator for Counterfactual Learning. *NeurIPS 2015*.
+- Saito, Y., Aihara, S., Matsutani, M., Narita, Y. (2021). Open Bandit Dataset and Pipeline: Towards Realistic and Reproducible Off-Policy Evaluation. *NeurIPS 2021 Datasets and Benchmarks*. https://arxiv.org/abs/2008.07146
+
+**Code.** `ope/estimators.py`, `ope/obd.py`, `ope/simulator.py` (`python -m push_lab.ope.simulator`, writes `results/ope_simulator.json`), `report/evidence.py` (`results/evidence.json`). **Tests.** The estimator tests of 14.1; the BTS probabilities sum to 1 per position and match a direct Monte Carlo of the prior; logged user-day probabilities match the product formula and empirical frequencies; in a synthetic no-carryover world, IPS and DR cover the online truth at about the nominal rate; fixed seeds give identical results.
+
+### 14.5 Evidence matrix
+
+`results/evidence.json` lists every headline claim of the project with its tier, the results file and key it comes from, the estimate and its interval, and what the tier cannot support (SPEC Section 5). It is built by code from the results files, so its numbers cannot drift from them; the HTML report (M8) renders it.
