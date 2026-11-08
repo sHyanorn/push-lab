@@ -50,6 +50,8 @@ def coarse(
         block = pool[start : start + CHUNK_USERS]
         pad = block == PAD
         rows = lookup[np.where(pad, item_ids[0], block)]
+        if (rows < 0).any():
+            raise ValueError("the pool contains items without a vector")
         scores = np.einsum(
             "ud,upd->up", user_vectors[start : start + CHUNK_USERS], item_vectors[rows]
         )

@@ -45,6 +45,8 @@ def study(
         kept = cascade.coarse(pool, user_vectors, item_ids, item_vectors, n)
         rows = kept[sample]
         cols = column[np.where(rows == cascade.PAD, item_ids[0], rows)]
+        if (cols < 0).any():
+            raise ValueError("candidates contain items outside the scored catalog")
         scores = np.take_along_axis(catalog_scores, cols, axis=1)
         scores[rows == cascade.PAD] = -np.inf
         choice = rows[np.arange(len(rows)), np.argmax(scores, axis=1)]

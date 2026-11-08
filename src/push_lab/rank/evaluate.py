@@ -34,6 +34,17 @@ DRIFT_FEATURES = (
     "tower_score",
 )
 QUANTILES = (0.05, 0.25, 0.5, 0.75, 0.95)
+SINGLE_FEATURES = (
+    "item_per_day",
+    "item_click_rate",
+    "item_long_rate",
+    "popularity_rank",
+    "user_author_click_rate",
+    "user_tag_click_rate",
+    "days_since_upload",
+    "video_duration",
+    "tower_score",
+)
 SAMPLE_USERS = 1000
 LATENCY_USERS = 200
 SCORE_CHUNK_USERS = 50
@@ -102,6 +113,13 @@ def _latency(
     return 1000 * (time.perf_counter() - start) / len(user_ids)
 
 
+def _signed(feature: str, values: pd.Series) -> FloatArray:
+    """Higher is better for every feature except ranks."""
+    sign = -1.0 if feature == "popularity_rank" else 1.0
+    out: FloatArray = sign * values.to_numpy(dtype=np.float64)
+    return out
+
+
 def _quantiles(values: pd.Series) -> dict[str, float]:
     q = values.quantile(list(QUANTILES))
     return {f"p{round(100 * p)}": _round(v) for p, v in zip(QUANTILES, q, strict=True)}
@@ -130,10 +148,11 @@ def run(root: Path, settings: Settings | None = None) -> dict[str, Any]:
     item_vecs = tower2.item_vectors(catalog)
     k_max = min(max(RECALL_K), len(catalog))
     start = time.perf_counter()
-    personal = ItemIndex(catalog, item_vecs).search(user_vecs, k_max)
+    hnsw = ItemIndex(catalog, item_vecs).search(user_vecs, k_max)
     timings["hnsw_search_s"] = _round(time.perf_counter() - start)
     start = time.perf_counter()
-    exact = ItemIndex(catalog, item_vecs, exact=True).search(user_vecs, k_max)
+    # Exact search feeds every reported number; HNSW is checked against it (D018)
+    personal = ItemIndex(catalog, item_vecs, exact=True).search(user_vecs, k_max)
     timings["exact_search_s"] = _round(time.perf_counter() - start)
 
     popular = popularity.popularity(window2)
@@ -235,7 +254,7 @@ def run(root: Path, settings: Settings | None = None) -> dict[str, Any]:
                 | {"tier": "model-internal"},
                 "score_regret": _est(metrics.estimate(result.regret, sample_idx))
                 | {"tier": "model-internal"},
-                "fine_ms_per_user": _round(_latency(builder2, ranker, lat_users, kept)),
+                "fine_ms_per_user_batched": _round(_latency(builder2, ranker, lat_users, kept)),
             }
         )
     catalog_latency = _latency(builder2, ranker, lat_users, np.tile(catalog, (len(lat_users), 1)))
@@ -244,6 +263,8 @@ def run(root: Path, settings: Settings | None = None) -> dict[str, Any]:
     c1 = metrics.compare(recall_values["two_tower"][200], recall_values["popularity"][200], idx)
     c2 = metrics.compare(ranking["fused"]["gauc_click"], ranking["two_tower"]["gauc_click"], idx)
     rejected = metrics.holm({"C1": c1.p_value, "C2": c2.p_value})
+    # With B resamples the smallest nonzero p-value is 2/B; 0 means below it
+    p_resolution = {"p_value_resolution": _round(2 / s.bootstrap_samples)}
 
     # The same scorers on the fine ranker's own validation rows (standard logs, not random)
     x_valid = builder1.build(
@@ -287,9 +308,29 @@ def run(root: Path, settings: Settings | None = None) -> dict[str, Any]:
         train_rows["user_id"].to_numpy(dtype=np.int64),
         train_rows["video_id"].to_numpy(dtype=np.int64),
     )
-    drift = {
+    drift: dict[str, dict[str, dict[str, float]]] = {
         f: {"c1_training_rows": _quantiles(x_train[f]), "c2_evaluation_rows": _quantiles(x_eval[f])}
         for f in DRIFT_FEATURES
+    }
+    # Separates the refit of the tower from the change of rows: same standard rows, c2 tower
+    x_valid_c2 = builder2.build(
+        valid_rows["user_id"].to_numpy(dtype=np.int64),
+        valid_rows["video_id"].to_numpy(dtype=np.int64),
+    )
+    drift["tower_score"]["c1_validation_rows"] = _quantiles(x_valid["tower_score"])
+    drift["tower_score"]["c2_on_the_same_validation_rows"] = _quantiles(x_valid_c2["tower_score"])
+
+    # Each numeric feature alone as a score on the random exposures (Tier A, secondary)
+    single_feature = {
+        f: _est(
+            metrics.estimate(
+                metrics.user_auc(
+                    u, _signed(f, x_eval[f]), rows["is_click"].to_numpy(float), eval_users
+                ),
+                idx,
+            )
+        )
+        for f in SINGLE_FEATURES
     }
 
     return {
@@ -305,8 +346,8 @@ def run(root: Path, settings: Settings | None = None) -> dict[str, Any]:
             "truncation_sample_users": len(sample),
         },
         "ann": {
-            "overlap_at_200": _round(overlap(personal[:, :200], exact[:, :200])),
-            "overlap_at_500": _round(overlap(personal, exact)),
+            "hnsw_overlap_at_200": _round(overlap(hnsw[:, :200], personal[:, :200])),
+            "hnsw_overlap_at_500": _round(overlap(hnsw, personal)),
         },
         "recall": {
             name: {str(k): _est(metrics.estimate(v, idx)) | {"tier": "A"} for k, v in by_k.items()}
@@ -327,17 +368,29 @@ def run(root: Path, settings: Settings | None = None) -> dict[str, Any]:
         },
         "fusion_weight": fusion,
         "truncation": truncation_out,
-        "catalog_fine_ms_per_user": _round(catalog_latency),
+        "catalog_fine_ms_per_user_batched": _round(catalog_latency),
+        "latency_note": (
+            f"features and prediction for {len(lat_users)} users in one call, divided by the "
+            "number of users; not a per-request latency"
+        ),
         "primary": {
             "C1_two_tower_vs_popularity_recall200": _est(c1.difference)
-            | {"p_value": _round(c1.p_value), "holm_rejected": rejected["C1"]},
+            | {"p_value": _round(c1.p_value), "holm_rejected": rejected["C1"]}
+            | p_resolution,
             "C2_fused_vs_two_tower_gauc_click": _est(c2.difference)
-            | {"p_value": _round(c2.p_value), "holm_rejected": rejected["C2"]},
+            | {"p_value": _round(c2.p_value), "holm_rejected": rejected["C2"]}
+            | p_resolution,
         },
         "diagnostics": {
             "gauc_click_on_fine_validation_rows": in_distribution
-            | {"tier": "not unbiased: standard-log impressions"},
+            | {
+                "tier": "not unbiased: standard-log impressions",
+                "note": (
+                    "these rows also drive early stopping, so the fine ranker's value is optimistic"
+                ),
+            },
             "fine_feature_gain_top10": importance,
+            "single_feature_gauc_click": single_feature | {"tier": "A"},
         },
         "feature_drift": drift,
         "timings_s": timings,

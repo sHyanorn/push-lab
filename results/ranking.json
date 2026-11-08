@@ -17,8 +17,8 @@
     "truncation_sample_users": 1000
   },
   "ann": {
-    "overlap_at_200": 0.999895,
-    "overlap_at_500": 0.999018
+    "hnsw_overlap_at_200": 0.999895,
+    "hnsw_overlap_at_500": 0.999018
   },
   "recall": {
     "two_tower": {
@@ -30,9 +30,9 @@
         "tier": "A"
       },
       "100": {
-        "value": 0.022461,
-        "ci_low": 0.020876,
-        "ci_high": 0.024148,
+        "value": 0.022449,
+        "ci_low": 0.020873,
+        "ci_high": 0.024142,
         "users": 11420,
         "tier": "A"
       },
@@ -44,9 +44,9 @@
         "tier": "A"
       },
       "500": {
-        "value": 0.111773,
-        "ci_low": 0.108246,
-        "ci_high": 0.115483,
+        "value": 0.111749,
+        "ci_low": 0.108244,
+        "ci_high": 0.115448,
         "users": 11420,
         "tier": "A"
       }
@@ -113,9 +113,9 @@
     },
     "pool": {
       "584": {
-        "value": 0.117488,
-        "ci_low": 0.113934,
-        "ci_high": 0.121235,
+        "value": 0.117458,
+        "ci_low": 0.113899,
+        "ci_high": 0.121246,
         "users": 11420,
         "tier": "A"
       }
@@ -384,7 +384,7 @@
         "users": 1000,
         "tier": "model-internal"
       },
-      "fine_ms_per_user": 0.543751
+      "fine_ms_per_user_batched": 0.536057
     },
     {
       "n": 100,
@@ -409,7 +409,7 @@
         "users": 1000,
         "tier": "model-internal"
       },
-      "fine_ms_per_user": 0.730261
+      "fine_ms_per_user_batched": 0.710719
     },
     {
       "n": 200,
@@ -434,60 +434,61 @@
         "users": 1000,
         "tier": "model-internal"
       },
-      "fine_ms_per_user": 0.997155
+      "fine_ms_per_user_batched": 1.033709
     },
     {
       "n": 500,
       "survival": {
-        "value": 0.11178,
-        "ci_low": 0.108246,
-        "ci_high": 0.11549,
+        "value": 0.111749,
+        "ci_low": 0.108244,
+        "ci_high": 0.115448,
         "users": 11420,
         "tier": "A"
       },
       "top1_agreement": {
-        "value": 0.353,
-        "ci_low": 0.322,
-        "ci_high": 0.382,
+        "value": 0.355,
+        "ci_low": 0.324,
+        "ci_high": 0.384,
         "users": 1000,
         "tier": "model-internal"
       },
       "score_regret": {
-        "value": 0.004596,
-        "ci_low": 0.004213,
-        "ci_high": 0.005005,
+        "value": 0.004556,
+        "ci_low": 0.00417,
+        "ci_high": 0.004966,
         "users": 1000,
         "tier": "model-internal"
       },
-      "fine_ms_per_user": 1.973852
+      "fine_ms_per_user_batched": 2.022009
     },
     {
       "n": 584,
       "survival": {
-        "value": 0.117488,
-        "ci_low": 0.113934,
-        "ci_high": 0.121235,
+        "value": 0.117458,
+        "ci_low": 0.113899,
+        "ci_high": 0.121246,
         "users": 11420,
         "tier": "A"
       },
       "top1_agreement": {
-        "value": 0.394,
-        "ci_low": 0.362,
-        "ci_high": 0.423,
+        "value": 0.396,
+        "ci_low": 0.364975,
+        "ci_high": 0.426,
         "users": 1000,
         "tier": "model-internal"
       },
       "score_regret": {
-        "value": 0.00311,
-        "ci_low": 0.002872,
-        "ci_high": 0.003382,
+        "value": 0.003089,
+        "ci_low": 0.002854,
+        "ci_high": 0.003349,
         "users": 1000,
         "tier": "model-internal"
       },
-      "fine_ms_per_user": 2.10376
+      "fine_ms_per_user_batched": 2.192042
     }
   ],
-  "catalog_fine_ms_per_user": 25.602973,
+  "catalog_fine_ms_per_user_batched": 28.38932,
+  "latency_note": "features and prediction for 200 users in one call, divided by the number of users; not a per-request latency",
   "primary": {
     "C1_two_tower_vs_popularity_recall200": {
       "value": 0.004722,
@@ -495,7 +496,8 @@
       "ci_high": 0.007039,
       "users": 11420,
       "p_value": 0.0,
-      "holm_rejected": true
+      "holm_rejected": true,
+      "p_value_resolution": 0.002
     },
     "C2_fused_vs_two_tower_gauc_click": {
       "value": -0.053264,
@@ -503,7 +505,8 @@
       "ci_high": -0.049052,
       "users": 11416,
       "p_value": 0.0,
-      "holm_rejected": true
+      "holm_rejected": true,
+      "p_value_resolution": 0.002
     }
   },
   "diagnostics": {
@@ -532,7 +535,8 @@
         "ci_high": 0.534482,
         "users": 4121
       },
-      "tier": "not unbiased: standard-log impressions"
+      "tier": "not unbiased: standard-log impressions",
+      "note": "these rows also drive early stopping, so the fine ranker's value is optimistic"
     },
     "fine_feature_gain_top10": {
       "is_click": {
@@ -559,6 +563,63 @@
         "item_click_rate": 4365.6,
         "onehot_feat7": 1736.8
       }
+    },
+    "single_feature_gauc_click": {
+      "item_per_day": {
+        "value": 0.569457,
+        "ci_low": 0.565872,
+        "ci_high": 0.573027,
+        "users": 11416
+      },
+      "item_click_rate": {
+        "value": 0.523726,
+        "ci_low": 0.520011,
+        "ci_high": 0.527217,
+        "users": 11416
+      },
+      "item_long_rate": {
+        "value": 0.510358,
+        "ci_low": 0.506578,
+        "ci_high": 0.513896,
+        "users": 11416
+      },
+      "popularity_rank": {
+        "value": 0.57276,
+        "ci_low": 0.569245,
+        "ci_high": 0.57622,
+        "users": 11416
+      },
+      "user_author_click_rate": {
+        "value": 0.50036,
+        "ci_low": 0.5001,
+        "ci_high": 0.500644,
+        "users": 11416
+      },
+      "user_tag_click_rate": {
+        "value": 0.518265,
+        "ci_low": 0.515186,
+        "ci_high": 0.521806,
+        "users": 11416
+      },
+      "days_since_upload": {
+        "value": 0.507079,
+        "ci_low": 0.503781,
+        "ci_high": 0.510309,
+        "users": 11416
+      },
+      "video_duration": {
+        "value": 0.457532,
+        "ci_low": 0.454038,
+        "ci_high": 0.461056,
+        "users": 11416
+      },
+      "tower_score": {
+        "value": 0.598217,
+        "ci_low": 0.594717,
+        "ci_high": 0.601656,
+        "users": 11416
+      },
+      "tier": "A"
     }
   },
   "feature_drift": {
@@ -640,15 +701,29 @@
         "p50": -0.57929,
         "p75": -0.504841,
         "p95": -0.388125
+      },
+      "c1_validation_rows": {
+        "p5": -0.232269,
+        "p25": -0.110344,
+        "p50": -0.033031,
+        "p75": 0.04094,
+        "p95": 0.134966
+      },
+      "c2_on_the_same_validation_rows": {
+        "p5": -0.577825,
+        "p25": -0.467483,
+        "p50": -0.398674,
+        "p75": -0.333387,
+        "p95": -0.244974
       }
     }
   },
   "timings_s": {
-    "two_tower_fit_s_20220422": 22.018491,
-    "hnsw_search_s": 2.34417,
-    "exact_search_s": 0.347457,
-    "two_tower_fit_s_20220415": 16.754494,
-    "fine_fit_s": 3.639249,
-    "catalog_scoring_s": 25.434026
+    "two_tower_fit_s_20220422": 24.303519,
+    "hnsw_search_s": 2.452309,
+    "exact_search_s": 0.473459,
+    "two_tower_fit_s_20220415": 15.743345,
+    "fine_fit_s": 3.876225,
+    "catalog_scoring_s": 26.563352
   }
 }
