@@ -31,6 +31,8 @@ The window expands rather than slides: activity in the Pure logs is concentrated
 
 **Excluded data.** `video_features_statistic` is not used: per the KuaiRand README its fields are daily averages over one month, a window that overlaps the evaluation period.
 
+**Undated user attributes.** The user table (`user_active_degree`, `is_lowactive_period`, `register_days`, `onehot_feat*`) is a single snapshot with no date. It is constant within a user, so per-user AUC and NDCG are unaffected, but it shapes the two-tower user vectors and therefore Recall@K. It is used as released, and this is a limitation of every result that involves the user tower.
+
 **Code.** `rank/splits.py`. **Tests.** No feature table built at cutoff $c$ contains a row with $\text{date} \ge c$; the two halves are disjoint, cover all random-exposure users and are identical across runs.
 
 ---
@@ -79,7 +81,9 @@ $$
 - The loss equals a hand-computed value on a 3 × 3 example.
 - With all $q_i$ equal, the loss equals plain in-batch softmax.
 - A duplicated item in a batch is masked.
-- HNSW overlap with exact search at $K = 200$ is at least 0.99 on the evaluation users.
+- HNSW overlap with exact search at $K = 200$ is at least 0.99 on synthetic unit vectors; the figure for the real evaluation users is reported in `results/ranking.json`.
+
+Every reported retrieval number uses exact search; HNSW is the scalable path and is checked against it (D018).
 
 ---
 
@@ -142,7 +146,7 @@ All are computed on the evaluation half of the random exposures and are Tier A.
   $$\text{Recall@}K = \frac{1}{|U|} \sum_{u \in U} \frac{|P_u \cap R_u^K|}{|P_u|}, \qquad U = \{u : |P_u| \ge 1\}.$$
   $K \in \{50, 100, 200, 500\}$. The interpretation rests on how the random exposures were collected. Gao et al. (2022, Section 3.2) describe it as: "Each time when the recommender system recommends a video list to a user, we decide whether to insert a random item with a fixed probability. If the answer is yes, then we intervene in the recommendation list by randomly selecting one video from this list and replacing it with a random item uniformly sampled from the 7,583 items." The insertion probability is not disclosed, and users with fewer than 10 random exposures were removed. Taking that description as given, the item in each random exposure is independent of the user's preferences, so $P_u$ is a uniform sample of the catalog items $u$ would click if shown and the ratio estimates the share of those items in the top $K$. Two departures would bias it: a pool that differs from the 7,583 catalog items (the Pure random log covers 7,537 of them, consistent with uniform sampling over about 1.18M exposures), and clicks that depend on the item's position in the feed, which the dataset does not record for random exposures. Both are reported as limitations; neither can be checked further with the released data.
 - **GAUC.** The ROC AUC of the score over each user's random exposures, averaged with equal weight over users who have both clicked and non-clicked impressions. The impression-weighted average is reported alongside. Computed for the click label and the long-view label.
-- **NDCG@5.** Each user's random exposures ranked by score, gain 1 for a click, ideal DCG from the best ordering; averaged over users with at least one click.
+- **NDCG@5.** Each user's random exposures ranked by score, gain 1 for a click, ideal DCG from the best ordering; averaged over users with at least one click. Tied scores keep the order of the log, which matters mainly for the popularity scorer, whose unseen items share one rank.
 
 **Reference.** Gao, C., Li, S., Zhang, Y., Chen, J., Li, B., Lei, W., Jiang, P., He, X. (2022). KuaiRand: An Unbiased Sequential Recommendation Dataset with Randomly Exposed Videos. *CIKM 2022*. https://arxiv.org/abs/2208.08696
 

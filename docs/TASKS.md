@@ -24,14 +24,14 @@ Hour estimates are for planning; the required core is about 85 hours. If behind,
 - [x] Measure load times and memory; record in DECISIONS.md
 
 ## M2 Recall and ranking (15 h)
-- [ ] METHODS.md: split rules, two-tower loss with log-Q correction, cascade, metrics, ranking targets
-- [ ] Splits: standard logs for training, random exposures split by user into evaluation and simulator halves
-- [ ] Popularity baseline and trending source
-- [ ] Two-tower model with in-batch negatives; faiss HNSW index checked against exact search
-- [ ] Coarse ranking: two-tower score keeps the top N
-- [ ] LightGBM fine ranker with click and long-view targets, weighted fusion
-- [ ] Truncation study over N, against full-pool fine ranking
-- [ ] Evaluation on the random-exposure half with bootstrap intervals; record training times
+- [x] METHODS.md: split rules, two-tower loss with log-Q correction, cascade, metrics, ranking targets
+- [x] Splits: standard logs for training, random exposures split by user into evaluation and simulator halves
+- [x] Popularity baseline and trending source
+- [x] Two-tower model with in-batch negatives; faiss HNSW index checked against exact search
+- [x] Coarse ranking: two-tower score keeps the top N
+- [x] LightGBM fine ranker with click and long-view targets, weighted fusion
+- [x] Truncation study over N, against full-pool fine ranking
+- [x] Evaluation on the random-exposure half with bootstrap intervals; record training times
 
 ## M3 Uplift methods (9 h)
 - [ ] METHODS.md: meta-learners, causal forest, Qini and AUUC variants, Hillstrom contrast
