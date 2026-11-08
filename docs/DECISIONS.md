@@ -217,3 +217,8 @@
 - Settings: 64 main (Latin hypercube over 13 parameters), the same 64 with $\epsilon_v = 0$, the same 64 with the opt-out stress value, 61 one-at-a-time points and 10 refits at the reference, 263 in all. Three evaluation run seeds per setting
 - Cost measured on synthetic inputs of full size, 4 processes with one thread each: fitting the three LightGBM models takes about 20 s per setting and one model predicts 28 days for 5,000 users in about 3.5 s, so the sweep takes about 2 to 3 hours (3 to 4 with five seeds). This replaces the 40-minute estimate in SPEC Section 10, which assumed no fitted policies
 - Design points and seeds are frozen in `results/policy_design.json` and pushed before any policy runs on evaluation users. A later change needs a new decision with its reason, and results before and after the change are both reported
+
+## D032 Random streams keyed by purpose
+- Date: 2026-11-08
+- NumPy's seed sequence ignores trailing zeros: `default_rng([s, 0, 0])` gives the same numbers as `default_rng(s)`. The exploration policy keyed its coins by `[seed, day, slot]`, so at day 0, slot 0 they were the open draws of `env.draws(seed)` whenever the two seeds were equal. Found while testing the M5 policies, where it raised the open rate of the first slot from 0.13 to 0.38 in a synthetic run. In M4 only the timing run of `sim.build` used equal seeds, and no outcome of it was reported
+- Every keyed stream is now `default_rng([purpose, *key, 1])` (`world.stream`): the leading purpose separates uses and the closing 1 keeps trailing zeros from being dropped. Integer seeds used in one run (world, draws, perturbation) are kept distinct by the sweep design

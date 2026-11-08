@@ -217,3 +217,24 @@ def test_truth_matches_the_outcomes_and_changes_nothing() -> None:
     flat = out.open_prob.reshape(DAYS * SLOTS, N)
     for u_ in np.flatnonzero(out.opted_out_at >= 0)[:20]:
         assert (flat[out.opted_out_at[u_] + 1 :, u_] == 0).all()
+
+
+def test_streams_differ_from_integer_seeds_and_each_other() -> None:
+    plain = np.random.default_rng(3).random(5)
+    keys = [
+        (world.EXPLORE_STREAM, 3, 0, 0),
+        (world.EXPLORE_STREAM, 3),
+        (world.TEMPLATE_STREAM, 3, 0, 0),
+    ]
+    draws = [world.stream(*k).random(5) for k in keys]
+    for d in draws:
+        assert not np.array_equal(d, plain)
+    assert not np.array_equal(draws[0], draws[1]) and not np.array_equal(draws[0], draws[2])
+
+
+def test_exploration_coins_are_independent_of_open_draws_with_the_same_seed() -> None:
+    policy = EpsilonGreedy(np.zeros(N, dtype=np.int64), seed=7)
+    send = policy.act(Observation(0, 0, np.zeros(N, dtype=bool))).send
+    run = env.draws(N, 7)
+    # With colliding streams every sent user would have an open draw below 0.775
+    assert run.open[0, 0][send].max() > 0.9

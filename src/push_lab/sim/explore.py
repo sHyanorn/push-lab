@@ -6,7 +6,7 @@ import numpy as np
 import numpy.typing as npt
 
 from push_lab.sim.env import Action, Observation
-from push_lab.sim.world import SLOTS, TEMPLATES
+from push_lab.sim.world import EXPLORE_STREAM, SLOTS, TEMPLATES, stream
 
 EPSILON = 0.3
 SEND_SHARE = 1 / SLOTS
@@ -39,7 +39,7 @@ class EpsilonGreedy:
     def act(self, obs: Observation) -> Action:
         n = len(self.best_slot)
         p_send = self.send_probability(obs.slot)
-        rng = np.random.default_rng([self.seed, obs.day, obs.slot])
+        rng = stream(EXPLORE_STREAM, self.seed, obs.day, obs.slot)
         send = rng.random(n) < p_send
         template = rng.integers(0, self.templates, n)
         propensity = np.where(send, p_send / self.templates, 1 - p_send)

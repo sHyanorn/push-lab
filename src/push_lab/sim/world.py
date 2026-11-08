@@ -107,6 +107,17 @@ def copy_effects(
     return out
 
 
+# Purposes of keyed random streams (D032)
+EXPLORE_STREAM, TEMPLATE_STREAM, COIN_STREAM, HALF_STREAM = 1, 2, 3, 4
+
+
+def stream(purpose: int, *key: int) -> np.random.Generator:
+    """Generator for one purpose and key. NumPy's seed sequence ignores trailing zeros, so
+    ``default_rng([s, 0, 0])`` equals ``default_rng(s)``; a leading purpose and a closing 1
+    keep each stream distinct from every other key and from every integer seed."""
+    return np.random.default_rng([purpose, *key, 1])
+
+
 QUICK_SAMPLE = 5_000
 
 

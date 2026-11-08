@@ -326,7 +326,7 @@ The reference setting serves tests, the exploration logs used to build M5 and th
 
 ### 11.6 Randomness and implementation
 
-The simulator is vectorized over users and steps through 28 × 4 slots. Two seeds define a run: a *world seed* for the copy effects and a *run seed* for uniform draws for every (user, day, slot) open and opt-out event and every (user, day) organic visit. The draws are generated before the run and shared by every policy run with the same seed, so policies are compared on common random numbers and their differences are paired.
+The simulator is vectorized over users and steps through 28 × 4 slots. Two seeds define a run: a *world seed* for the copy effects and a *run seed* for uniform draws for every (user, day, slot) open and opt-out event and every (user, day) organic visit. The draws are generated before the run and shared by every policy run with the same seed, so policies are compared on common random numbers and their differences are paired. Policies draw their own coins and templates from streams keyed by a purpose, the seed, the day and the slot (D032).
 
 ### 11.7 Exploration policy
 
