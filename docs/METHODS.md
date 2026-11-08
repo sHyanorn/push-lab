@@ -469,3 +469,109 @@ The stress sweep gets the same per-setting verdicts and no label. Wherever H2 is
 **Plausibility band** (11.4): for each main-sweep setting, the relative lift of F over N in mean daily active share, $(\bar a_F - \bar a_N)/\bar a_N$, classified by its interval as below 0.07%, inside 0.07% to 0.5%, above 0.5%, or straddling a bound. The band comes from changes to running notification programs, not from pushing against not pushing, so it is a loose check. Reading fixed now: if most settings lie below the band, the report states that under these ranges one push a day adds less activity than the smallest reported program change, and that conclusions which rely on push benefits are weaker for it; ranges are not changed after results are seen, and settings are never filtered by the band.
 
 **Code.** `policy/` (`profile.py`, `features.py`, `gate.py`, `budget.py`, `rules.py`, `design.py`, `sweep.py`, `compare.py`); `python -m push_lab.policy.design` writes `results/policy_design.json`; `python -m push_lab.policy.sweep` writes per-setting aggregates to `results/runs/` (ignored) and `results/policy.json`. **Tests.** Allocator against brute force on small instances with non-increasing gains, and the documented non-monotone case; deliveries never exceed the cap; S, G and G2 deliver the same volume per day; $\Delta = \xi = 0$ reproduces `profile_policy` and a 24-hour shift is the identity; a policy cannot read outcomes of the current day; two policies give a user the same template at the same (day, slot); Holm, the per-setting verdicts and the labels on hand-made inputs; the two-level bootstrap on synthetic data with a known mean; fixed seeds give identical results.
+
+---
+
+## 13. Copy and template selection
+
+**Problem.** Choose which copy template goes with each push. The simulator gives each template a latent effect on the open probability (11.2) and penalizes templates the user saw recently; the question is whether a bandit that learns from opens finds the templates with the largest drawn effects and rotates them so the novelty penalty stays small. Every result here is Tier C.
+
+**What this can and cannot show.** The simulator never reads the text. A template's effect is a random draw per world, unrelated to its wording (11.2, SPEC Section 7). The comparisons below therefore test whether the selection policy finds and rotates the templates with the largest drawn effects; they say nothing about whether the generated copy is good or which wording works better for real users. This sentence goes with every copy result in the report.
+
+### 13.1 Families and placeholders
+
+KuaiRand has no titles or captions, so copy names no video or creator. A template may use only placeholders that the policy can fill at send time from data before the decision (Section 1 cutoff rule) or from the simulated history it observes (12.1).
+
+| Id | Family | Placeholder | Filled from | Values | Eligible when |
+|---|---|---|---|---|---|
+| 0 | Creator update | `{creator_videos}` | clicks by the user on videos of the item's author, standard logs 04-09 to 04-21 | "1 video", "2 videos", ..., "20+ videos" | the count is at least 1 |
+| 1 | Popular now | `{top_n}` | the item's rank in the trending list at $c_2$ (Section 2) | "top 10", "top 50", "top 100" | rank at most 100 |
+| 2 | Personal pick | none | | | always |
+| 3 | Short or long watch | `{duration}` | `video_duration` (static item attribute) | "under 30 seconds", "under a minute", "1 to 3 minutes", "3 to 10 minutes", "over 10 minutes" | always |
+| 4 | Welcome back | `{days_away}` | simulated visits the policy observed | "2 days", ..., "6 days", "a week or more" | no visit on days $d-1$ and $d-2$ ($d \ge 2$) |
+| 5 | Time of day | `{time_of_day}` | send slot | "this morning", "at lunch", "this evening", "tonight" | always |
+
+Each family's placeholder is required in its templates (Personal pick has none). Copy is English: the repository is English and the simulator does not read the text, so the language changes no result (D035). Template $k = 6j + f$ is the $j$-th kept variant of family $f$, so with 10 templates per family $\text{family}(k) = k \bmod 6$, the mapping the simulator has used since M4, and the M5 copy draws are unchanged (D036).
+
+The eligibility attributes are computed per user and cascade-list position by `sim.build` from data before $c_2$ and cached with the other inputs. No value is committed; the committed copy holds placeholders only.
+
+### 13.2 Generation
+
+One request per family, six in all, through the Messages API with structured output (a JSON schema of 16 variants, each a `title` and a `body`). The prompt states the app (a short-video app), the push context, the family and its placeholder with every value, the length limits, the charset and the banned phrasings of 13.3. The model is passed by `--model` or an environment variable and is not written in code or docs. Requests use adaptive thinking, effort `high`, `max_tokens` 16,000 and no sampling parameters.
+
+`data/creative/` holds the full text of every prompt, the variants as returned, the kept catalog and `manifest.json`: per request the model the API returns, the request and message ids, `stop_reason`, token usage and the UTC time; for the run the SDK version, effort, `max_tokens` and the sha256 of the output schema; per variant the sha256 of `title + "\n" + body` and its filter verdicts. Generation runs once; everything else reads the committed files and needs no key. Tests and CI never call the API; the parser is tested against a recorded response.
+
+### 13.3 Filters
+
+Fixed before generation and applied in this order; a variant is dropped at its first failure, and the counts per rule and family go to `results/copy.json`.
+
+1. *Schema*: the response parses against the schema; `title` and `body` are non-empty strings.
+2. *Charset*: printable ASCII only, no line breaks, no emoji.
+3. *Placeholders*: braces only as `{name}` with a name of the family; the family's placeholder appears exactly once in title and body together; Personal pick has none.
+4. *Length*: with every placeholder replaced by its longest value, title 10 to 50 characters and body 20 to 100.
+5. *Banned claims* (case-insensitive, whole words):
+   - any digit outside a placeholder (no invented numbers);
+   - false urgency: hurry, last chance, don't miss, do not miss, before it's gone, ending soon, ends soon, expires, limited, act now, right now, urgent, only today, countdown;
+   - inducement: free, win, winner, prize, reward, bonus, coins, gift, cash, guaranteed, unlock;
+   - clickbait or unverifiable: you won't believe, shocking, secret, everyone, millions, viral, breaking, exclusive, #;
+   - guilt: you missed, miss you, we miss, don't leave, come back now;
+   - family claims the data cannot back: Creator update may not say new, just, latest, posted or uploaded (upload times are not tied to simulated days); Popular now may not say today or this hour;
+   - more than one `!` in title and body together, or a word of three or more letters in capitals.
+6. *Near-duplicates*: the text `title | body`, lowercased, each placeholder replaced by one symbol and whitespace collapsed, is compared by character 4-gram Jaccard with every variant already kept, in all families (families in id order, variants in returned order); at 0.5 or above it is dropped.
+
+The first 10 survivors of each family form the catalog. A family with fewer than 10 keeps all of them, $K$ falls below 60 and the family of each template is read from the catalog; this is recorded and nothing is regenerated.
+
+**Checks outside the simulator** (descriptive, no tests):
+- Pass rates per rule and family.
+- A blind rating by one rater of the 60 kept templates and 20 rejected variants drawn with `default_rng(0)` from those that passed rules 1 to 4 (so they can be rendered), shuffled together with `default_rng(0)`, with placeholders filled from synthetic values and no sign of the filter verdict. Three yes or no questions per item: *clear* (easy to understand at a glance), *fits* (reads like a push from a short-video app), *misleading* (misleads or pressures the reader: false urgency, invented facts, rewards, guilt). Only counts are committed: per question, the share of yes among kept and among rejected variants, and for the rejected ones by the rule that dropped them. A kept template rated misleading is a miss of the filters; a rejected one rated not misleading shows a rule stricter than the rater.
+
+### 13.4 Template policies
+
+A *round* $t$ is a delivered push to user $u$ at (day $d$, slot $s$); $A_t$ is the set of templates eligible there (13.1); the reward $r_t$ is whether the push was opened, which the policy observes after day $d$ (12.1). Each policy records the probability $b_t(a)$ it gave every $a \in A_t$.
+
+- **U, uniform**: $b_t(a) = 1/|A_t|$.
+- **RD, recovering difference softmax** (Yancey and Settles 2020, Eq. 1 to 4). At the first slot of each day, scores are recomputed from all rounds of earlier days of the run, pooled over users. For arm $a$, over the rounds with $a \in A_t$ and $\theta \le b_t(a) \le 1 - \theta$:
+  $$\bar\mu_a^+ = \frac{\sum_{a_t = a} w_t^+ r_t}{\sum_{a_t = a} w_t^+},\; w_t^+ = b_t(a)^{-1}; \qquad \bar\mu_a^- = \frac{\sum_{a_t \ne a} w_t^- r_t}{\sum_{a_t \ne a} w_t^-},\; w_t^- = (1 - b_t(a))^{-1}$$
+  with Kish effective sizes $n_a^\pm = (\sum w)^2 / \sum w^2$ and $\mu_a$ the plain mean reward of the rounds where $a$ was eligible. Both means are shrunk toward $\mu_a$: $\hat\mu_a^\pm = (\bar\mu_a^\pm n_a^\pm + \mu_a m)/(n_a^\pm + m)$, and
+  $$\hat s_a = \frac{\hat\mu_a^+ - \hat\mu_a^-}{\hat\mu_a^-}, \qquad s^*_{a,t} = \hat s_a - \gamma_b\, 0.5^{\Delta_{u,a}/h_b}, \qquad b_t(a) = \frac{e^{s^*_{a,t}/\tau}}{\sum_{a' \in A_t} e^{s^*_{a',t}/\tau}},$$
+  where $\Delta_{u,a}$ is the time in days since $a$ was last delivered to $u$ (penalty 0 if never). An arm without rounds scores 0.
+- **D0, difference softmax without the penalty**: RD with $\gamma_b = 0$.
+- **RAW** (secondary): RD with $\hat s_a = (\hat\mu_a^+ - \bar\mu)/\bar\mu$, $\bar\mu$ the mean reward of all rounds, $\bar\mu_a^+$ shrunk toward $\bar\mu$. It ignores who was eligible and shows the confounding the difference score removes (Creator update is eligible for users with a known author affinity, which the response model rewards).
+- **O, myopic oracle** (reference, not a policy anyone could run): the eligible template with the largest $c_a (1 - \gamma\, 0.5^{\Delta_{u,a}/h})$ under the setting's true $c$, $\gamma$ and $h$; ties to the lowest id.
+
+**Fixed values**, not tuned: $\gamma_b = 0.017$ and $h_b = 15$ days (the paper's production values; the bandit does not know the simulator's $\gamma$ and $h$, which the sweep varies), $\tau = 0.005$, $\theta = 0.005$ (the paper's threshold). The paper used $\tau = 0.0025$ with arm scores from millions of rounds; here each arm sees tens of thousands, so $\tau$ is doubled for more exploration (its Table 7: about 35% of rounds off the top arm).
+
+**Prior strength** (deviation from the paper, D037). The paper sets $m$ once from arms with large samples; no arm here has one. Each day $m$ is set by the method of moments over the arms with $n_a^+ > 0$: $v = \max\big(0,\ \overline{(\bar\mu_a^+ - \mu_a)^2} - \overline{\mu_a(1 - \mu_a)/n_a^+}\big)$ and $m = \bar\mu(1 - \bar\mu)/v - 1$; if $v = 0$, every $\hat s_a = 0$. With no copy effect the scores therefore stay near 0 and RD behaves like U with a recency penalty.
+
+**Pairing.** Every template policy runs with the same delivery rule T (12.2: one push a day at the user's best slot under the setting's perturbed profile) and the same run draws, so sends, items and opt-outs are identical across them; eligibility for Welcome back can diverge through visits. Each policy picks its template by inverse CDF from one uniform per (user, day, slot) drawn from a stream keyed by (run seed, day, slot) (D032), with $A_t$ in ascending id, so U, D0, RD and RAW share their random numbers. The template stream of the M5 policies is unchanged.
+
+### 13.5 Sweep and comparisons
+
+**Users**: all 27,285. No model is fitted outside the run, so no user is held out, and the bandit learns from about 760,000 rounds per run (one push a day per user for 28 days). Intervals bootstrap users conditional on each run's learning path; the seed-variability check below measures what that leaves out.
+
+**Settings** (frozen in `results/template_design.json` and pushed before any run):
+- *Main*: the 64 main-sweep points of 12.6 with their world and perturbation seeds; annoyance and opt-out act on the same volume in every arm.
+- *Grid*: the one-at-a-time points of 12.6 for base rate, copy spread, novelty penalty and novelty half-life (17 distinct settings with the reference).
+- *Seed variability*: the reference setting with 10 further triples of run seeds.
+- Evaluation run seeds 101, 102, 103, as in M5.
+
+**Primary metric**: opens per user over the 28 days, averaged over the run seeds. Templates act only on the open probability, so active days are secondary.
+
+**Primary comparisons** (first minus second):
+
+| Id | Comparison | Question |
+|---|---|---|
+| B1 | RD against U | Does the recovering bandit beat uniform templates? |
+| B2 | RD against D0 | Does the recency penalty help, given the same learned scores? |
+
+**Secondary** (intervals, no tests): D0 − U; RAW − RD; O − U and the share $(\text{RD} - \text{U})/(\text{O} - \text{U})$ where the interval of O − U excludes 0; active days and opens per delivered push for every pair; repeat rate (share of rounds whose template reached the same user within the previous 15 days); at day 28, the Spearman correlation of $\hat s_a$ with $\log c_a$ and the overlap of the 10 highest-scored templates with the 10 largest $c_a$; seed variability, the SD of each comparison over the 10 seed triples against its mean bootstrap SE.
+
+**Decision rule** (as 12.7). Per setting, B1 and B2 each at level 0.025 (Bonferroni over two) with 10,000 bootstrap resamples of users; sweep averages over the 64 main settings with the two-level bootstrap of 12.7; Holm across the two sweep tests at 0.05; the labels of 12.7 with the same thresholds (48 of 64; 4 and 4). Flip thresholds along the four grid parameters by the rule of 12.7.
+
+**Expected sizes**, stated before any run. With about 60 arms, rotating among the strongest ones is worth roughly $1.5\sigma$ to $2\sigma$ of the open rate (8% to 10% at the reference $\sigma = 0.05$); by day 28 each arm has a few hundred opens, a relative standard error of about 5%, close to the spread itself at the reference, so B1 is expected to grow with $\sigma$ and base rate and may be undetectable at small $\sigma$. At $\sigma = 0$ any gain of RD over U comes from novelty alone, at most about $0.3\gamma$ of opens, which is not detectable per setting.
+
+**References.**
+- Yancey, K. P., Settles, B. (2020). A Sleeping, Recovering Bandit Algorithm for Optimizing Recurring Notifications. *KDD 2020*. https://doi.org/10.1145/3394486.3403351
+- Kish, L. (1965). *Survey Sampling*. Wiley.
+
+**Code.** `creative/` (`families.py`, `filters.py`, `generate.py`: `python -m push_lab.creative.generate --model <id>`), `policy/templates.py` (U, RD, D0, RAW, O), `policy/template_design.py`, `policy/template_sweep.py`, writing `results/copy.json` and `results/templates.json`. **Tests.** Each filter rule on hand-made accepts and rejects; every committed template passes the filters and fills from fixture data within the length limits; the generation script against a recorded response; the RD estimator against a hand-computed two-arm example, and with uniform logging $\bar\mu_a^-$ equals the mean over the other eligible arms; with $\sigma = \gamma = 0$ every template policy gives the same opens on the same draws; the logged probabilities match the softmax and empirical choices match them within sampling error; U, D0, RD and RAW share the uniform of each (user, day, slot); a policy cannot read the current day's opens; fixed seeds give identical results.

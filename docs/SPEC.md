@@ -124,13 +124,13 @@ KuaiRand has no text: `tag` holds anonymous category ids and there are no titles
 | Family | Example placeholders | Source field |
 |---|---|---|
 | Creator update | a creator the user watched recently | `author_id`, user history |
-| Popular now | how many people watched today | `video_features_statistic` |
+| Popular now | the item's rank among recent popular videos | trending list before the cutoff (D035) |
 | Personal pick | none | ranker score only |
 | Short or long watch | duration bucket | `video_duration` |
 | Welcome back | days since last visit | user history |
 | Time of day | morning, evening | send slot |
 
-- Generation: one request per family asks Claude for about ten English variants (title up to 50 characters, body up to 100), returned as structured JSON. The model is passed on the command line; the script records the model the API reports, effort, prompt, request ids, token usage and date in `data/creative/manifest.json`. Current models do not accept sampling parameters, so a rerun gives different text; the committed outputs are the reference and nobody needs a key to use them
+- Generation: one request per family asks Claude for 16 English variants, of which the first 10 that pass the filters are kept (D036) (title up to 50 characters, body up to 100), returned as structured JSON. The model is passed on the command line; the script records the model the API reports, effort, prompt, request ids, token usage and date in `data/creative/manifest.json`. Current models do not accept sampling parameters, so a rerun gives different text; the committed outputs are the reference and nobody needs a key to use them
 - Filters before use: schema, length, placeholder validity, near-duplicate removal (character n-gram Jaccard), and a banned-claims list (no invented numbers, urgency or rewards)
 - Rejected sources: KuaiRec captions (Chinese, and its video ids do not join KuaiRand), MIND titles (research-only license), Duolingo (no template text)
 - Limitations: copy is not tied to item content beyond these fields; the simulated copy effect is not derived from the text, so results show that the selection policy learns and handles novelty decay, not which text works

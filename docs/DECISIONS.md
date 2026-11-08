@@ -256,3 +256,21 @@
 - Score diagnostics, main-sweep medians: Spearman correlation with the true same-day uplift 0.51 for the open model, 0.21 for the T-learner and 0.75 for the decomposed score; the slot of highest predicted open probability is the true best slot on 27% of user-days (chance 25%; the truth includes the template drawn for each slot)
 - Fit variability at the reference setting over 10 refits: SD of H1 0.017 against a mean bootstrap SE of 0.005, H2 0.005 against 0.004, H3 0.013 against 0.006 (H4 does not use the models). Per-setting H1 and H3 verdicts are conditional on one fit and understate their uncertainty, so the win and loss counts behind their labels are less certain than their intervals suggest; the sweep averages include fit randomness
 - One multiplier (secondary, budget 0.5): S and G2 hit the daily cap on nearly every day (median 28 and 27 of 28); G delivered a median 12.6 pushes per user against the budget of 14, with the cap binding on a median 10 days
+
+## D035 Copy language and placeholders
+- Date: 2026-11-08
+- Copy is English. KuaiRand comes from a Chinese app, but the repository is English and the simulator does not read the text, so the language changes no result; English filters and copy are also easier for readers of the repository to check
+- Placeholders are filled at send time from data before the cutoff $c_2$ or from the simulated history a policy observes (METHODS 13.1), like every other simulator input; fill values are never committed, the committed copy holds placeholders only, and rendered examples in tests and the report use synthetic values
+- Popular now uses the item's rank in the trending list at $c_2$ (METHODS Section 2) instead of `video_features_statistic`, which METHODS Section 1 excludes because its window overlaps the evaluation period. Creator update may not claim that a video is new: upload times are not tied to simulated days
+
+## D036 Eligible templates and template numbering
+- Date: 2026-11-08
+- Creator update, Popular now and Welcome back are eligible only where their placeholder can be filled (METHODS 13.1), so the template bandit faces arms that sleep, as in Yancey and Settles (2020). Eligibility is confounded with the open probability (author affinity is a feature of the response model), which is what the difference score is designed to remove; the secondary policy RAW shows the effect of ignoring it. The eligibility attributes are added to the cached simulator inputs, computed from data before $c_2$
+- Each family is asked for 16 variants and the first 10 that pass the filters are kept, in the order returned. Template $k = 6j + f$ is the $j$-th kept variant of family $f$, so $\text{family}(k) = k \bmod 6$ as the simulator has assumed since M4: with 60 templates the copy effects of every world are unchanged and the M5 results stay reproducible. A family with fewer than 10 survivors keeps them all and nothing is regenerated
+- The M5 policies keep drawing templates uniformly over all $K$ without eligibility; the simulator does not read the text, so this changes none of their results
+
+## D037 Template bandit design
+- Date: 2026-11-08
+- The recovering difference softmax of Yancey and Settles (2020, Eq. 1 to 4) with their production recency penalty ($\gamma_b = 0.017$, $h_b = 15$ days) and probability threshold ($\theta = 0.005$). The bandit does not know the simulator's novelty parameters, which the sweep varies
+- Reward: whether the push was opened, observed after the day ends; scores are updated once a day from all earlier rounds of the run, pooled over users, as in the paper's daily batch job
+- Departures from the paper: the prior strength is set each day by the method of moments, since no arm here has the large sample the paper estimated it from; the softmax temperature is 0.005 instead of 0.0025, because each arm sees tens of thousands of rounds instead of millions; arm histories are not truncated, since the 28-day run is shorter than the paper's one to five weeks of history. All three are fixed before any run
