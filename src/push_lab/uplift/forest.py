@@ -1,5 +1,6 @@
 """Causal forest from EconML (METHODS Section 8)."""
 
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from typing import Any
 
@@ -13,7 +14,8 @@ from push_lab.uplift.learners import PARAMS, ROUNDS, FloatArray, Labels
 TREES = 100
 # Rows drawn from the Criteo training sample for the forest (SPEC Section 10)
 CRITEO_FOREST_ROWS = 200_000
-ROUND_DECIMALS = 12
+# Rows per scoring chunk; each chunk is scored by one thread
+CHUNK_ROWS = 65_536
 
 
 def _outcome_model() -> lgb.LGBMRegressor:
@@ -51,11 +53,18 @@ class CausalForest:
             n_jobs=PARAMS["num_threads"],
         )
         model.fit(y.astype(np.float64), t.astype(np.int64), X=x)
+        # EconML sums tree outputs across threads in completion order, so the last bit of an
+        # effect varies between runs and can move a row across a bin edge. Each forest predicts
+        # on one thread instead, and rows are split across threads below.
+        for forest in model.model_cate.estimators_:
+            forest.n_jobs = 1
         return cls(model)
 
     def effect(self, x: FloatArray) -> FloatArray:
-        out: FloatArray = np.asarray(self.model.effect(x), dtype=np.float64).ravel()
-        # Trees are averaged across threads, so the last bit can differ between runs; rounding
-        # keeps bin membership, and with it every bootstrap draw, reproducible
-        rounded: FloatArray = np.round(out, ROUND_DECIMALS)
-        return rounded
+        """Effects scored in row chunks on parallel threads; rows are independent, so the
+        result equals a single-threaded prediction exactly."""
+        chunks = np.array_split(x, max(1, -(-len(x) // CHUNK_ROWS)))
+        with ThreadPoolExecutor(PARAMS["num_threads"]) as pool:
+            parts = list(pool.map(self.model.effect, chunks))
+        out: FloatArray = np.concatenate([np.asarray(p, dtype=np.float64).ravel() for p in parts])
+        return out

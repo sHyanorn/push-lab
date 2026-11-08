@@ -5,6 +5,7 @@ import numpy.typing as npt
 import pytest
 
 from push_lab.uplift import curves
+from push_lab.uplift import forest as forest_module
 from push_lab.uplift.forest import CausalForest
 from push_lab.uplift.learners import SLearner, TLearner, XLearner
 
@@ -88,3 +89,14 @@ def test_no_effect_gives_qini_interval_containing_zero() -> None:
     ]
     low, high = np.percentile(boot, [2.5, 97.5])
     assert low < 0 < high
+
+
+def test_forest_chunks_match_one_pass(
+    trial: tuple[FloatArray, IntArray, IntArray, FloatArray, FloatArray],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(forest_module, "CHUNK_ROWS", 512)
+    x, t, y, x_test, _ = trial
+    forest = CausalForest.fit(x[:5_000], t[:5_000], y[:5_000])
+    whole = np.asarray(forest.model.effect(x_test), dtype=np.float64).ravel()
+    np.testing.assert_array_equal(forest.effect(x_test), whole)
