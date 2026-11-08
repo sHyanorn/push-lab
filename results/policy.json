@@ -1,6 +1,15 @@
 {
+ "commit": "7490c2a09a5b7e67a01d9cbc88df97cf04da799c",
  "tier": "C",
  "note": "Simulator results with the sweep; settings are points drawn uniformly over the parameter box, not probabilities of the real world.",
+ "p_value_resolution": 0.0002,
+ "complete": {
+  "annoyance_free": true,
+  "grid": true,
+  "main": true,
+  "refit": true,
+  "stress": true
+ },
  "primary": {
   "main": {
    "H1": {
@@ -3277,27 +3286,29 @@
   "main.H4": false
  },
  "stress_verdicts": {
-  "H1": {
-   "win": 2,
-   "loss": 27,
-   "neither": 35
+  "counts": {
+   "H1": {
+    "win": 2,
+    "loss": 27,
+    "neither": 35
+   },
+   "H2": {
+    "win": 64,
+    "loss": 0,
+    "neither": 0
+   },
+   "H3": {
+    "win": 42,
+    "loss": 19,
+    "neither": 3
+   },
+   "H4": {
+    "win": 5,
+    "loss": 1,
+    "neither": 58
+   }
   },
-  "H2": {
-   "win": 64,
-   "loss": 0,
-   "neither": 0,
-   "note": "G2 assumes an open and an organic visit are independent given the features; this holds in the simulator by construction, so part of any H2 win comes from the simulator's structure."
-  },
-  "H3": {
-   "win": 42,
-   "loss": 19,
-   "neither": 3
-  },
-  "H4": {
-   "win": 5,
-   "loss": 1,
-   "neither": 58
-  }
+  "H2_note": "G2 assumes an open and an organic visit are independent given the features; this holds in the simulator by construction, so part of any H2 win comes from the simulator's structure."
  },
  "band_F_over_N": {
   "bounds": [
@@ -6540,7 +6551,8 @@
   "H2": {
    "sd_over_refits": 0.005467,
    "mean_bootstrap_se": 0.004469,
-   "refits": 10
+   "refits": 10,
+   "note": "G2 assumes an open and an organic visit are independent given the features; this holds in the simulator by construction, so part of any H2 win comes from the simulator's structure."
   },
   "H3": {
    "sd_over_refits": 0.013256,
