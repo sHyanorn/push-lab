@@ -84,7 +84,7 @@ uv run python -m push_lab.data.prepare          # Parquet into data/processed
 uv run python -m push_lab.report.build          # report in site/ and the README numbers
 ```
 
-Each step of the pipeline has its own module (`rank.evaluate`, `uplift.evaluate`, `sim.build`, `policy.sweep`, `policy.template_sweep`, `ope.obd`, `ope.simulator`, `ope.carryover`); measured run times are recorded in the decisions. The manual `reproduce` workflow runs the steps that work on synthetic fixtures, or reruns part of the pipeline on a small real sample and compares the numbers with the committed results ([D052](docs/DECISIONS.md)).
+Each step of the pipeline has its own module (`rank.evaluate`, `uplift.evaluate`, `sim.build`, `policy.sweep`, `policy.template_sweep`, `ope.obd`, `ope.simulator`, `ope.carryover`); measured run times are recorded in the decisions. The manual `reproduce` workflow runs the steps that work on synthetic fixtures, or reruns part of the pipeline on a small real sample and compares the numbers with the committed results ([D052](docs/DECISIONS.md)). The results reproduce exactly on the machine that produced them; on other machines the fitted models and what follows from them differ ([D053](docs/DECISIONS.md)).
 
 ## Layout
 

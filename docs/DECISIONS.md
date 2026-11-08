@@ -56,6 +56,7 @@ Entries are in the order they were made. Some entries up to D048 were corrected 
 | D050 | Scope of the reproduce workflow | Amended by D052 |
 | D051 | The notebook is checked against its committed outputs | Active |
 | D052 | Reproduce workflow as built, and its first runs | Active |
+| D053 | Results differ across machines | Active |
 
 ## D001 Python only, static report
 - Date: 2026-11-08
@@ -502,3 +503,8 @@ Entries are in the order they were made. Some entries up to D048 were corrected 
 - The sample mode reruns ranking, the Hillstrom half of the uplift evaluation, the simulator inputs and main-sweep setting 0 of the policy sweep, and compares them with the committed results, ignoring timings and commits. It downloads KuaiRand-Pure and Hillstrom
 - No test runs the default path of the OPE modules end to end; their only change on that path is that the carryover summary sorts the log seeds it is given, which equals the registered order, and a unit test covers it
 - First runs at commit f51595f in the container of D015, sharing the cores with other jobs: sample mode in 483 s, with every compared number identical to the committed results; synthetic mode in 119 s with every key check passing. Before this, a full default rerun of the uplift evaluation on Hillstrom and Criteo reproduced `results/uplift.json` apart from timings
+
+## D053 Results differ across machines
+- Date: 2026-11-08
+- The sample mode on a GitHub runner (ubuntu-latest, the same locked packages: CPython 3.14.10, torch 2.15.0+cpu, LightGBM 4.7.0, faiss-cpu 1.15.1) reproduced the Hillstrom part of the uplift evaluation exactly, and differed from the committed results in ranking, the simulator inputs and policy setting 0. The simulator's response model stopped early at 68 rounds against 51, so its outputs and every simulated policy downstream move; its held-out AUC was 0.693 against 0.694. In the container of D015 the same mode reproduced all four exactly (D052)
+- The committed results are those of the container of D015. No tolerance is set: the runner's numbers differ beyond rounding in fitted models and their downstream, so a tolerance would need its own study. The sample mode therefore exits with an error on GitHub runners, and its report of differences is the record of how far a rerun on another machine moves
