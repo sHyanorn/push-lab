@@ -207,6 +207,15 @@
     "interval_contains_on_policy": false,
     "validated": false
    }
+  },
+  "post_hoc": {
+   "commit": "5b2e5de7dac1b84ceb1210c11f9eae9fbf851050",
+   "note": "Post hoc: IPS against the BTS logs' empirical (item, position) frequencies",
+   "ratio_to_on_policy": {
+    "value": 0.9169346751089856,
+    "ci_low": 0.8441624545740208,
+    "ci_high": 0.9827193214418721
+   }
   }
  },
  "small_note": "The small sample has 46 clicks in the random logs and 69 in the BTS logs, so this check has low power: it can show a gross failure, not a small bias."
