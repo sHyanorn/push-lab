@@ -45,13 +45,25 @@ class Models:
         out: FloatArray = np.asarray(booster.predict(x, num_threads=self.threads))
         return out
 
+    def predict_open(self, x: FloatArray) -> FloatArray:
+        return self._predict(self.p, x)
+
+    def row_scores(self, x: FloatArray, kind: Kind) -> FloatArray:
+        """Score of each row: S predicted open, G the T-learner uplift, G2 p (1 - mu0)."""
+        if kind == "S":
+            return self.predict_open(x)
+        control = self._predict(self.control, x)
+        if kind == "G":
+            return self._predict(self.treated, x) - control
+        return self.predict_open(x) * (1 - control)
+
     def scores(self, f: FloatArray, kind: Kind) -> tuple[IntArray, FloatArray]:
         """Slot and user-day score from features [user, slot, feature]: every kind sends at
         the slot with the highest predicted open probability."""
         n, slots, width = f.shape
         if n == 0:
             return np.zeros(0, dtype=np.int64), np.zeros(0)
-        p = self._predict(self.p, f.reshape(-1, width)).reshape(n, slots)
+        p = self.predict_open(f.reshape(-1, width)).reshape(n, slots)
         slot = p.argmax(axis=1).astype(np.int64)
         p_best = p[np.arange(n), slot]
         if kind == "S":
