@@ -204,7 +204,7 @@
 
 ## D030 Design choices made after a synthetic replica
 - Date: 2026-11-08
-- Before this pre-registration, the independent review of the draft ran the simulator on synthetic inputs, with visit rates and the mean $p_0$ of pushed items matched to D024. It used no KuaiRand evaluation user and no real policy run. What it showed:
+- Before this pre-registration, the simulator was run on synthetic inputs, with visit rates and the mean $p_0$ of pushed items matched to D024. It used no KuaiRand evaluation user and no real policy run. What it showed:
   - Score quality against the true same-day uplift (Spearman): T-learner $\hat\tau$ 0.07, predicted open probability 0.57, the decomposed score $\hat p (1 - \hat\mu_0)$ 0.77. $\hat\tau$ had an SD of 0.021 against a true 0.0045, and the T-learner picked the true best slot on 26% of user-days (open probability 38%, chance 25%)
   - In a 64-point hypercube, one push a day lowered active days below no pushes in 56% of settings; its lift fell inside the 0.07% to 0.5% band in 6%, below in 58% and above in 36%, and inside in none with $\epsilon_v = 0$. Annoyance at one push a day costs about $(1 - e^{-\epsilon_v})\bar v$ of daily active share, 2.8 points at the reference, against about 0.5 points from opens
   - Per-setting standard errors of 0.0014 to 0.012 active days, so differences below about 0.04 days are not detectable per setting with 5,000 users
@@ -226,33 +226,33 @@
 
 ## D033 Changes to the design before it was frozen
 - Date: 2026-11-08
-- Made after the independent code review and before `results/policy_design.json` was committed or any policy ran on evaluation users
-- Evaluation run seeds are 101 to 103 instead of the 1 to R written in METHODS 12.6: seeds 1 and 2 already select the fit and diagnostic users, and every integer seed of the design should have one use (D032)
+- Made before `results/policy_design.json` was committed or any policy ran on evaluation users
+- Evaluation run seeds are 101 to 103 instead of the 1 to R written in METHODS 12.6: seeds 1 and 2 already select the fit and diagnostic users. Within one simulation run no integer seed now drives two random processes (D032); seeds 0 to 2 also serve the user samples, the hypercube and the analysis bootstrap, which run no simulation
 - The secondary budget $b = 1$ is dropped: with one push a day allowed to every eligible user, S, G and G2 send to the same users at the same slot and are one policy
 - F's slot is the largest share of the perturbed profile averaged over users, as implemented; METHODS 12.2 now says so instead of "population share", which 11.1 uses for pooled counts
-- Every setting records the code commit it ran with; the runner refuses a modified working tree and will not resume over settings from another commit. `results/policy.json` gets labels and Holm decisions only when all main and annoyance-free settings are present
+- Every setting records the code commit it ran with; the runner refuses a modified working tree and any setting on disk from another commit, with or without `--ids`, and the comparison refuses settings from more than one commit and records the commit in `results/policy.json`. `results/policy.json` gets labels and Holm decisions only when all main and annoyance-free settings are present
 
 ## D034 Policy sweep: cost and results
 - Date: 2026-11-08
 - Run alone at commit 7490c2a with the frozen design: 263 settings in 6,097 s on 4 processes (main-sweep settings about 130 s, others about 80 s), peak resident memory 2.2 GB per worker
-- Pre-registered results (METHODS 12.7), Tier C, reported as they came out. Differences are in active days per user over 28 days (about 16.2 without pushes); sweep averages with two-level 95% intervals; wins, losses and neither of 64 settings at level 0.0125; Holm across the eight sweep tests rejects all but main H4
+- Pre-registered results (METHODS 12.7), Tier C, reported as they came out. Differences are in active days per user over 28 days (about 16.2 without pushes); sweep averages with two-level 95% intervals; wins, losses and neither of 64 settings at level 0.0125; Holm across the eight sweep tests rejects all but main H4. A p-value of 0 means below the resolution 0.0002
 
 | Id | Sweep | Label | Sweep average (95% CI) | Wins / losses / neither |
 |---|---|---|---|---|
-| H1 G vs S | main | worse on average | -0.015 (-0.021 to -0.009) | 1 / 29 / 34 |
-| H1 G vs S | annoyance-free | loses in most sampled settings | -0.022 (-0.027 to -0.018) | 0 / 56 / 8 |
+| H1 G vs S | main | worse on average | -0.015 (-0.021 to -0.009) | 1 / 29 / 34, per-setting verdicts understate fit noise |
+| H1 G vs S | annoyance-free | loses in most sampled settings | -0.022 (-0.027 to -0.018) | 0 / 56 / 8, per-setting verdicts understate fit noise |
 | H2 G2 vs S | main | beats in most sampled settings | 0.056 (0.048 to 0.064) | 64 / 0 / 0 |
 | H2 G2 vs S | annoyance-free | beats in most sampled settings | 0.022 (0.017 to 0.026) | 58 / 0 / 6 |
-| H3 G (half volume) vs T | main | depends on the setting | 0.093 (0.052 to 0.136) | 43 / 19 / 2 |
-| H3 G (half volume) vs T | annoyance-free | loses in most sampled settings | -0.161 (-0.179 to -0.143) | 0 / 64 / 0 |
-| H4 T vs F | main | no detectable difference | 0.000 (-0.004 to 0.005) | 6 / 0 / 58 |
-| H4 T vs F | annoyance-free | worse on average | -0.005 (-0.010 to -0.001) | 0 / 6 / 58 |
+| H3 G (half volume) vs T | main | depends on the setting | 0.093 (0.052 to 0.136) | 43 / 19 / 2, per-setting verdicts understate fit noise |
+| H3 G (half volume) vs T | annoyance-free | loses in most sampled settings | -0.161 (-0.179 to -0.143) | 0 / 64 / 0, per-setting verdicts understate fit noise |
+| H4 T vs F | main | no detectable difference | 0.000 (-0.004 to 0.005); median per-setting half-width 0.011 | 6 / 0 / 58 |
+| H4 T vs F | annoyance-free | worse on average | -0.005 (-0.010 to -0.001), p = 0.019 against a Holm step of 0.025 | 0 / 6 / 58 |
 
 - H2: G2 assumes an open and an organic visit are independent given the features; this holds in the simulator by construction, so part of any H2 win comes from the simulator's structure
 - Stress sweep (opt-out 0.005, outside the evidence), wins / losses / neither: H1 2 / 27 / 35, H2 64 / 0 / 0, H3 42 / 19 / 3, H4 5 / 1 / 58
-- Descriptive, one-at-a-time grid with the other parameters at reference values: one push a day (F) gains active days over no pushes only below an annoyance elasticity of 0.016 (95% CI 0.015 to 0.017); at the reference elasticity 0.05 it gains only above a base-rate factor of 0.18 (0.17 to 0.19). The half-volume gate beats T above an annoyance elasticity of 0.013 (0.012 to 0.015). Every other crossing of H1 to H4 is not resolved. These intervals cover user sampling with the grid's seeds fixed, not model-fit randomness
+- Descriptive, one-at-a-time grid with the other parameters at reference values: one push a day (F) gains active days over no pushes only below an annoyance elasticity of 0.016 (95% CI 0.015 to 0.017); at the reference elasticity 0.05 it gains only above a base-rate factor of 0.18 (0.17 to 0.19). The half-volume gate beats T above an annoyance elasticity of 0.013 (0.012 to 0.015). Every other crossing of H1 to H4 is not resolved. Crossings are located by linear interpolation between adjacent grid points (0 and 0.025 for the elasticity, 0.1575 and 0.2 for the base rate); their intervals cover user sampling with the grid's seeds fixed, not the interpolation or model-fit randomness
 - Plausibility band, lift of F over N in daily active share across the 64 main settings: 37 below 0.07%, 2 inside, 21 above 0.5%, 4 straddling. At the reference setting the lift is -2.3% (-2.4% to -2.2%). Under the registered reading, one push a day adds less activity than the smallest reported program change in most settings, and conclusions that rely on push benefits are weaker for it
-- Secondary, main sweep medians over settings: H3 splits into G minus T½ +0.026 (43 positive, none negative) and T½ minus T +0.052 (38 positive, 22 negative); in the annoyance-free sweep T½ minus T is negative in all 64 (median -0.168). L1: T on the cascade list is below T on the two-tower list in all 64 settings (median -0.012), which the two-tower list's share in the response model favors by construction (D026). Opt-out by day 28: 0.8% under a daily push, 0.3% under the scored policies at half volume
+- Secondary, main sweep medians over settings: H3 splits into G minus T½ +0.026 (43 positive, none negative) and T½ minus T +0.052 (38 positive, 22 negative); in the annoyance-free sweep T½ minus T is negative in all 64 (median -0.168). L1: T on the cascade list is below T on the two-tower list in all 64 settings (median -0.012), which the two-tower list's share in the response model favors by construction (D026). Opt-out by day 28: 0.8% to 0.9% under a daily push, 0.3% under the scored policies at half volume
 - Score diagnostics, main-sweep medians: Spearman correlation with the true same-day uplift 0.51 for the open model, 0.21 for the T-learner and 0.75 for the decomposed score; the slot of highest predicted open probability is the true best slot on 27% of user-days (chance 25%; the truth includes the template drawn for each slot)
-- Fit variability at the reference setting over 10 refits: SD of H1 0.017 against a mean bootstrap SE of 0.005, H2 0.005 against 0.004, H3 0.013 against 0.006 (H4 does not use the models). Per-setting H1 and H3 verdicts are conditional on one fit and understate their uncertainty; the sweep averages include fit randomness
+- Fit variability at the reference setting over 10 refits: SD of H1 0.017 against a mean bootstrap SE of 0.005, H2 0.005 against 0.004, H3 0.013 against 0.006 (H4 does not use the models). Per-setting H1 and H3 verdicts are conditional on one fit and understate their uncertainty, so the win and loss counts behind their labels are less certain than their intervals suggest; the sweep averages include fit randomness
 - One multiplier (secondary, budget 0.5): S and G2 hit the daily cap on nearly every day (median 28 and 27 of 28); G delivered a median 12.6 pushes per user against the budget of 14, with the cap binding on a median 10 days
