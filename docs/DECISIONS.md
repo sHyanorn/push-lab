@@ -384,3 +384,21 @@
 - Made after the results of D043 and D045, to meet the rule that simulator results are shown only with a sweep and to find where the direction of the per-day bias changes. Design, measures and reading as in METHODS 14.6: 24 settings on one-at-a-time grids of annoyance, fatigue, opt-out, return and novelty; 10 fresh log seeds per setting; 100 independent truth runs per target; flips of the DR and IPS bias of T½, N and T2 by the rule of 12.7
 - Estimators, outcome models, targets, users and world seed as in 14.3. Until these results exist, the simulator OPE results of D043 and D045 stay out of the conclusions; afterwards, statements about the direction of the bias are made only with the ranges where the sweep shows it
 - Cost: 240 logs at about 51 s each and 144 truth jobs of 100 runs, about 55 minutes on 4 processes
+
+## D048 Carryover sweep: results
+- Date: 2026-11-08
+- Run alone at commit 0b454e6 with the design of D047: 3,529 s on 4 processes, peak 594 MB per process
+- Pre-registered results (METHODS 14.6), Tier C, reported as they came out. Verdicts of 14.4 over the 24 settings: IPS and DR are validated for T, R and F at all 24. For T½, N and T2 they are not validated at 23; the exception is annoyance 0, where IPS is validated for all three and DR for T2 only
+- DR bias in active-day share along the annoyance grid, other parameters at the reference, with resample intervals:
+
+| Annoyance | T½ | N | T2 |
+|---|---|---|---|
+| 0 | +0.0011 (0.0003 to 0.0021) | +0.0030 (0.0015 to 0.0044) | +0.0017 (−0.0013 to 0.0044) |
+| 0.025 | −0.0038 (−0.0047 to −0.0028) | −0.0071 (−0.0087 to −0.0054) | +0.0108 (0.0080 to 0.0133) |
+| 0.05 | −0.0087 (−0.0097 to −0.0078) | −0.0171 (−0.0189 to −0.0155) | +0.0194 (0.0168 to 0.0217) |
+| 0.075 | −0.0134 (−0.0144 to −0.0124) | −0.0266 (−0.0284 to −0.0248) | +0.0273 (0.0247 to 0.0297) |
+| 0.1 | −0.0179 (−0.0189 to −0.0169) | −0.0361 (−0.0379 to −0.0343) | +0.0354 (0.0330 to 0.0378) |
+
+- Flips by the rule of 12.7: the DR bias of T½ and N changes sign along annoyance, at 0.0058 (0.0028 to 0.0087) and 0.0074 (0.0043 to 0.0101). For IPS the signs change at the same place but the crossing is not resolved, since its intervals at annoyance 0 contain 0. T2 has no flip: the bias is positive at every point, and its interval contains 0 only at annoyance 0 for DR. IPS at annoyance 0 is +0.0052; its resample interval (0.0003 to 0.0102) excludes 0 and the interval of 14.4 (−0.0001 to 0.0105) does not. Fatigue, opt-out, return and novelty give no flip; over their grids the DR bias stays within −0.0091 to −0.0080 for T½, −0.0178 to −0.0154 for N and +0.0163 to +0.0202 for T2
+- Expectation stated before the run: the T2 bias grows with annoyance and fatigue and falls with return boost. All three held; the fatigue and return effects are small (+0.0163 to +0.0202 and +0.0197 to +0.0185)
+- Reading, within the swept ranges and one parameter at a time: per-day OPE is accurate for the targets that send about one push a day (T, R, F) at every setting. From an annoyance elasticity of 0.025 upward it underestimates half the volume and no pushes and overestimates two pushes a day, and each bias grows about linearly with annoyance; below about 0.006 (DR) the first two turn slightly positive. Fatigue, opt-out, return and novelty do not change any direction. This replaces the general wording of D046: in this sweep annoyance alone sets the direction; the D046 side check that moved two parameters at once lies outside a one-at-a-time grid
