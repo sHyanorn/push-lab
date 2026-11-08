@@ -34,7 +34,7 @@ Hour estimates are for planning; the required core is about 85 hours. If behind,
 - [x] Evaluation on the random-exposure half with bootstrap intervals; record training times
 
 ## M3 Uplift methods (9 h)
-- [ ] METHODS.md: meta-learners, causal forest, Qini and AUUC variants, Hillstrom contrast
+- [x] METHODS.md: meta-learners, causal forest, Qini and AUUC variants, Hillstrom contrast
 - [ ] Qini and AUUC implementation, cross-checked against scikit-uplift on Hillstrom
 - [ ] S-, T- and X-learners on LightGBM; EconML causal forest
 - [ ] Synthetic-effect tests: known effect recovered, zero effect gives Qini near zero

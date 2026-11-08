@@ -160,3 +160,102 @@ All are computed on the evaluation half of the random exposures and are Tier A.
 Everything else (other $K$, long-view GAUC, NDCG@5, the $w$ table, truncation) is secondary and reported without significance claims.
 
 **Code.** `rank/metrics.py`. **Tests.** Each metric against hand-computed examples, including ties (AUC counts a tie as 0.5) and users with a single class (excluded from GAUC).
+
+---
+
+## 7. Uplift data and contrasts
+
+**Problem.** Show that the uplift methods rank people by their response to a treatment, using trials where the treatment was randomized (Tier A). These trials are e-mail and advertising, not push; they validate the methods, not the simulator's gate (D013).
+
+| | Hillstrom | Criteo Uplift v2.1 |
+|---|---|---|
+| Treatment $t = 1$ | women's e-mail | `treatment == 1` (assigned to see ads; intention to treat, `exposure` is not used) |
+| Control $t = 0$ | no e-mail (the men's e-mail arm is dropped, D004) | `treatment == 0` |
+| Primary outcome $y$ | `visit` | `visit` |
+| Secondary outcome | `conversion` | `conversion` |
+| Features $x$ | `recency`, `history`, `mens`, `womens`, `newbie`, one-hot `zip_code` and `channel`; `history_segment` is dropped as a binned copy of `history` | `f0` to `f11` |
+| Training rows | a 50% split stratified on $(t, y)$, `random_state = 0` (about 21,350 rows) | the seeded 10% `train` sample (1,398,727 rows) |
+| Test rows | the other 50% (about 21,350) | every row outside the sample (12,580,865) |
+| Treated share | 0.50 | 0.85 |
+
+`visit` is primary on both: conversions are rare (0.57% and 0.88% by arm on Hillstrom, 0.29% on Criteo), and Diemert et al. (2021) recommend modeling Criteo uplift on visits for that reason. Rows are customers (Hillstrom) and users (Criteo); each appears once. The propensity is the treated share of the training rows, $\hat e$, a constant because assignment was randomized.
+
+---
+
+## 8. Uplift learners
+
+Each learner outputs $\hat\tau(x)$, an estimate of $\tau(x) = P(y = 1 \mid x, t = 1) - P(y = 1 \mid x, t = 0)$, fitted on the training rows only.
+
+**Base model.** Every LightGBM model uses the same fixed hyperparameters, with no tuning and no early stopping: 200 rounds, learning rate 0.05, `num_leaves` 31, `min_data_in_leaf` 100, feature and bagging fractions 0.8 (bagging every round), seed 0, 4 threads. Classifiers use the binary objective, regressors L2.
+
+- **S-learner.** One classifier $\hat\mu(x, t)$ with $t$ as a feature; $\hat\tau(x) = \hat\mu(x, 1) - \hat\mu(x, 0)$. Trees may never split on $t$, which gives $\hat\tau = 0$ for many rows; this is a known weakness and is kept.
+- **T-learner.** Classifiers $\hat\mu_1$ on treated rows and $\hat\mu_0$ on control rows; $\hat\tau(x) = \hat\mu_1(x) - \hat\mu_0(x)$.
+- **X-learner** (Künzel et al. 2019). Stage 1 is the T-learner. Imputed effects: $D_i^1 = y_i - \hat\mu_0(x_i)$ for treated rows and $D_i^0 = \hat\mu_1(x_i) - y_i$ for control rows. Stage 2 fits regressors $\hat\tau_1$ on $(x_i, D_i^1)$ and $\hat\tau_0$ on $(x_i, D_i^0)$. Combination: $\hat\tau(x) = \hat e\, \hat\tau_0(x) + (1 - \hat e)\, \hat\tau_1(x)$, the weighting the paper recommends with $g(x)$ equal to the propensity.
+- **Causal forest.** EconML `CausalForestDML` (Athey, Tibshirani and Wager 2019; Chernozhukov et al. 2018): outcome nuisance a LightGBM regressor as above, treatment nuisance `DummyClassifier(strategy="prior")` (the known constant propensity), `discrete_treatment=True`, 2-fold cross-fitting, 100 trees, other forest settings at EconML 0.17 defaults (honest, `min_samples_leaf` 5, `max_samples` 0.45), `random_state` 0, 4 jobs. On Criteo it is fitted on 200,000 rows drawn from the training sample with `numpy.random.default_rng(0)`, since a fit on all 1.4M rows does not fit the time budget (SPEC Section 10: about 1 minute for 200k rows); the meta-learners use all 1.4M, and the report states this asymmetry.
+- **Response model** (baseline, not an uplift method). $\hat\mu_1(x)$ from the T-learner: the predicted outcome if treated, which is what targeting by propensity to respond uses.
+- **Random** (baseline). Scores drawn from $U(0, 1)$ with `numpy.random.default_rng(0)`.
+
+**References.**
+- Künzel, S. R., Sekhon, J. S., Bickel, P. J., Yu, B. (2019). Metalearners for estimating heterogeneous treatment effects using machine learning. *PNAS* 116(10), 4156–4165. https://doi.org/10.1073/pnas.1804597116
+- Athey, S., Tibshirani, J., Wager, S. (2019). Generalized random forests. *Annals of Statistics* 47(2), 1148–1178. https://doi.org/10.1214/18-AOS1709
+- Chernozhukov, V., Chetverikov, D., Demirer, M., Duflo, E., Hansen, C., Newey, W., Robins, J. (2018). Double/debiased machine learning for treatment and structural parameters. *The Econometrics Journal* 21(1), C1–C68. https://doi.org/10.1111/ectj.12097
+
+**Code.** `uplift/learners.py`, `uplift/forest.py`. **Tests** (synthetic data with a known $\tau(x)$, no real data):
+
+- Each learner's $\hat\tau$ correlates with the true $\tau$ above a stated threshold, and its mean is within a stated tolerance of the true average effect.
+- With $\tau = 0$ everywhere, the T-learner's Qini coefficient has a 95% bootstrap interval that contains 0.
+- Fitting is deterministic for a fixed seed.
+
+---
+
+## 9. Uplift curves and metrics
+
+**Curves.** Sort the $n$ test rows by score, highest first. For the top $k$ rows let $N_T(k), N_C(k)$ be the treated and control counts and $Y_T(k), Y_C(k)$ their responders.
+
+- *Qini curve* (Radcliffe 2007): $Q(k) = Y_T(k) - Y_C(k)\, N_T(k) / N_C(k)$, incremental responders in units of the treated group.
+- *Uplift curve* (Devriendt et al. 2022): $U(k) = \left( Y_T(k)/N_T(k) - Y_C(k)/N_C(k) \right) k$, incremental responders if the top $k$ were treated and nobody else.
+- A ratio with an empty denominator is 0. Rows with tied scores enter together: the curve is evaluated only at the end of each tied group and joined by straight lines, which is the expected curve under a random order within the group. This is how scikit-uplift 0.5.1 computes both curves.
+- Both are *joint* curves: treated and control rows are ranked together. Diemert et al. (2021) report the *separate, relative* AUUC (each arm ranked on its own, response rates differenced), which Devriendt et al. (2022) found more robust to unequal arm sizes; Criteo numbers here are therefore not directly comparable with theirs, which also use a different split.
+
+**Areas.** With curve points $(k_j, C_j)$, $k_0 = C_0 = 0$, the area is the trapezoid sum $A = \sum_j (k_j - k_{j-1})(C_j + C_{j-1})/2$, and the random-targeting line from $(0, 0)$ to $(n, C(n))$ has area $n\, C(n)/2$. The *perfect* curve orders rows by an oracle score that uses the outcomes: for Qini, $y t - y (1 - t)$ (treated responders first, control responders last, negative effects included); for the uplift curve, the scikit-uplift construction. Then
+
+$$
+\text{Qini coefficient} = \frac{A_Q - n\,Q(n)/2}{A_Q^\ast - n\,Q(n)/2}, \qquad
+\text{AUUC} = \frac{A_U - n\,U(n)/2}{A_U^\ast - n\,U(n)/2},
+$$
+
+which equal scikit-uplift's `qini_auc_score(negative_effect=True)` and `uplift_auc_score`. Both are 0 for random targeting in expectation, and the denominator is the same for every method on the same test rows, so paired differences rank methods exactly as the unnormalized areas do.
+
+**Binned curves on Criteo.** With 12.6M test rows, the model's curve is evaluated at 200 score quantiles: rows are grouped into bins of about equal size by score, all rows with the same score in the same bin, and the bins are treated as tied groups. A curve point every 0.5% of the test set changes the area by much less than its sampling error. The perfect curve uses only the outcome and treatment counts and stays exact. Hillstrom curves are exact. With 85% of rows treated, a bin can hold few control rows; `results/uplift.json` reports, per method, the minimum and the 5th, 50th and 95th percentiles of control rows per bin and the number of bins with none (where a control rate would be 0/0 and the bin's control responders count as 0).
+
+**Bootstrap.** Rows are resampled (D012: 1,000 resamples, 95% percentile intervals, seed 0), and every statistic is recomputed on each resample, including the perfect-curve areas in the denominators, which depend on the resampled counts of the four $(t, y)$ classes. On Hillstrom the rows themselves are resampled. On Criteo, each metric depends on the data only through the counts in cells (score bin, $t$, $y$), so drawing 12.6M rows with replacement is the same as drawing the cell counts from a multinomial with the observed cell shares; for a paired comparison of methods $a$ and $b$ the cells are (bin under $a$, bin under $b$, $t$, $y$). The intervals cover test-set sampling only: each model is fitted once on a fixed training set with a fixed seed. A test checks on small synthetic data that the cell bootstrap and row resampling give the same intervals within Monte Carlo error.
+
+**Cross-check.** Hillstrom Qini coefficients and AUUC for every method are compared with scikit-uplift 0.5.1 (development dependency only) on the same scores; the largest absolute difference is reported in `results/uplift.json` and must be below $10^{-9}$. The unit tests run the same comparison on synthetic data with ties.
+
+**References.**
+- Radcliffe, N. J. (2007). Using control groups to target on predicted lift: Building and assessing uplift models. *Direct Marketing Analytics Journal*, 14–21. Direct Marketing Association Analytics Council.
+- Devriendt, F., Van Belle, J., Guns, T., Verbeke, W. (2022). Learning to rank for uplift modeling. *IEEE Transactions on Knowledge and Data Engineering* 34(10), 4888–4904. https://doi.org/10.1109/TKDE.2020.3048510
+- Diemert, E., Betlei, A., Renaudin, C., Amini, M.-R., Gregoir, T., Rahier, T. (2021). A Large Scale Benchmark for Individual Treatment Effect Prediction and Uplift Modeling. arXiv:2111.10106 (not peer reviewed).
+
+**Code.** `uplift/curves.py`. **Tests.** Curves and both coefficients against hand-computed examples, against scikit-uplift on synthetic data with ties, and binned against exact on data with few distinct scores (equal when every bin is one tied group).
+
+---
+
+## 10. Targeting under a budget and primary comparisons
+
+**Budget.** A budget $b$ is the share of the test population that may be treated; the top $\lceil b n \rceil$ rows by score are treated and the rest are not. The value of a method at $b$ is $U(bn)$ (linear between curve points), reported as incremental responders per 1,000 test rows and as the share of the treat-everyone effect, $U(bn) / U(n)$. Budgets: $b \in \{0.1, 0.2, 0.3, 0.5\}$. Methods: the four learners, the response model and random. This table is secondary and carries no significance claims.
+
+**Primary comparisons**, on the primary outcome (`visit`) and the Qini coefficient, all with the T-learner as the uplift method, fixed before any model is fitted on these data. Holm correction across the four at family-wise level 0.05:
+
+| Id | Dataset | Comparison | Test |
+|---|---|---|---|
+| U1 | Hillstrom | T-learner Qini coefficient against 0 (random targeting) | bootstrap of the coefficient |
+| U2 | Hillstrom | T-learner against response model | paired bootstrap of the difference |
+| U3 | Criteo | T-learner Qini coefficient against 0 | bootstrap of the coefficient |
+| U4 | Criteo | T-learner against response model | paired bootstrap of the difference |
+
+The p-values follow the Conventions (twice the smaller tail share at zero). U1 and U3 test the T-learner's own coefficient against 0, its expected value under random targeting; they do not use the random baseline's scores, which are a single draw and whose coefficient carries its own sampling noise. A claim that uplift ranking beats random or response ranking on a dataset needs the comparison rejected under Holm with a positive difference. Everything else (the other learners, AUUC, `conversion`, the budget table) is secondary and reported without significance claims.
+
+**Results** go to `results/uplift.json`: setup (row counts, treated shares, test-set sizes), every metric with its interval and tier A, the four comparisons with p-values and Holm decisions, the budget table, Qini curves at 101 points for the report, the scikit-uplift cross-check and fit times.
+
+**Code.** `uplift/evaluate.py` (`python -m push_lab.uplift.evaluate`). Criteo is read by column and scored in row groups (D015).
