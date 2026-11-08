@@ -1,6 +1,6 @@
 """Epsilon-greedy logging policy over send or skip, slot and template (METHODS Section 11.7)."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import numpy as np
 import numpy.typing as npt
@@ -16,17 +16,14 @@ SEND_SHARE = 1 / SLOTS
 class EpsilonGreedy:
     """Default: one push a day at the user's best slot under the policy profile; with
     probability epsilon the send decision is instead a coin with probability q.
-    Templates are uniform."""
+    Templates are uniform. Draws depend only on (seed, day, slot), so reusing the object
+    reproduces a run."""
 
     best_slot: npt.NDArray[np.int64]
     templates: int = TEMPLATES
     epsilon: float = EPSILON
     q: float = SEND_SHARE
     seed: int = 0
-    rng: np.random.Generator = field(init=False)
-
-    def __post_init__(self) -> None:
-        self.rng = np.random.default_rng(self.seed)
 
     def send_probability(self, slot: int) -> npt.NDArray[np.float64]:
         out: npt.NDArray[np.float64] = (1 - self.epsilon) * (
@@ -42,7 +39,8 @@ class EpsilonGreedy:
     def act(self, obs: Observation) -> Action:
         n = len(self.best_slot)
         p_send = self.send_probability(obs.slot)
-        send = self.rng.random(n) < p_send
-        template = self.rng.integers(0, self.templates, n)
+        rng = np.random.default_rng([self.seed, obs.day, obs.slot])
+        send = rng.random(n) < p_send
+        template = rng.integers(0, self.templates, n)
         propensity = np.where(send, p_send / self.templates, 1 - p_send)
         return Action(send=send, template=template, propensity=propensity)

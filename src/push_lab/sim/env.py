@@ -130,6 +130,7 @@ def simulate(
             action = policy.act(Observation(d, s, opted.copy()))
             out_send[d, s] = action.send
             out_propensity[d, s] = action.propensity
+            out_template[d, s] = np.where(action.send, action.template, -1)
             idx = np.flatnonzero(action.send & ~opted)
             if len(idx) == 0:
                 continue
@@ -155,7 +156,6 @@ def simulate(
             opens_today[idx] += opened
             out_delivered[d, s, idx] = True
             out_opened[d, s, idx] = opened
-            out_template[d, s, idx] = k
             out_item[d, s, idx] = item
         visited[d] = (run.visit[d] < organic) | (opens_today > 0)
         returns = returns * 0.5 ** (1.0 / p.return_half_life) + opens_today

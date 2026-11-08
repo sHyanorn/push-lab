@@ -100,8 +100,12 @@ def response_checks(v: inputs.Validation, samples: int) -> dict[str, Any]:
             "tier": "A",
         },
         "gauc": _est(metrics.estimate(gauc, idx)),
-        "click_rate": _round(v.labels.mean()),
-        "mean_predicted": _round(v.predicted.mean()),
+        "click_rate": _est(metrics.estimate(_per_user(v.users, v.labels)[1], idx, weights=rows)),
+        "mean_predicted": _est(
+            metrics.estimate(_per_user(v.users, v.predicted)[1], idx, weights=rows)
+        ),
+        "note": "validation users are held out from fitting but drive early stopping",
+        "feature_gain_share": {k: _round(v) for k, v in v.gain_share.items()},
         "reliability_by_decile": reliability,
     }
 
@@ -111,17 +115,18 @@ def input_checks(fitted: inputs.Fitted, samples: int) -> dict[str, Any]:
     n = len(inp.user_ids)
     idx = metrics.resample_indices(n, samples)
     best_policy = inp.profile_policy.argmax(axis=1)
-    agree = (best_policy == inp.profile_sim.argmax(axis=1)).astype(np.float64)
+    best_sim = inp.profile_sim.argmax(axis=1)
+    agree = (best_policy == best_sim).astype(np.float64)
+    # Agreement expected if the two best slots were independent with these marginals
+    chance = (
+        float(np.bincount(best_policy, minlength=SLOTS) @ np.bincount(best_sim, minlength=SLOTS))
+        / n**2
+    )
+    # Users with no rows in the policy period all get the same smoothed profile, the prior
+    _, shared = np.unique(inp.profile_policy, axis=0, return_counts=True)
+    no_early_rows = int(shared.max()) if shared.max() > 1 else 0
     reference = Params()
     hourly = fitted.hourly_sim
-    lists = {
-        name: {
-            "p0_first_item": _quantiles(c.p0[:, 0]),
-            "p0_mean_over_list": _round(c.p0.mean()),
-            "tier": "model-internal",
-        }
-        for name, c in inp.lists.items()
-    }
     return {
         "users": n,
         "visit_rate": _quantiles(inp.visit_rate) | {"mean": _round(inp.visit_rate.mean())},
@@ -129,10 +134,18 @@ def input_checks(fitted: inputs.Fitted, samples: int) -> dict[str, Any]:
             "simulator_profile": [_round(x) for x in inp.profile_sim.mean(axis=0)],
             "policy_profile": [_round(x) for x in inp.profile_policy.mean(axis=0)],
         },
-        "best_slot_agreement_policy_vs_simulator": _est(metrics.estimate(agree, idx))
-        | {"chance": 1 / SLOTS},
+        "best_slot_agreement_policy_vs_simulator": _est(
+            metrics.estimate(agree, idx), tier="descriptive"
+        )
+        | {
+            "chance_if_independent": _round(chance),
+            "users_without_policy_period_rows": no_early_rows,
+        },
         "hourly_activity_utc8": [_round(x) for x in hourly],
         "lowest_activity_hour_utc8": int(np.argmin(hourly)),
+        "date_field_matches_local_date": {
+            f"utc+{h}": _round(share) for h, share in fitted.date_agreement.items()
+        },
         "timing_eta": {str(lift): _round(world.solve_eta(inp.profile_sim, lift)) for lift in LIFTS},
         "reference": asdict(reference)
         | {
@@ -142,7 +155,6 @@ def input_checks(fitted: inputs.Fitted, samples: int) -> dict[str, Any]:
         },
         "ranges": {k: list(v) for k, v in world.RANGES.items()}
         | {"opt_out_stress": world.OPT_OUT_STRESS},
-        "candidate_lists": lists,
     }
 
 

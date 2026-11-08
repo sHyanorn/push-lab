@@ -69,7 +69,9 @@ def annoyance_rate(p: Params) -> float:
 
 def timing_multipliers(profile: FloatArray, eta: float) -> FloatArray:
     """m[u, s] = a^eta / mean over slots of a^eta, so a uniformly random slot averages 1."""
-    powered = profile**eta
+    # In logs, shifted by the row maximum, so large exponents do not underflow
+    z = eta * np.log(profile)
+    powered = np.exp(z - z.max(axis=1, keepdims=True))
     out: FloatArray = powered / powered.mean(axis=1, keepdims=True)
     return out
 

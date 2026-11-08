@@ -97,6 +97,7 @@ class Validation:
     predicted: FloatArray
     best_rounds: int
     rows_train: int
+    gain_share: dict[str, float]
 
 
 def local_hour(time_ms: npt.NDArray[np.integer]) -> IntArray:
@@ -174,8 +175,15 @@ def fit_response(
     predicted = np.asarray(
         booster.predict(x[is_valid], num_iteration=booster.best_iteration), dtype=np.float64
     )
+    gain = booster.feature_importance("gain", iteration=booster.best_iteration)
+    shares = dict(zip(booster.feature_name(), gain / gain.sum(), strict=True))
     return booster, Validation(
-        u[is_valid], y[is_valid], predicted, booster.best_iteration, int((~is_valid).sum())
+        u[is_valid],
+        y[is_valid],
+        predicted,
+        booster.best_iteration,
+        int((~is_valid).sum()),
+        {k: float(v) for k, v in sorted(shares.items(), key=lambda kv: -kv[1])},
     )
 
 
@@ -196,6 +204,8 @@ def candidate_lists(
     s: Settings,
 ) -> dict[str, CandidateList]:
     """The cascade's and the two-tower score's top items per user, with p0 for each."""
+    if s.candidates > min(s.coarse_n, len(catalog)):
+        raise ValueError("the lists need at least as many coarse survivors and items as candidates")
     tower = builder.tower
     item_vecs = tower.item_vectors(catalog)
     index = ItemIndex(catalog, item_vecs, exact=True)
@@ -238,11 +248,28 @@ def candidate_lists(
     return out
 
 
+def policy_period(standard: pd.DataFrame) -> pd.DataFrame:
+    """Standard-log rows the send-time policy may learn from (D014): before 04-22."""
+    return splits.between(standard, *POLICY_PERIOD)
+
+
+def date_agreement(log: pd.DataFrame, offsets: tuple[int, ...] = (7, 8, 9)) -> dict[int, float]:
+    """Share of rows whose ``date`` equals the calendar date of ``time_ms`` at each UTC offset."""
+    ms = log["time_ms"].to_numpy(dtype=np.int64)
+    out = {}
+    for h in offsets:
+        local = pd.to_datetime(ms + h * 3_600_000, unit="ms").strftime("%Y%m%d").astype(int)
+        out[h] = float(np.mean(local.to_numpy() == log["date"].to_numpy()))
+    return out
+
+
 @dataclass(frozen=True)
 class Fitted:
     inputs: Inputs
     validation: Validation
+    response_users: IntArray
     hourly_sim: FloatArray
+    date_agreement: dict[int, float]
     timings: dict[str, float]
 
 
@@ -294,7 +321,7 @@ def build(root: Path, settings: Settings | None = None) -> Fitted:
             splits.between(random_log, *SIM_PERIOD)[columns],
         ]
     )
-    early = splits.between(standard, *POLICY_PERIOD)[columns]
+    early = policy_period(standard)[columns]
     inputs = Inputs(
         user_ids=user_ids,
         visit_rate=visit_rates(period, user_ids, _days(*SIM_PERIOD)),
@@ -302,4 +329,11 @@ def build(root: Path, settings: Settings | None = None) -> Fitted:
         profile_policy=smoothed_profile(window_counts(early, user_ids)),
         lists=lists,
     )
-    return Fitted(inputs, validation, hourly_shares(period), timings)
+    return Fitted(
+        inputs,
+        validation,
+        np.sort(sim_rows["user_id"].unique()).astype(np.int64),
+        hourly_shares(period),
+        date_agreement(period),
+        timings,
+    )

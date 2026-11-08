@@ -111,6 +111,11 @@ def test_reference_volume_is_the_steady_state_sum() -> None:
         assert world.annoyance_rate(p) * world.reference_volume(h) == pytest.approx(p.annoyance)
 
 
+def test_identical_profiles_cannot_reach_a_timing_lift() -> None:
+    with pytest.raises(ValueError, match="timing lift"):
+        world.solve_eta(np.full((10, SLOTS), 0.25), 0.1)
+
+
 @pytest.mark.parametrize("lift", [0.0, 0.02, 0.1, 0.25])
 def test_eta_reproduces_the_timing_lift(lift: float) -> None:
     profile = _population().profile
@@ -129,7 +134,7 @@ def test_copy_effects_have_mean_one_and_the_given_spread() -> None:
 def test_exploration_propensities_and_frequencies() -> None:
     best = np.random.default_rng(0).integers(0, SLOTS, N)
     policy = EpsilonGreedy(best, seed=0)
-    sends = np.zeros(SLOTS)
+    sends, off = np.zeros(SLOTS), np.zeros(SLOTS)
     counts = np.zeros(world.TEMPLATES)
     days = 40
     for d in range(days):
@@ -139,10 +144,12 @@ def test_exploration_propensities_and_frequencies() -> None:
             expected = np.where(a.send, p_send / world.TEMPLATES, 1 - p_send)
             np.testing.assert_allclose(a.propensity, expected)
             sends[s] += a.send[best == s].mean()
+            off[s] += a.send[best != s].mean()
             counts += np.bincount(a.template[a.send], minlength=world.TEMPLATES)
     assert policy.send_probability(0)[best == 0][0] == pytest.approx(0.775)
     assert policy.send_probability(0)[best != 0][0] == pytest.approx(0.075)
     np.testing.assert_allclose(sends / days, 0.775, atol=0.01)
+    np.testing.assert_allclose(off / days, 0.075, atol=0.006)
     share = counts / counts.sum()
     np.testing.assert_allclose(share, 1 / world.TEMPLATES, atol=0.004)
     assert policy.min_propensity == pytest.approx(0.075 / world.TEMPLATES)
@@ -151,3 +158,16 @@ def test_exploration_propensities_and_frequencies() -> None:
 def test_exploration_sends_one_push_a_day_on_average() -> None:
     out = _run(EpsilonGreedy(np.random.default_rng(0).integers(0, SLOTS, N), seed=0), QUIET)
     assert out.send.sum() / (N * DAYS) == pytest.approx(1.0, abs=0.02)
+
+
+def test_exploration_is_reproducible_when_reused() -> None:
+    policy = EpsilonGreedy(np.zeros(N, dtype=np.int64), seed=4)
+    obs = Observation(3, 1, np.zeros(N, dtype=bool))
+    np.testing.assert_array_equal(policy.act(obs).send, policy.act(obs).send)
+
+
+def test_templates_are_logged_for_every_send() -> None:
+    out = _run(Fixed(slots=(0,), template=7), replace(Params(), opt_out=0.05))
+    assert (out.template[out.send] == 7).all()
+    assert (out.template[~out.send] == -1).all()
+    assert (out.item[out.send & ~out.delivered] == -1).all()
