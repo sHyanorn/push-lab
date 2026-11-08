@@ -85,7 +85,7 @@ def test_ips_and_dr_cover_the_truth_without_carryover() -> None:
         values = [t["visit"] for t in truths[target]]
         for name in ("IPS", "DR"):
             ests: list[Any] = [logs[s][target]["visit"]["estimates"][name] for s in seeds]
-            check = sim_ope.validate(ests, values)
+            check = sim_ope.validate(ests, float(np.mean(values)), float(np.std(values) / 2))
             assert abs(check["bias"]["value"]) < 0.02, (target, name)
             assert check["coverage"]["value"] >= 4 / 6, (target, name)
 
@@ -95,3 +95,33 @@ def test_wilson_interval() -> None:
     assert low == pytest.approx(0.9287, abs=1e-3) and high == pytest.approx(1.0)
     low, high = sim_ope.wilson(40, 50)
     assert low < 0.8 < high
+
+
+@pytest.mark.parametrize("target", sim_ope.TARGETS)
+def test_exact_truth_matches_long_simulation(target: str) -> None:
+    exact = sim_ope.exact_truth(CTX, sim_ope.CONTROL, target)
+    runs = [sim_ope.truth(CTX, sim_ope.CONTROL, target, 500 + k) for k in range(30)]
+    for reward in sim_ope.REWARDS:
+        values = np.array([r[reward] for r in runs])
+        se = values.std(ddof=1) / np.sqrt(len(values))
+        assert abs(values.mean() - exact[reward]) < 4 * se + 1e-4, (target, reward)
+
+
+def test_exact_truth_refuses_carryover() -> None:
+    with pytest.raises(ValueError):
+        sim_ope.exact_truth(CTX, sim_ope.SETTINGS["reference"], "T")
+    with pytest.raises(ValueError):
+        sim_ope.exact_truth(_context(control=False), sim_ope.CONTROL, "T")
+
+
+def test_truth_seeds_are_independent_across_targets() -> None:
+    seeds = [s for t in sim_ope.TARGETS for s in sim_ope.truth_seeds(t)]
+    assert len(seeds) == len(set(seeds)) == len(sim_ope.TARGETS) * sim_ope.TRUTH_RUNS
+    assert not set(seeds) & set(sim_ope.LOG_SEEDS) and sim_ope.WORLD_SEED not in seeds
+
+
+def test_validate_uses_an_exact_truth() -> None:
+    ests = [{"value": 0.5 + d, "ci_low": 0.49 + d, "ci_high": 0.51 + d} for d in (-0.001, 0.001)]
+    check = sim_ope.validate(ests, 0.5, 0.0)
+    assert check["bias"]["value"] == pytest.approx(0)
+    assert check["coverage"]["value"] == 1

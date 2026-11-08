@@ -173,7 +173,13 @@ def validate(
         relative = np.abs(boot[:, i] - truth_boot) / truth_boot
         contains = e["ci_low"] <= truth <= e["ci_high"]
         median_error = float(np.median(relative))
+        ratio = boot[:, i] / truth_boot
         verdicts[name] = {
+            "ratio_to_on_policy": {
+                "value": e["value"] / truth,
+                "ci_low": float(np.percentile(ratio, 2.5)),
+                "ci_high": float(np.percentile(ratio, 97.5)),
+            },
             "relative_error_median": median_error,
             "relative_error_interval": np.percentile(relative, [2.5, 97.5]).tolist(),
             "rmse": float(np.sqrt(np.mean((boot[:, i] - truth_boot) ** 2))),

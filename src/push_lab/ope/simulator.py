@@ -2,7 +2,12 @@
 
 ``python -m push_lab.ope.simulator`` logs the exploration policy on the evaluation users for
 every log seed of each setting, estimates every target's value per user-day, runs every
-target online for the truth, and writes ``results/ope_simulator.json``. Everything is Tier C.
+target online for the truth, and writes ``results/ope_simulator_amended.json``; each log's
+estimates go to ``results/runs/ope/`` (ignored by git). Everything is Tier C.
+
+The first run (``results/ope_simulator.json``, D043) took every target's truth from the same 20
+run seeds; this run uses the exact value where the setting allows it and 200 independent run
+seeds per target otherwise (D044).
 """
 
 import argparse
@@ -36,7 +41,10 @@ BoolArray = npt.NDArray[np.bool_]
 TARGETS = ("T", "T_half", "R", "N", "F", "T2")
 REWARDS = ("visit", "opens")
 LOG_SEEDS = tuple(range(1_001, 1_051))
-TRUTH_SEEDS = tuple(range(2_001, 2_021))
+# Independent truth seeds per target (D044): TRUTH_BASE + 1,000 * target index + k
+TRUTH_RUNS, TRUTH_BASE = 200, 100_000
+RESULTS_FILE = "ope_simulator_amended.json"
+RUNS = Path("runs") / "ope"
 WORLD_SEED = 10_100
 FOLDS = 2
 PER_SLOT = 1 / SLOTS
@@ -248,6 +256,38 @@ def truth(ctx: Context, params: Params, target: str, seed: int) -> dict[str, flo
     return {"visit": float(out.visited.mean()), "opens": float(out.opened.sum(axis=1).mean())}
 
 
+def truth_seeds(target: str) -> range:
+    first = TRUTH_BASE + 1_000 * TARGETS.index(target)
+    return range(first, first + TRUTH_RUNS)
+
+
+def exact_truth(ctx: Context, params: Params, target: str) -> dict[str, float]:
+    """Expected reward per user-day where no day depends on another (the control): opens at
+    each slot are independent given a uniform template, so the visit probability of a day with
+    send vector a is 1 - (1 - v) * prod over sent slots of (1 - P(open))."""
+    if params.fatigue_elasticity or params.annoyance or params.opt_out or params.return_boost:
+        raise ValueError("the exact truth needs a setting without carryover")
+    if params.novelty or np.ptp(ctx.pop.p0, axis=1).any():
+        raise ValueError("the exact truth needs no novelty and a flat p0 per user")
+    timing = world.timing_multipliers(
+        ctx.pop.profile, world.solve_eta(ctx.pop.profile, params.timing_lift)
+    )
+    copy = world.copy_effects(params.copy_spread, WORLD_SEED, world.TEMPLATES)
+    p0 = ctx.pop.p0[:, 0]
+    rate = params.base_rate * p0[:, None, None] * timing[:, :, None] * copy[None, None, :]
+    open_p = np.minimum(1.0, rate).mean(axis=2)
+    v = np.minimum(1.0, ctx.pop.visit_rate)
+    user = np.arange(ctx.users)
+    visit, opens = np.zeros(ctx.users), np.zeros(ctx.users)
+    for vector in VECTORS:
+        bits = np.broadcast_to(vector, (ctx.users, SLOTS))
+        pi = target_probability(target, ctx, bits, user)
+        no_open = np.prod(np.where(bits, 1 - open_p, 1.0), axis=1)
+        visit += pi * (1 - (1 - v) * no_open)
+        opens += pi * np.where(bits, open_p, 0.0).sum(axis=1)
+    return {"visit": float(visit.mean()), "opens": float(opens.mean())}
+
+
 def wilson(hits: int, n: int, z: float = 1.959964) -> tuple[float, float]:
     p = hits / n
     centre = (p + z**2 / (2 * n)) / (1 + z**2 / n)
@@ -255,12 +295,12 @@ def wilson(hits: int, n: int, z: float = 1.959964) -> tuple[float, float]:
     return float(centre - half), float(centre + half)
 
 
-def validate(estimates: list[dict[str, Any]], truths: list[float]) -> dict[str, Any]:
-    """Bias, RMSE, coverage and the verdict of METHODS 14.4 for one estimator."""
+def validate(estimates: list[dict[str, Any]], v: float, v_se: float) -> dict[str, Any]:
+    """Bias, RMSE, coverage and the verdict of METHODS 14.4 for one estimator, against a truth
+    ``v`` with standard error ``v_se`` (0 when exact)."""
     values = np.array([e["value"] for e in estimates])
-    v = float(np.mean(truths))
     bias = values.mean() - v
-    se = np.sqrt(values.var(ddof=1) / len(values) + np.var(truths, ddof=1) / len(truths))
+    se = np.sqrt(values.var(ddof=1) / len(values) + v_se**2)
     hits = sum(e["ci_low"] <= v <= e["ci_high"] for e in estimates)
     low, high = wilson(hits, len(estimates))
     reasons = []
@@ -284,23 +324,40 @@ def validate(estimates: list[dict[str, Any]], truths: list[float]) -> dict[str, 
     }
 
 
+def truth_summary(ctx: Context, params: Params, target: str, exact: bool) -> dict[str, Any]:
+    """Per reward: the truth, its standard error and how it was obtained."""
+    if exact:
+        exact_values = exact_truth(ctx, params, target)
+        return {r: {"value": exact_values[r], "se": 0.0, "method": "exact"} for r in REWARDS}
+    runs = [truth(ctx, params, target, seed) for seed in truth_seeds(target)]
+    out: dict[str, Any] = {}
+    for r in REWARDS:
+        values = np.array([x[r] for x in runs])
+        out[r] = {
+            "value": float(values.mean()),
+            "se": float(values.std(ddof=1) / np.sqrt(len(values))),
+            "method": f"{len(values)} independent online runs",
+        }
+    return out
+
+
 def summarize(
-    logs: dict[int, dict[str, dict[str, Any]]], truths: dict[str, list[dict[str, float]]]
+    logs: dict[int, dict[str, dict[str, Any]]], truths: dict[str, dict[str, Any]]
 ) -> dict[str, Any]:
     out: dict[str, Any] = {}
     for target in TARGETS:
         out[target] = {}
         for reward in REWARDS:
-            values = [t[reward] for t in truths[target]]
-            se = float(np.std(values, ddof=1) / np.sqrt(len(values)))
+            t = truths[target][reward]
             per_log = [logs[s][target][reward] for s in sorted(logs)]
             entry: dict[str, Any] = {
-                "truth": {"value": float(np.mean(values)), "se": se, "runs": len(values)},
+                "truth": t,
                 "effective_size_median": float(np.median([p["effective_size"] for p in per_log])),
                 "max_weight": float(max(p["max_weight"] for p in per_log)),
             }
             for name in est.ESTIMATORS:
-                entry[name] = validate([p["estimates"][name] for p in per_log], values)
+                estimates = [p["estimates"][name] for p in per_log]
+                entry[name] = validate(estimates, t["value"], t["se"])
             out[target][reward] = entry
     return out
 
@@ -336,6 +393,9 @@ def run(root: Path, processes: int, log_seeds: Sequence[int] = LOG_SEEDS) -> dic
     with mp.get_context("spawn").Pool(processes, _init, (root,)) as pool:
         for count, (setting, seed, result) in enumerate(pool.imap_unordered(_log_work, jobs), 1):
             logs[setting][seed] = result
+            saved = root / paths.RESULTS / RUNS / f"{setting}_{seed}.json"
+            saved.parent.mkdir(parents=True, exist_ok=True)
+            saved.write_text(json.dumps(result) + "\n", encoding="utf-8")
             print(f"{count}/{len(jobs)} {setting} log {seed}", flush=True)
     contexts = load_contexts(root)
     out: dict[str, Any] = {
@@ -344,12 +404,13 @@ def run(root: Path, processes: int, log_seeds: Sequence[int] = LOG_SEEDS) -> dic
         "Tier B.",
         "users": contexts["reference"].users,
         "log_seeds": len(log_seeds),
-        "truth_seeds": len(TRUTH_SEEDS),
+        "truth": "exact in the control; 200 independent online runs per target otherwise",
         "world_seed": WORLD_SEED,
     }
     for setting, params in SETTINGS.items():
         ctx = contexts[setting]
-        truths = {t: [truth(ctx, params, t, seed) for seed in TRUTH_SEEDS] for t in TARGETS}
+        exact = setting == "control"
+        truths = {t: truth_summary(ctx, params, t, exact) for t in TARGETS}
         out[setting] = summarize(logs[setting], truths)
     out["timings_s"] = round(time.perf_counter() - start, 1)
     return out
@@ -364,7 +425,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         os.environ[var] = "1"
     commit = sweep.code_commit(args.root)
     result = {"commit": commit} | run(args.root, args.processes)
-    target = args.root / paths.RESULTS / "ope_simulator.json"
+    target = args.root / paths.RESULTS / RESULTS_FILE
     target.write_text(json.dumps(result, indent=1) + "\n", encoding="utf-8", newline="\n")
     print(f"wrote {target}")
     return 0

@@ -214,29 +214,21 @@ def ope_entries(root: Path) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
     obd_file = root / paths.RESULTS / "ope_obd.json"
     if obd_file.exists():
-        data = json.loads(obd_file.read_text("utf-8"))
-        for sample in ("small", "full"):
-            part = data.get(sample)
-            if not isinstance(part, dict):
-                continue
-            for name, check in part["validation"].items():
-                tier = "B" if check["validated"] else "not validated"
-                out.append(
-                    {
-                        "id": f"OBD-{sample}-{name}",
-                        "tier": tier,
-                        "statement": f"BTS click rate on OBD Men's campaign estimated by {name} "
-                        f"from random logs ({sample} sample); on-policy value "
-                        f"{part['on_policy']['value']:.5f}",
-                        "source": {
-                            "file": "results/ope_obd.json",
-                            "path": [sample, "estimates", name],
-                        },
-                        "status": "reported",
-                    }
-                    | part["estimates"][name]
-                )
-    sim_file = root / paths.RESULTS / "ope_simulator.json"
+        out += _obd_entries(json.loads(obd_file.read_text("utf-8")))
+    first = root / paths.RESULTS / "ope_simulator.json"
+    if first.exists():
+        out.append(
+            {
+                "id": "OPE-first-run",
+                "tier": "C",
+                "statement": "First simulator check (D043): registered verdict 'implementation "
+                "failure', since IPS and DR failed the no-carryover control for T-half and N; the "
+                "truth estimate shared one set of run seeds across targets",
+                "source": {"file": "results/ope_simulator.json", "path": ["control"]},
+                "status": "verdict",
+            }
+        )
+    sim_file = root / paths.RESULTS / "ope_simulator_amended.json"
     if sim_file.exists():
         data = json.loads(sim_file.read_text("utf-8"))
         for setting in ("control", "reference"):
@@ -251,13 +243,59 @@ def ope_entries(root: Path) -> list[dict[str, Any]]:
                             f"{target}, {setting} setting (active-day share): "
                             f"{check['verdict']}",
                             "source": {
-                                "file": "results/ope_simulator.json",
+                                "file": "results/ope_simulator_amended.json",
                                 "path": [setting, target, "visit", name],
                             },
                             "status": "reported",
                         }
                         | check["bias"]
                     )
+    return out
+
+
+def _obd_entries(data: dict[str, Any]) -> list[dict[str, Any]]:
+    """The real-data result first: on the full campaign, how far IPS and DR fall from the
+    on-policy value; then each registered small-sample estimate with its outcome on both."""
+    out: list[dict[str, Any]] = []
+    small, full = data.get("small"), data.get("full")
+    source = "results/ope_obd.json"
+    if isinstance(full, dict):
+        for name in ("IPS", "DR"):
+            ratio = full["validation"][name].get("ratio_to_on_policy")
+            if ratio is None:
+                continue
+            out.append(
+                {
+                    "id": f"OBD-ratio-{name}",
+                    "tier": "B",
+                    "statement": f"On real logs (full Men's campaign of OBD), {name} estimates the "
+                    "BTS click rate at this fraction of its on-policy value; the small sample has "
+                    "too little power to show the shortfall",
+                    "source": {"file": source, "path": ["full", "validation", name]},
+                    "status": "reported",
+                }
+                | ratio
+            )
+    if isinstance(small, dict):
+        for name, check in small["validation"].items():
+            on_full = full["validation"][name]["validated"] if isinstance(full, dict) else None
+            outcome = (
+                ("passes" if check["validated"] else "fails")
+                + " on the small sample"
+                + ("" if on_full is None else f", {'passes' if on_full else 'fails'} on the full")
+            )
+            out.append(
+                {
+                    "id": f"OBD-small-{name}",
+                    "tier": "B" if check["validated"] else "not validated",
+                    "statement": f"BTS click rate estimated by {name} from the small sample's "
+                    f"random logs ({outcome}); on-policy value "
+                    f"{small['on_policy']['value']:.5f}",
+                    "source": {"file": source, "path": ["small", "estimates", name]},
+                    "status": "reported",
+                }
+                | small["estimates"][name]
+            )
     return out
 
 
