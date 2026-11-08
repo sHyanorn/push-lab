@@ -46,3 +46,12 @@ def test_simulator_ope_entries_carry_the_sweep() -> None:
     assert order["truth"]["value"] > 0 > order["ci_high"]
     assert order["reversed_settings"] == "23 of 24"
     assert not [c for c in out.values() if c.get("status") == "awaiting sweep"]
+
+
+def test_history_entries_carry_no_numbers() -> None:
+    claims = evidence.build(ROOT)["claims"]
+    history = [c for c in claims if c["tier"] == "history"]
+    assert history and not [c for c in history if "value" in c]
+    ips = next(c for c in claims if c["id"] == "OBD-ratio-IPS")
+    target = ips["post_hoc_empirical_target"]
+    assert target["ci_low"] <= target["value"] <= target["ci_high"]

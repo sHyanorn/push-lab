@@ -135,9 +135,10 @@ CLAIMS = (
         Claim(
             f"OPE-flip-{target}-DR",
             "C",
-            f"Per-day DR overestimates {text} below this annoyance elasticity and underestimates "
-            "it above (one-at-a-time grid; fatigue, opt-out, return and novelty change no "
-            "direction)",
+            f"In the simulator, over annoyance elasticities 0 to 0.1 with the other parameters at "
+            f"the reference, per-day DR overestimates {text} below this value and underestimates "
+            "it above; fatigue, opt-out, return and novelty change no direction over their "
+            "ranges",
             "ope_carryover.json",
             ("flips", "annoyance", f"{target}.DR", "crossings", "0"),
         )
@@ -346,12 +347,14 @@ def _obd_entries(data: dict[str, Any]) -> list[dict[str, Any]]:
                     "campaign of OBD), estimates the BTS click rate at this fraction of its "
                     "on-policy value. The target is BTS "
                     "with its fixed prior, which the deployed BTS was not, so the shortfall mixes "
-                    "estimator error with that mismatch. Post hoc reading: the small sample has "
-                    "too little power to show it",
+                    "estimator error with that mismatch (post_hoc_empirical_target re-weights to "
+                    "the BTS logs' own frequencies). Post hoc reading: the small sample has too "
+                    "little power to show the shortfall",
                     "source": {"file": source, "path": ["full", "validation", name]},
                     "status": "reported",
                 }
                 | ratio
+                | _empirical_target(full, name)
             )
     if isinstance(small, dict):
         for name, check in small["validation"].items():
@@ -366,15 +369,22 @@ def _obd_entries(data: dict[str, Any]) -> list[dict[str, Any]]:
                     "id": f"OBD-small-{name}",
                     # Registered verdict history only: no estimator passed on the full campaign
                     "tier": "history",
-                    "statement": f"BTS click rate estimated by {name} from the small sample's "
-                    f"random logs ({outcome}); not a Tier B result; on-policy value "
-                    f"{small['on_policy']['value']:.5f}",
+                    "statement": f"Registered verdict on the BTS click rate estimated by {name} "
+                    f"from the small sample's random logs ({outcome}); not a Tier B result, and "
+                    "its numbers are not reported here",
                     "source": {"file": source, "path": ["small", "estimates", name]},
-                    "status": "reported",
+                    "status": "verdict",
                 }
-                | small["estimates"][name]
             )
     return out
+
+
+def _empirical_target(full: dict[str, Any], name: str) -> dict[str, Any]:
+    """Post hoc IPS ratio with the BTS logs' own frequencies as the target, where computed."""
+    post_hoc = full.get("post_hoc")
+    if name != "IPS" or not isinstance(post_hoc, dict):
+        return {}
+    return {"post_hoc_empirical_target": post_hoc["ratio_to_on_policy"]}
 
 
 NO_TIER_B = (

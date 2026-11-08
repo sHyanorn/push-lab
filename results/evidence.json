@@ -356,7 +356,7 @@
   {
    "id": "OPE-flip-T_half-DR",
    "tier": "C",
-   "statement": "Per-day DR overestimates half the push volume below this annoyance elasticity and underestimates it above (one-at-a-time grid; fatigue, opt-out, return and novelty change no direction)",
+   "statement": "In the simulator, over annoyance elasticities 0 to 0.1 with the other parameters at the reference, per-day DR overestimates half the push volume below this value and underestimates it above; fatigue, opt-out, return and novelty change no direction over their ranges",
    "source": {
     "file": "results/ope_carryover.json",
     "path": [
@@ -369,13 +369,13 @@
    },
    "status": "reported",
    "value": 0.005807,
-   "ci_low": 0.001748,
-   "ci_high": 0.009238
+   "ci_low": 0.001415,
+   "ci_high": 0.010569
   },
   {
    "id": "OPE-flip-N-DR",
    "tier": "C",
-   "statement": "Per-day DR overestimates no pushes below this annoyance elasticity and underestimates it above (one-at-a-time grid; fatigue, opt-out, return and novelty change no direction)",
+   "statement": "In the simulator, over annoyance elasticities 0 to 0.1 with the other parameters at the reference, per-day DR overestimates no pushes below this value and underestimates it above; fatigue, opt-out, return and novelty change no direction over their ranges",
    "source": {
     "file": "results/ope_carryover.json",
     "path": [
@@ -388,8 +388,8 @@
    },
    "status": "reported",
    "value": 0.007365,
-   "ci_low": 0.004326,
-   "ci_high": 0.010147
+   "ci_low": 0.003708,
+   "ci_high": 0.011275
   },
   {
    "id": "B1",
@@ -455,7 +455,7 @@
   {
    "id": "OBD-ratio-IPS",
    "tier": "A",
-   "statement": "The estimator IPS, on real randomized logs (full Men's campaign of OBD), estimates the BTS click rate at this fraction of its on-policy value. The target is BTS with its fixed prior, which the deployed BTS was not, so the shortfall mixes estimator error with that mismatch. Post hoc reading: the small sample has too little power to show it",
+   "statement": "The estimator IPS, on real randomized logs (full Men's campaign of OBD), estimates the BTS click rate at this fraction of its on-policy value. The target is BTS with its fixed prior, which the deployed BTS was not, so the shortfall mixes estimator error with that mismatch (post_hoc_empirical_target re-weights to the BTS logs' own frequencies). Post hoc reading: the small sample has too little power to show the shortfall",
    "source": {
     "file": "results/ope_obd.json",
     "path": [
@@ -467,12 +467,17 @@
    "status": "reported",
    "value": 0.8909312947634057,
    "ci_low": 0.80977395876837,
-   "ci_high": 0.9690720761504081
+   "ci_high": 0.9690720761504081,
+   "post_hoc_empirical_target": {
+    "value": 0.9169346751089856,
+    "ci_low": 0.8441624545740208,
+    "ci_high": 0.9827193214418721
+   }
   },
   {
    "id": "OBD-ratio-DR",
    "tier": "A",
-   "statement": "The estimator DR, on real randomized logs (full Men's campaign of OBD), estimates the BTS click rate at this fraction of its on-policy value. The target is BTS with its fixed prior, which the deployed BTS was not, so the shortfall mixes estimator error with that mismatch. Post hoc reading: the small sample has too little power to show it",
+   "statement": "The estimator DR, on real randomized logs (full Men's campaign of OBD), estimates the BTS click rate at this fraction of its on-policy value. The target is BTS with its fixed prior, which the deployed BTS was not, so the shortfall mixes estimator error with that mismatch (post_hoc_empirical_target re-weights to the BTS logs' own frequencies). Post hoc reading: the small sample has too little power to show the shortfall",
    "source": {
     "file": "results/ope_obd.json",
     "path": [
@@ -489,7 +494,7 @@
   {
    "id": "OBD-small-DM",
    "tier": "history",
-   "statement": "BTS click rate estimated by DM from the small sample's random logs (fails on the small sample, fails on the full); not a Tier B result; on-policy value 0.00690",
+   "statement": "Registered verdict on the BTS click rate estimated by DM from the small sample's random logs (fails on the small sample, fails on the full); not a Tier B result, and its numbers are not reported here",
    "source": {
     "file": "results/ope_obd.json",
     "path": [
@@ -498,15 +503,12 @@
      "DM"
     ]
    },
-   "status": "reported",
-   "value": 0.004771663228680699,
-   "ci_low": 0.004645541973261443,
-   "ci_high": 0.0048965050734386725
+   "status": "verdict"
   },
   {
    "id": "OBD-small-IPS",
    "tier": "history",
-   "statement": "BTS click rate estimated by IPS from the small sample's random logs (passes on the small sample, fails on the full); not a Tier B result; on-policy value 0.00690",
+   "statement": "Registered verdict on the BTS click rate estimated by IPS from the small sample's random logs (passes on the small sample, fails on the full); not a Tier B result, and its numbers are not reported here",
    "source": {
     "file": "results/ope_obd.json",
     "path": [
@@ -515,15 +517,12 @@
      "IPS"
     ]
    },
-   "status": "reported",
-   "value": 0.0045408598,
-   "ci_low": 0.002408378378739517,
-   "ci_high": 0.007243123200708526
+   "status": "verdict"
   },
   {
    "id": "OBD-small-SNIPS",
    "tier": "history",
-   "statement": "BTS click rate estimated by SNIPS from the small sample's random logs (passes on the small sample, fails on the full); not a Tier B result; on-policy value 0.00690",
+   "statement": "Registered verdict on the BTS click rate estimated by SNIPS from the small sample's random logs (passes on the small sample, fails on the full); not a Tier B result, and its numbers are not reported here",
    "source": {
     "file": "results/ope_obd.json",
     "path": [
@@ -532,15 +531,12 @@
      "SNIPS"
     ]
    },
-   "status": "reported",
-   "value": 0.00461107272426015,
-   "ci_low": 0.002474714054009958,
-   "ci_high": 0.007388056980881261
+   "status": "verdict"
   },
   {
    "id": "OBD-small-DR",
    "tier": "history",
-   "statement": "BTS click rate estimated by DR from the small sample's random logs (passes on the small sample, fails on the full); not a Tier B result; on-policy value 0.00690",
+   "statement": "Registered verdict on the BTS click rate estimated by DR from the small sample's random logs (passes on the small sample, fails on the full); not a Tier B result, and its numbers are not reported here",
    "source": {
     "file": "results/ope_obd.json",
     "path": [
@@ -549,10 +545,7 @@
      "DR"
     ]
    },
-   "status": "reported",
-   "value": 0.004514835701843617,
-   "ci_low": 0.0024007417121832877,
-   "ci_high": 0.007296628896931585
+   "status": "verdict"
   },
   {
    "id": "OPE-first-run",
@@ -1033,8 +1026,8 @@
    },
    "reversed_settings": "23 of 24",
    "value": -0.004367721443829265,
-   "ci_low": -0.006177985900679854,
-   "ci_high": -0.002557456986978675
+   "ci_low": -0.006457097936266658,
+   "ci_high": -0.0022783449513918714
   },
   {
    "id": "OPE-order-T2-T-DR",
@@ -1057,10 +1050,10 @@
     "ci_low": -0.0150565127189378,
     "ci_high": -0.01436291585249063
    },
-   "reversed_settings": "23 of 24",
+   "reversed_settings": "22 of 24",
    "value": 0.004498410028678656,
-   "ci_low": 0.0019294977310388038,
-   "ci_high": 0.007067322326318509
+   "ci_low": 0.001533415082492713,
+   "ci_high": 0.0074634049748645995
   }
  ]
 }
