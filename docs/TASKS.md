@@ -10,10 +10,10 @@ Hour estimates are for planning; the required core is about 85 hours. If behind,
 6. Greedy baseline for the template bandit (keep uniform)
 
 ## M0 Setup (3 h)
-- [ ] Initialize a Python 3.14 project with uv; configure ruff, mypy strict mode and pytest
-- [ ] Package structure `src/push_lab/{data,recall,rank,uplift,sim,policy,creative,ope,report}`
-- [ ] CI on Linux and Windows: lint, type checking, tests on synthetic fixtures
-- [ ] MIT license, README stub, `DATA_SOURCES.md` with attributions
+- [x] Initialize a Python 3.14 project with uv; configure ruff, mypy strict mode and pytest
+- [x] Package structure `src/push_lab/{data,recall,rank,uplift,sim,policy,creative,ope,report}`
+- [x] CI on Linux and Windows: lint, type checking, tests on synthetic fixtures
+- [x] MIT license, README stub, `DATA_SOURCES.md` with attributions
 
 ## M1 Data (8 h)
 - [ ] KuaiRand-Pure download with checksum, conversion to Parquet, `tab == 1` filter
