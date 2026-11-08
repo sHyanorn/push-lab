@@ -32,6 +32,11 @@ TIERS = {
         "stated threshold",
         "cannot": "Real-world effect sizes",
     },
+    "history": {
+        "evidence": "A registered verdict later overturned by a larger check",
+        "supports": "Nothing beyond the record of the verdict",
+        "cannot": "Any claim",
+    },
     "descriptive": {
         "evidence": "Counts of a fixed set, no inference",
         "supports": "What the set contains",
@@ -269,9 +274,11 @@ def _obd_entries(data: dict[str, Any]) -> list[dict[str, Any]]:
             out.append(
                 {
                     "id": f"OBD-ratio-{name}",
-                    "tier": "B",
-                    "statement": f"On real logs (full Men's campaign of OBD), {name} estimates the "
-                    "BTS click rate at this fraction of its on-policy value. The target is BTS "
+                    # Randomized real data measuring the estimator itself, not a policy value
+                    "tier": "A",
+                    "statement": f"The estimator {name}, on real randomized logs (full Men's "
+                    "campaign of OBD), estimates the BTS click rate at this fraction of its "
+                    "on-policy value. The target is BTS "
                     "with its fixed prior, which the deployed BTS was not, so the shortfall mixes "
                     "estimator error with that mismatch. Post hoc reading: the small sample has "
                     "too little power to show it",
@@ -291,9 +298,10 @@ def _obd_entries(data: dict[str, Any]) -> list[dict[str, Any]]:
             out.append(
                 {
                     "id": f"OBD-small-{name}",
-                    "tier": "B" if check["validated"] else "not validated",
+                    # Registered verdict history only: no estimator passed on the full campaign
+                    "tier": "history",
                     "statement": f"BTS click rate estimated by {name} from the small sample's "
-                    f"random logs ({outcome}); on-policy value "
+                    f"random logs ({outcome}); not a Tier B result; on-policy value "
                     f"{small['on_policy']['value']:.5f}",
                     "source": {"file": source, "path": ["small", "estimates", name]},
                     "status": "reported",
@@ -303,9 +311,16 @@ def _obd_entries(data: dict[str, Any]) -> list[dict[str, Any]]:
     return out
 
 
+NO_TIER_B = (
+    "The project has no Tier B result: no estimator passed the check on the full Men's "
+    "campaign of OBD, the only real logs with two policies and known propensities here."
+)
+
+
 def build(root: Path) -> dict[str, Any]:
     return {
         "tiers": TIERS,
+        "note": NO_TIER_B,
         "claims": [claim_entry(root, c) for c in CLAIMS] + ope_entries(root),
     }
 

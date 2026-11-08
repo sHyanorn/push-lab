@@ -8,7 +8,8 @@ ROOT = Path(__file__).parents[2]
 
 def test_every_claim_has_a_tier_and_an_interval() -> None:
     out = evidence.build(ROOT)
-    assert set(out["tiers"]) == {"A", "B", "C", "descriptive"}
+    assert set(out["tiers"]) == {"A", "B", "C", "history", "descriptive"}
+    assert not [c for c in out["claims"] if c["tier"] == "B"]
     ids = [c["id"] for c in out["claims"]]
     assert len(ids) == len(set(ids))
     for c in out["claims"]:

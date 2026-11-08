@@ -15,12 +15,18 @@
    "supports": "Policy A beats B across a stated share of assumptions, or flips at a stated threshold",
    "cannot": "Real-world effect sizes"
   },
+  "history": {
+   "evidence": "A registered verdict later overturned by a larger check",
+   "supports": "Nothing beyond the record of the verdict",
+   "cannot": "Any claim"
+  },
   "descriptive": {
    "evidence": "Counts of a fixed set, no inference",
    "supports": "What the set contains",
    "cannot": "Any effect"
   }
  },
+ "note": "The project has no Tier B result: no estimator passed the check on the full Men's campaign of OBD, the only real logs with two policies and known propensities here.",
  "claims": [
   {
    "id": "C1",
@@ -410,8 +416,8 @@
   },
   {
    "id": "OBD-ratio-IPS",
-   "tier": "B",
-   "statement": "On real logs (full Men's campaign of OBD), IPS estimates the BTS click rate at this fraction of its on-policy value. The target is BTS with its fixed prior, which the deployed BTS was not, so the shortfall mixes estimator error with that mismatch. Post hoc reading: the small sample has too little power to show it",
+   "tier": "A",
+   "statement": "The estimator IPS, on real randomized logs (full Men's campaign of OBD), estimates the BTS click rate at this fraction of its on-policy value. The target is BTS with its fixed prior, which the deployed BTS was not, so the shortfall mixes estimator error with that mismatch. Post hoc reading: the small sample has too little power to show it",
    "source": {
     "file": "results/ope_obd.json",
     "path": [
@@ -427,8 +433,8 @@
   },
   {
    "id": "OBD-ratio-DR",
-   "tier": "B",
-   "statement": "On real logs (full Men's campaign of OBD), DR estimates the BTS click rate at this fraction of its on-policy value. The target is BTS with its fixed prior, which the deployed BTS was not, so the shortfall mixes estimator error with that mismatch. Post hoc reading: the small sample has too little power to show it",
+   "tier": "A",
+   "statement": "The estimator DR, on real randomized logs (full Men's campaign of OBD), estimates the BTS click rate at this fraction of its on-policy value. The target is BTS with its fixed prior, which the deployed BTS was not, so the shortfall mixes estimator error with that mismatch. Post hoc reading: the small sample has too little power to show it",
    "source": {
     "file": "results/ope_obd.json",
     "path": [
@@ -444,8 +450,8 @@
   },
   {
    "id": "OBD-small-DM",
-   "tier": "not validated",
-   "statement": "BTS click rate estimated by DM from the small sample's random logs (fails on the small sample, fails on the full); on-policy value 0.00690",
+   "tier": "history",
+   "statement": "BTS click rate estimated by DM from the small sample's random logs (fails on the small sample, fails on the full); not a Tier B result; on-policy value 0.00690",
    "source": {
     "file": "results/ope_obd.json",
     "path": [
@@ -461,8 +467,8 @@
   },
   {
    "id": "OBD-small-IPS",
-   "tier": "B",
-   "statement": "BTS click rate estimated by IPS from the small sample's random logs (passes on the small sample, fails on the full); on-policy value 0.00690",
+   "tier": "history",
+   "statement": "BTS click rate estimated by IPS from the small sample's random logs (passes on the small sample, fails on the full); not a Tier B result; on-policy value 0.00690",
    "source": {
     "file": "results/ope_obd.json",
     "path": [
@@ -478,8 +484,8 @@
   },
   {
    "id": "OBD-small-SNIPS",
-   "tier": "B",
-   "statement": "BTS click rate estimated by SNIPS from the small sample's random logs (passes on the small sample, fails on the full); on-policy value 0.00690",
+   "tier": "history",
+   "statement": "BTS click rate estimated by SNIPS from the small sample's random logs (passes on the small sample, fails on the full); not a Tier B result; on-policy value 0.00690",
    "source": {
     "file": "results/ope_obd.json",
     "path": [
@@ -495,8 +501,8 @@
   },
   {
    "id": "OBD-small-DR",
-   "tier": "B",
-   "statement": "BTS click rate estimated by DR from the small sample's random logs (passes on the small sample, fails on the full); on-policy value 0.00690",
+   "tier": "history",
+   "statement": "BTS click rate estimated by DR from the small sample's random logs (passes on the small sample, fails on the full); not a Tier B result; on-policy value 0.00690",
    "source": {
     "file": "results/ope_obd.json",
     "path": [

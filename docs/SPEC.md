@@ -92,6 +92,8 @@ There is no live traffic, so each claim is tied to one of three tiers and states
 | B | Off-policy estimates from an estimator first validated against a known answer | The value of a new policy within the support of the logging policy | Policies outside that support; long horizons |
 | C | Simulator runs with a sensitivity sweep | Policy A beats B across a stated share of assumptions, or flips at a stated threshold | Real-world effect sizes |
 
+No result reached Tier B: on the only real logs with two policies and known propensities (the Open Bandit Dataset), no estimator passed the check on the full Men's campaign (D046). The measured accuracy of the estimators there is a Tier A result about the estimators, not a policy value.
+
 Rules:
 
 - Primary metrics and comparisons are fixed in `docs/METHODS.md` before results are computed
