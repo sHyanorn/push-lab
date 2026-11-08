@@ -37,6 +37,8 @@ UTC_OFFSET_HOURS = 8
 CHUNK_USERS = 500
 LISTS = ("cascade", "two_tower")
 CACHE = "inputs.npz"
+# Popular now is eligible for the items of this many top trending positions (METHODS 13.1)
+TREND_TOP = 100
 
 
 @dataclass
@@ -61,7 +63,8 @@ class CandidateList:
 @dataclass(frozen=True)
 class Inputs:
     """Simulator-side arrays (``visit_rate``, ``profile_sim``, ``p0``) and policy-side arrays
-    from the policy period (``profile_policy``, ``hourly_policy``, ``visit_rate_policy``)."""
+    from the policy period (``profile_policy``, ``hourly_policy``, ``visit_rate_policy``,
+    and per cascade-list position ``creator_clicks`` and ``trend_rank`` for copy eligibility)."""
 
     user_ids: IntArray
     visit_rate: FloatArray
@@ -69,6 +72,8 @@ class Inputs:
     profile_policy: FloatArray
     hourly_policy: FloatArray
     visit_rate_policy: FloatArray
+    creator_clicks: IntArray
+    trend_rank: IntArray
     lists: dict[str, CandidateList]
 
     ARRAYS = (
@@ -78,6 +83,8 @@ class Inputs:
         "profile_policy",
         "hourly_policy",
         "visit_rate_policy",
+        "creator_clicks",
+        "trend_rank",
     )
 
     def save(self, path: Path) -> None:
@@ -264,6 +271,28 @@ def candidate_lists(
     return out
 
 
+def copy_attributes(
+    window: pd.DataFrame, videos: pd.DataFrame, trending: IntArray, users: IntArray, items: IntArray
+) -> tuple[IntArray, IntArray]:
+    """Per user and list position (METHODS 13.1): the user's clicks in the window on videos by
+    the item's author, and the item's trending rank from 1 to ``TREND_TOP`` (0 beyond)."""
+    author = pd.Series(videos["author_id"].to_numpy(), index=videos["video_id"].to_numpy())
+    clicked = window.loc[window["is_click"] == 1, ["user_id", "video_id"]]
+    keys = pd.MultiIndex.from_arrays(
+        [clicked["user_id"].to_numpy(), author.reindex(clicked["video_id"]).to_numpy()]
+    )
+    counts = pd.Series(1, index=keys).groupby(level=[0, 1]).sum()
+    wanted = pd.MultiIndex.from_arrays(
+        [np.repeat(users, items.shape[1]), author.reindex(items.ravel()).to_numpy()]
+    )
+    creator = counts.reindex(wanted).fillna(0).to_numpy().reshape(items.shape).astype(np.int64)
+    top = trending[:TREND_TOP]
+    rank = np.zeros(int(max(items.max(), top.max())) + 1, dtype=np.int64)
+    rank[top] = np.arange(1, len(top) + 1)
+    out: IntArray = rank[items]
+    return creator, out
+
+
 def policy_period(standard: pd.DataFrame) -> pd.DataFrame:
     """Standard-log rows the send-time policy may learn from (D014): before 04-22."""
     return splits.between(standard, *POLICY_PERIOD)
@@ -319,16 +348,12 @@ def build(root: Path, settings: Settings | None = None) -> Fitted:
     timings["response_fit_s"] = round(time.perf_counter() - start, 1)
 
     start = time.perf_counter()
-    lists = candidate_lists(
-        builder2,
-        ranker,
-        response,
-        popularity.trending(window2, splits.CUTOFF_EVAL),
-        catalog,
-        user_ids,
-        s,
-    )
+    trend = popularity.trending(window2, splits.CUTOFF_EVAL)
+    lists = candidate_lists(builder2, ranker, response, trend, catalog, user_ids, s)
     timings["candidates_s"] = round(time.perf_counter() - start, 1)
+    creator_clicks, trend_rank = copy_attributes(
+        window2, items, trend, user_ids, lists["cascade"].items
+    )
 
     columns = ["user_id", "date", "time_ms"]
     period = pd.concat(
@@ -346,6 +371,8 @@ def build(root: Path, settings: Settings | None = None) -> Fitted:
         profile_policy=smoothed_profile(windows_from_hourly(hourly_policy)),
         hourly_policy=hourly_policy,
         visit_rate_policy=visit_rates(early, user_ids, _days(*POLICY_PERIOD)),
+        creator_clicks=creator_clicks,
+        trend_rank=trend_rank,
         lists=lists,
     )
     return Fitted(

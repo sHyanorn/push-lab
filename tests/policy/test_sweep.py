@@ -32,6 +32,8 @@ def _context() -> sweep.Context:
         profile_policy=inputs.smoothed_profile(inputs.windows_from_hourly(hourly)),
         hourly_policy=hourly,
         visit_rate_policy=static.visit_rate,
+        creator_clicks=np.zeros((USERS, CANDIDATES), dtype=np.int64),
+        trend_rank=np.zeros((USERS, CANDIDATES), dtype=np.int64),
         lists=lists,
     )
     return sweep.Context(inp, np.arange(200), np.arange(200, 600), np.arange(600, USERS))

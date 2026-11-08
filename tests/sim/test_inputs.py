@@ -89,6 +89,30 @@ def test_build_runs_on_synthetic_data(tmp_path: Path) -> None:
         inputs.smoothed_profile(inputs.windows_from_hourly(cached.hourly_policy)),
     )
     assert ((cached.visit_rate_policy > 0) & (cached.visit_rate_policy < 1)).all()
+    shape = cached.lists["cascade"].items.shape
+    assert cached.creator_clicks.shape == cached.trend_rank.shape == shape
+    assert (cached.creator_clicks >= 0).all()
+    assert set(np.unique(cached.trend_rank)) <= set(range(inputs.TREND_TOP + 1))
+
+
+def test_copy_attributes() -> None:
+    window = pd.DataFrame(
+        {
+            "user_id": [1, 1, 1, 2, 2],
+            "video_id": [10, 11, 12, 10, 12],
+            "is_click": [1, 1, 0, 0, 1],
+        }
+    )
+    # Videos 10 and 11 share author 7; 12 and 13 are by author 8
+    videos = pd.DataFrame({"video_id": [10, 11, 12, 13], "author_id": [7, 7, 8, 8]})
+    items = np.array([[11, 13, 12], [13, 10, 11]])
+    trending = np.array([12, 10, *range(100, 300)])
+    creator, rank = inputs.copy_attributes(window, videos, trending, np.array([1, 2]), items)
+    np.testing.assert_array_equal(creator, [[2, 0, 0], [1, 0, 0]])
+    np.testing.assert_array_equal(rank, [[0, 0, 1], [0, 2, 0]])
+    items_far = np.array([[trending[99], trending[100]]])
+    _, rank_far = inputs.copy_attributes(window, videos, trending, np.array([1]), items_far)
+    np.testing.assert_array_equal(rank_far, [[100, 0]])
 
 
 TINY = inputs.Settings(
