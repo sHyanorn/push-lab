@@ -1,0 +1,282 @@
+"""Evidence matrix: every headline claim with its tier, source and interval (METHODS 14.5).
+
+``python -m push_lab.report.evidence`` reads the committed results and writes
+``results/evidence.json``. Numbers are copied from the results files, never typed in.
+"""
+
+import argparse
+import json
+import sys
+from collections.abc import Sequence
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+from push_lab.data import paths
+
+TIERS = {
+    "A": {
+        "evidence": "Randomized real data: KuaiRand random exposures, Hillstrom, Criteo",
+        "supports": "A component ranks or targets better in that domain",
+        "cannot": "Anything about push, fatigue or long-term effects",
+    },
+    "B": {
+        "evidence": "Off-policy estimate on real logs from an estimator first validated "
+        "against a known answer",
+        "supports": "The value of a new policy within the support of the logging policy",
+        "cannot": "Policies outside that support; long horizons",
+    },
+    "C": {
+        "evidence": "Simulator runs with a sensitivity sweep",
+        "supports": "Policy A beats B across a stated share of assumptions, or flips at a "
+        "stated threshold",
+        "cannot": "Real-world effect sizes",
+    },
+    "descriptive": {
+        "evidence": "Counts of a fixed set, no inference",
+        "supports": "What the set contains",
+        "cannot": "Any effect",
+    },
+}
+
+
+@dataclass(frozen=True)
+class Claim:
+    id: str
+    tier: str
+    statement: str
+    file: str
+    path: tuple[str, ...]
+
+
+CLAIMS = (
+    Claim(
+        "C1",
+        "A",
+        "Two-tower retrieval recalls more of a user's clicked random-exposure items in the top "
+        "200 than popularity (difference in Recall@200)",
+        "ranking.json",
+        ("primary", "C1_two_tower_vs_popularity_recall200"),
+    ),
+    Claim(
+        "C2",
+        "A",
+        "The fused fine ranker ranks random exposures worse than the two-tower score alone "
+        "(difference in click GAUC)",
+        "ranking.json",
+        ("primary", "C2_fused_vs_two_tower_gauc_click"),
+    ),
+    Claim(
+        "R1",
+        "A",
+        "The simulator's response model ranks held-out random exposures (AUC)",
+        "simulator.json",
+        ("response_model", "auc"),
+    ),
+    Claim(
+        "U1",
+        "A",
+        "On Hillstrom, the T-learner targets visits better than random (Qini coefficient)",
+        "uplift.json",
+        ("primary", "U1_hillstrom_t_learner_qini"),
+    ),
+    Claim(
+        "U2",
+        "A",
+        "On Hillstrom, the T-learner against the response model (difference in Qini)",
+        "uplift.json",
+        ("primary", "U2_hillstrom_t_learner_vs_response_qini"),
+    ),
+    Claim(
+        "U3",
+        "A",
+        "On Criteo, the T-learner targets visits better than random (Qini coefficient)",
+        "uplift.json",
+        ("primary", "U3_criteo_t_learner_qini"),
+    ),
+    Claim(
+        "U4",
+        "A",
+        "On Criteo, the T-learner against the response model (difference in Qini)",
+        "uplift.json",
+        ("primary", "U4_criteo_t_learner_vs_response_qini"),
+    ),
+    *(
+        Claim(
+            f"{h}{'' if sweep == 'main' else '-af'}",
+            "C",
+            f"{text} ({'main' if sweep == 'main' else 'annoyance-free'} sweep, difference in "
+            "active days per user over 28 days)",
+            "policy.json",
+            ("primary", sweep, h),
+        )
+        for sweep in ("main", "annoyance_free")
+        for h, text in (
+            ("H1", "Uplift gate G against response threshold S at equal volume"),
+            ("H2", "Decomposed gate G2 against S at equal volume"),
+            ("H3", "Gate G at half volume against one push a day at the best slot"),
+            ("H4", "Each user's best slot against one fixed slot"),
+        )
+    ),
+    Claim(
+        "F-N",
+        "C",
+        "One push a day gains active days over no pushes only below this annoyance elasticity "
+        "(one-at-a-time grid)",
+        "policy.json",
+        ("flips", "annoyance", "F-N", "crossings", "0"),
+    ),
+    Claim(
+        "B1",
+        "C",
+        "Recovering difference softmax against uniform templates (difference in opens per "
+        "user over 28 days)",
+        "templates.json",
+        ("primary", "B1"),
+    ),
+    Claim(
+        "B2",
+        "C",
+        "Recency penalty against none, same learned scores (difference in opens per user over "
+        "28 days)",
+        "templates.json",
+        ("primary", "B2"),
+    ),
+    Claim(
+        "copy",
+        "descriptive",
+        "Generated variants that passed every filter, of those returned",
+        "copy.json",
+        ("counts",),
+    ),
+)
+
+
+def _get(data: Any, path: Sequence[str]) -> Any:
+    for key in path:
+        data = data[int(key)] if isinstance(data, list) else data[key]
+    return data
+
+
+def _interval(found: Any) -> dict[str, Any]:
+    """The estimate and interval of a results entry, whichever layout it uses."""
+    entry = found.get("sweep_average", found) if isinstance(found, dict) else found
+    keys = ("value", "ci_low", "ci_high") if "value" in entry else ("at", "ci_low", "ci_high")
+    out = {"value": entry[keys[0]], "ci_low": entry["ci_low"], "ci_high": entry["ci_high"]}
+    for extra in ("label", "holm_rejected", "wins", "losses", "neither"):
+        if extra in found:
+            out[extra] = found[extra]
+    return out
+
+
+def _copy_counts(counts: dict[str, dict[str, int]]) -> dict[str, Any]:
+    return {
+        "returned": sum(c["returned"] for c in counts.values()),
+        "passed": sum(c["passed"] for c in counts.values()),
+        "kept": sum(c["kept"] for c in counts.values()),
+    }
+
+
+def claim_entry(root: Path, claim: Claim) -> dict[str, Any]:
+    source = root / paths.RESULTS / claim.file
+    entry: dict[str, Any] = {
+        "id": claim.id,
+        "tier": claim.tier,
+        "statement": claim.statement,
+        "source": {"file": f"results/{claim.file}", "path": list(claim.path)},
+    }
+    if not source.exists():
+        return entry | {"status": "pending"}
+    data = json.loads(source.read_text("utf-8"))
+    found = _get(data, claim.path)
+    result = _copy_counts(found) if claim.id == "copy" else _interval(found)
+    return entry | {"status": "reported"} | result | _randomness(data, claim)
+
+
+def _randomness(data: dict[str, Any], claim: Claim) -> dict[str, Any]:
+    """How much wider the spread over refits or seed triples is than a per-setting interval,
+    wherever the results measured it; win and loss counts are read with it."""
+    key = claim.id.split("-")[0]
+    if claim.file == "templates.json":
+        v = data["seed_variability"][key]
+        source = "10 seed triples at the reference setting"
+        return {"spread_over_bootstrap_se": v["ratio"], "spread_source": source}
+    variability = data.get("fit_variability", {}).get(key) if claim.file == "policy.json" else None
+    if variability and variability["sd_over_refits"] > 0:
+        ratio = variability["sd_over_refits"] / variability["mean_bootstrap_se"]
+        source = "10 model refits at the reference setting"
+        return {"spread_over_bootstrap_se": round(ratio, 2), "spread_source": source}
+    return {}
+
+
+def ope_entries(root: Path) -> list[dict[str, Any]]:
+    """The Tier B estimate for each estimator validated on OBD, and the simulator verdicts."""
+    out: list[dict[str, Any]] = []
+    obd_file = root / paths.RESULTS / "ope_obd.json"
+    if obd_file.exists():
+        data = json.loads(obd_file.read_text("utf-8"))
+        for sample in ("small", "full"):
+            part = data.get(sample)
+            if not isinstance(part, dict):
+                continue
+            for name, check in part["validation"].items():
+                tier = "B" if check["validated"] else "not validated"
+                out.append(
+                    {
+                        "id": f"OBD-{sample}-{name}",
+                        "tier": tier,
+                        "statement": f"BTS click rate on OBD Men's campaign estimated by {name} "
+                        f"from random logs ({sample} sample); on-policy value "
+                        f"{part['on_policy']['value']:.5f}",
+                        "source": {
+                            "file": "results/ope_obd.json",
+                            "path": [sample, "estimates", name],
+                        },
+                        "status": "reported",
+                    }
+                    | part["estimates"][name]
+                )
+    sim_file = root / paths.RESULTS / "ope_simulator.json"
+    if sim_file.exists():
+        data = json.loads(sim_file.read_text("utf-8"))
+        for setting in ("control", "reference"):
+            for target, rewards in data[setting].items():
+                for name in ("DR", "IPS"):
+                    check = rewards["visit"][name]
+                    out.append(
+                        {
+                            "id": f"OPE-{setting}-{target}-{name}",
+                            "tier": "C",
+                            "statement": f"{name} bias against simulator truth for target "
+                            f"{target}, {setting} setting (active-day share): "
+                            f"{check['verdict']}",
+                            "source": {
+                                "file": "results/ope_simulator.json",
+                                "path": [setting, target, "visit", name],
+                            },
+                            "status": "reported",
+                        }
+                        | check["bias"]
+                    )
+    return out
+
+
+def build(root: Path) -> dict[str, Any]:
+    return {
+        "tiers": TIERS,
+        "claims": [claim_entry(root, c) for c in CLAIMS] + ope_entries(root),
+    }
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Write the evidence matrix.")
+    parser.add_argument("--root", type=Path, default=Path.cwd(), help="repository root")
+    args = parser.parse_args(argv)
+    target = args.root / paths.RESULTS / "evidence.json"
+    target.write_text(json.dumps(build(args.root), indent=1) + "\n", encoding="utf-8")
+    print(f"wrote {target}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

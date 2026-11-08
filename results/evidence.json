@@ -1,0 +1,412 @@
+{
+ "tiers": {
+  "A": {
+   "evidence": "Randomized real data: KuaiRand random exposures, Hillstrom, Criteo",
+   "supports": "A component ranks or targets better in that domain",
+   "cannot": "Anything about push, fatigue or long-term effects"
+  },
+  "B": {
+   "evidence": "Off-policy estimate on real logs from an estimator first validated against a known answer",
+   "supports": "The value of a new policy within the support of the logging policy",
+   "cannot": "Policies outside that support; long horizons"
+  },
+  "C": {
+   "evidence": "Simulator runs with a sensitivity sweep",
+   "supports": "Policy A beats B across a stated share of assumptions, or flips at a stated threshold",
+   "cannot": "Real-world effect sizes"
+  },
+  "descriptive": {
+   "evidence": "Counts of a fixed set, no inference",
+   "supports": "What the set contains",
+   "cannot": "Any effect"
+  }
+ },
+ "claims": [
+  {
+   "id": "C1",
+   "tier": "A",
+   "statement": "Two-tower retrieval recalls more of a user's clicked random-exposure items in the top 200 than popularity (difference in Recall@200)",
+   "source": {
+    "file": "results/ranking.json",
+    "path": [
+     "primary",
+     "C1_two_tower_vs_popularity_recall200"
+    ]
+   },
+   "status": "reported",
+   "value": 0.004722,
+   "ci_low": 0.002354,
+   "ci_high": 0.007039,
+   "holm_rejected": true
+  },
+  {
+   "id": "C2",
+   "tier": "A",
+   "statement": "The fused fine ranker ranks random exposures worse than the two-tower score alone (difference in click GAUC)",
+   "source": {
+    "file": "results/ranking.json",
+    "path": [
+     "primary",
+     "C2_fused_vs_two_tower_gauc_click"
+    ]
+   },
+   "status": "reported",
+   "value": -0.053264,
+   "ci_low": -0.057997,
+   "ci_high": -0.049052,
+   "holm_rejected": true
+  },
+  {
+   "id": "R1",
+   "tier": "A",
+   "statement": "The simulator's response model ranks held-out random exposures (AUC)",
+   "source": {
+    "file": "results/simulator.json",
+    "path": [
+     "response_model",
+     "auc"
+    ]
+   },
+   "status": "reported",
+   "value": 0.69387,
+   "ci_low": 0.682438,
+   "ci_high": 0.70492
+  },
+  {
+   "id": "U1",
+   "tier": "A",
+   "statement": "On Hillstrom, the T-learner targets visits better than random (Qini coefficient)",
+   "source": {
+    "file": "results/uplift.json",
+    "path": [
+     "primary",
+     "U1_hillstrom_t_learner_qini"
+    ]
+   },
+   "status": "reported",
+   "value": 0.040815,
+   "ci_low": 0.017319,
+   "ci_high": 0.063742,
+   "holm_rejected": true
+  },
+  {
+   "id": "U2",
+   "tier": "A",
+   "statement": "On Hillstrom, the T-learner against the response model (difference in Qini)",
+   "source": {
+    "file": "results/uplift.json",
+    "path": [
+     "primary",
+     "U2_hillstrom_t_learner_vs_response_qini"
+    ]
+   },
+   "status": "reported",
+   "value": 0.002864,
+   "ci_low": -0.018976,
+   "ci_high": 0.023087,
+   "holm_rejected": false
+  },
+  {
+   "id": "U3",
+   "tier": "A",
+   "statement": "On Criteo, the T-learner targets visits better than random (Qini coefficient)",
+   "source": {
+    "file": "results/uplift.json",
+    "path": [
+     "primary",
+     "U3_criteo_t_learner_qini"
+    ]
+   },
+   "status": "reported",
+   "value": 0.07593,
+   "ci_low": 0.072886,
+   "ci_high": 0.07901,
+   "holm_rejected": true
+  },
+  {
+   "id": "U4",
+   "tier": "A",
+   "statement": "On Criteo, the T-learner against the response model (difference in Qini)",
+   "source": {
+    "file": "results/uplift.json",
+    "path": [
+     "primary",
+     "U4_criteo_t_learner_vs_response_qini"
+    ]
+   },
+   "status": "reported",
+   "value": -0.008005,
+   "ci_low": -0.011052,
+   "ci_high": -0.004721,
+   "holm_rejected": true
+  },
+  {
+   "id": "H1",
+   "tier": "C",
+   "statement": "Uplift gate G against response threshold S at equal volume (main sweep, difference in active days per user over 28 days)",
+   "source": {
+    "file": "results/policy.json",
+    "path": [
+     "primary",
+     "main",
+     "H1"
+    ]
+   },
+   "status": "reported",
+   "value": -0.01527,
+   "ci_low": -0.021381,
+   "ci_high": -0.009069,
+   "label": "worse on average",
+   "holm_rejected": true,
+   "wins": 1,
+   "losses": 29,
+   "neither": 34,
+   "spread_over_bootstrap_se": 3.27,
+   "spread_source": "10 model refits at the reference setting"
+  },
+  {
+   "id": "H2",
+   "tier": "C",
+   "statement": "Decomposed gate G2 against S at equal volume (main sweep, difference in active days per user over 28 days)",
+   "source": {
+    "file": "results/policy.json",
+    "path": [
+     "primary",
+     "main",
+     "H2"
+    ]
+   },
+   "status": "reported",
+   "value": 0.055678,
+   "ci_low": 0.048222,
+   "ci_high": 0.063594,
+   "label": "beats in most sampled settings",
+   "holm_rejected": true,
+   "wins": 64,
+   "losses": 0,
+   "neither": 0,
+   "spread_over_bootstrap_se": 1.22,
+   "spread_source": "10 model refits at the reference setting"
+  },
+  {
+   "id": "H3",
+   "tier": "C",
+   "statement": "Gate G at half volume against one push a day at the best slot (main sweep, difference in active days per user over 28 days)",
+   "source": {
+    "file": "results/policy.json",
+    "path": [
+     "primary",
+     "main",
+     "H3"
+    ]
+   },
+   "status": "reported",
+   "value": 0.09312,
+   "ci_low": 0.05183,
+   "ci_high": 0.136245,
+   "label": "depends on the setting",
+   "holm_rejected": true,
+   "wins": 43,
+   "losses": 19,
+   "neither": 2,
+   "spread_over_bootstrap_se": 2.17,
+   "spread_source": "10 model refits at the reference setting"
+  },
+  {
+   "id": "H4",
+   "tier": "C",
+   "statement": "Each user's best slot against one fixed slot (main sweep, difference in active days per user over 28 days)",
+   "source": {
+    "file": "results/policy.json",
+    "path": [
+     "primary",
+     "main",
+     "H4"
+    ]
+   },
+   "status": "reported",
+   "value": 0.000457,
+   "ci_low": -0.004209,
+   "ci_high": 0.005048,
+   "label": "no detectable difference",
+   "holm_rejected": false,
+   "wins": 6,
+   "losses": 0,
+   "neither": 58
+  },
+  {
+   "id": "H1-af",
+   "tier": "C",
+   "statement": "Uplift gate G against response threshold S at equal volume (annoyance-free sweep, difference in active days per user over 28 days)",
+   "source": {
+    "file": "results/policy.json",
+    "path": [
+     "primary",
+     "annoyance_free",
+     "H1"
+    ]
+   },
+   "status": "reported",
+   "value": -0.022244,
+   "ci_low": -0.027271,
+   "ci_high": -0.017526,
+   "label": "loses in most sampled settings",
+   "holm_rejected": true,
+   "wins": 0,
+   "losses": 56,
+   "neither": 8,
+   "spread_over_bootstrap_se": 3.27,
+   "spread_source": "10 model refits at the reference setting"
+  },
+  {
+   "id": "H2-af",
+   "tier": "C",
+   "statement": "Decomposed gate G2 against S at equal volume (annoyance-free sweep, difference in active days per user over 28 days)",
+   "source": {
+    "file": "results/policy.json",
+    "path": [
+     "primary",
+     "annoyance_free",
+     "H2"
+    ]
+   },
+   "status": "reported",
+   "value": 0.021633,
+   "ci_low": 0.016962,
+   "ci_high": 0.026344,
+   "label": "beats in most sampled settings",
+   "holm_rejected": true,
+   "wins": 58,
+   "losses": 0,
+   "neither": 6,
+   "spread_over_bootstrap_se": 1.22,
+   "spread_source": "10 model refits at the reference setting"
+  },
+  {
+   "id": "H3-af",
+   "tier": "C",
+   "statement": "Gate G at half volume against one push a day at the best slot (annoyance-free sweep, difference in active days per user over 28 days)",
+   "source": {
+    "file": "results/policy.json",
+    "path": [
+     "primary",
+     "annoyance_free",
+     "H3"
+    ]
+   },
+   "status": "reported",
+   "value": -0.160779,
+   "ci_low": -0.178886,
+   "ci_high": -0.143034,
+   "label": "loses in most sampled settings",
+   "holm_rejected": true,
+   "wins": 0,
+   "losses": 64,
+   "neither": 0,
+   "spread_over_bootstrap_se": 2.17,
+   "spread_source": "10 model refits at the reference setting"
+  },
+  {
+   "id": "H4-af",
+   "tier": "C",
+   "statement": "Each user's best slot against one fixed slot (annoyance-free sweep, difference in active days per user over 28 days)",
+   "source": {
+    "file": "results/policy.json",
+    "path": [
+     "primary",
+     "annoyance_free",
+     "H4"
+    ]
+   },
+   "status": "reported",
+   "value": -0.005266,
+   "ci_low": -0.009726,
+   "ci_high": -0.000963,
+   "label": "worse on average",
+   "holm_rejected": true,
+   "wins": 0,
+   "losses": 6,
+   "neither": 58
+  },
+  {
+   "id": "F-N",
+   "tier": "C",
+   "statement": "One push a day gains active days over no pushes only below this annoyance elasticity (one-at-a-time grid)",
+   "source": {
+    "file": "results/policy.json",
+    "path": [
+     "flips",
+     "annoyance",
+     "F-N",
+     "crossings",
+     "0"
+    ]
+   },
+   "status": "reported",
+   "value": 0.015829,
+   "ci_low": 0.014976,
+   "ci_high": 0.016697
+  },
+  {
+   "id": "B1",
+   "tier": "C",
+   "statement": "Recovering difference softmax against uniform templates (difference in opens per user over 28 days)",
+   "source": {
+    "file": "results/templates.json",
+    "path": [
+     "primary",
+     "B1"
+    ]
+   },
+   "status": "reported",
+   "value": 0.079098,
+   "ci_low": 0.053173,
+   "ci_high": 0.109266,
+   "label": "beats in most sampled settings",
+   "holm_rejected": true,
+   "wins": 57,
+   "losses": 7,
+   "neither": 0,
+   "spread_over_bootstrap_se": 17.749471,
+   "spread_source": "10 seed triples at the reference setting"
+  },
+  {
+   "id": "B2",
+   "tier": "C",
+   "statement": "Recency penalty against none, same learned scores (difference in opens per user over 28 days)",
+   "source": {
+    "file": "results/templates.json",
+    "path": [
+     "primary",
+     "B2"
+    ]
+   },
+   "status": "reported",
+   "value": 0.00126,
+   "ci_low": -0.002012,
+   "ci_high": 0.004598,
+   "label": "depends on the setting",
+   "holm_rejected": false,
+   "wins": 28,
+   "losses": 28,
+   "neither": 8,
+   "spread_over_bootstrap_se": 19.236451,
+   "spread_source": "10 seed triples at the reference setting"
+  },
+  {
+   "id": "copy",
+   "tier": "descriptive",
+   "statement": "Generated variants that passed every filter, of those returned",
+   "source": {
+    "file": "results/copy.json",
+    "path": [
+     "counts"
+    ]
+   },
+   "status": "reported",
+   "returned": 96,
+   "passed": 96,
+   "kept": 60
+  }
+ ]
+}
