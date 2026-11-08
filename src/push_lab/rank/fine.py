@@ -33,12 +33,6 @@ EARLY_STOPPING = 50
 FloatArray = npt.NDArray[np.float64]
 
 
-def _features(builder: FeatureBuilder, rows: pd.DataFrame) -> pd.DataFrame:
-    return builder.build(
-        rows["user_id"].to_numpy(dtype=np.int64), rows["video_id"].to_numpy(dtype=np.int64)
-    )
-
-
 @dataclass
 class FineRanker:
     boosters: dict[str, lgb.Booster] = field(default_factory=dict)
@@ -54,7 +48,7 @@ class FineRanker:
     ) -> FineRanker:
         """Fit one booster per target; features come from ``builder``'s cutoff."""
         params = {**PARAMS, **(params or {})}
-        x_train, x_valid = _features(builder, train), _features(builder, valid)
+        x_train, x_valid = builder.build_rows(train), builder.build_rows(valid)
         ranker = cls()
         for target in TARGETS:
             d_train = lgb.Dataset(

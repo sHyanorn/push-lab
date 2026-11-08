@@ -48,7 +48,6 @@ class CutoffStats:
     """Lookup tables for one cutoff."""
 
     cutoff: int
-    days: int
     mu_click: float
     mu_long: float
     user: pd.DataFrame
@@ -94,7 +93,13 @@ class FeatureBuilder:
         ut = _rates(log, ["user_id", "first_tag"], mu_click, mu_long)["click_rate"]
         clicks = log.groupby("video_id")["is_click"].sum()
         rank = clicks.rank(ascending=False, method="min")
-        return CutoffStats(cutoff, days, mu_click, mu_long, user, item, ua, ut, rank)
+        return CutoffStats(cutoff, mu_click, mu_long, user, item, ua, ut, rank)
+
+    def build_rows(self, rows: pd.DataFrame) -> pd.DataFrame:
+        """Feature rows for the ``user_id`` and ``video_id`` columns of ``rows``."""
+        return self.build(
+            rows["user_id"].to_numpy(dtype=np.int64), rows["video_id"].to_numpy(dtype=np.int64)
+        )
 
     def build(self, user_ids: IntArray, item_ids: IntArray) -> pd.DataFrame:
         """Feature rows for the (user, item) pairs, in order."""

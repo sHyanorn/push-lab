@@ -9,6 +9,8 @@ from collections.abc import Callable
 import numpy as np
 import numpy.typing as npt
 
+from push_lab.rank import metrics
+
 PAD = -1
 PERSONAL_K = 500
 TRENDING_K = 100
@@ -35,6 +37,16 @@ def build_pool(personal: IntArray, trending: IntArray) -> IntArray:
     return pool
 
 
+def positions(item_ids: IntArray, candidates: IntArray, missing: str) -> IntArray:
+    """Index in ``item_ids`` of each candidate, with ``PAD`` slots at index 0."""
+    lookup = np.full(int(item_ids.max()) + 1, -1, dtype=np.int64)
+    lookup[item_ids] = np.arange(len(item_ids))
+    out = lookup[np.where(candidates == PAD, item_ids[0], candidates)]
+    if (out < 0).any():
+        raise ValueError(missing)
+    return out
+
+
 def coarse(
     pool: IntArray,
     user_vectors: FloatArray,
@@ -43,15 +55,11 @@ def coarse(
     n: int,
 ) -> IntArray:
     """Keep the top ``n`` items of each user's pool by two-tower score."""
-    lookup = np.full(int(item_ids.max()) + 1, -1, dtype=np.int64)
-    lookup[item_ids] = np.arange(len(item_ids))
     kept = np.full((len(pool), min(n, pool.shape[1])), PAD, dtype=np.int64)
     for start in range(0, len(pool), CHUNK_USERS):
         block = pool[start : start + CHUNK_USERS]
         pad = block == PAD
-        rows = lookup[np.where(pad, item_ids[0], block)]
-        if (rows < 0).any():
-            raise ValueError("the pool contains items without a vector")
+        rows = positions(item_ids, block, "the pool contains items without a vector")
         scores = np.einsum(
             "ud,upd->up", user_vectors[start : start + CHUNK_USERS], item_vectors[rows]
         )
@@ -76,8 +84,4 @@ def top1(user_ids: IntArray, candidates: IntArray, scorer: PairScorer) -> IntArr
 
 def survival(candidates: IntArray, positives: list[set[int]]) -> npt.NDArray[np.float64]:
     """Per user, the share of positive items that are among the candidates (NaN if none)."""
-    out = np.full(len(candidates), np.nan)
-    for k, (row, pos) in enumerate(zip(candidates, positives, strict=True)):
-        if pos:
-            out[k] = len(pos & set(row.tolist())) / len(pos)
-    return out
+    return metrics.recall_at_k(candidates, positives, candidates.shape[1])

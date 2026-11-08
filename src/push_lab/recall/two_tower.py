@@ -110,12 +110,10 @@ class TwoTower:
         # Training pairs; their ids define the id vocabularies, so unseen ids share index 0
         self.pairs = clicked.merge(items[["video_id", "author_id"]], on="video_id", how="left")
         self.vocabs: dict[str, Vocab] = {}
-        for field in USER_FIELDS:
-            source = self.pairs if field in WINDOW_FIELDS else users
-            self.vocabs[field] = Vocab(source[field].tolist())
-        for field in ITEM_FIELDS:
-            source = self.pairs if field in WINDOW_FIELDS else items
-            self.vocabs[field] = Vocab(source[field].tolist())
+        for fields, table in ((USER_FIELDS, users), (ITEM_FIELDS, items)):
+            for field in fields:
+                source = self.pairs if field in WINDOW_FIELDS else table
+                self.vocabs[field] = Vocab(source[field].tolist())
         # Seed before the towers draw their initial weights
         torch.manual_seed(config.seed)
         self.user_tower = Tower([len(self.vocabs[f]) for f in USER_FIELDS], config)

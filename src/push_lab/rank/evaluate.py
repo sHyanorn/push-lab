@@ -173,11 +173,11 @@ def run(root: Path, settings: Settings | None = None) -> dict[str, Any]:
     ranker = fine.FineRanker.fit(builder1, train_rows, valid_rows, s.fine_params)
     timings["fine_fit_s"] = rounded(time.perf_counter() - start)
 
-    x_eval = builder2.build(
-        rows["user_id"].to_numpy(dtype=np.int64), rows["video_id"].to_numpy(dtype=np.int64)
-    )
+    x_eval = builder2.build_rows(rows)
     pred = ranker.predict(x_eval)
     u = rows["user_id"].to_numpy(dtype=np.int64)
+    click = rows["is_click"].to_numpy(float)
+    long_view = rows["long_view"].to_numpy(float)
     scorers: dict[str, FloatArray] = {
         "fused": fine.fuse(pred),
         "click_head": pred["is_click"],
@@ -186,38 +186,19 @@ def run(root: Path, settings: Settings | None = None) -> dict[str, Any]:
         "popularity": -x_eval["popularity_rank"].to_numpy(dtype=np.float64),
     }
     weights = metrics.impressions(u, eval_users)
-    ranking: dict[str, dict[str, FloatArray]] = {}
-    for name, score in scorers.items():
-        ranking[name] = {
-            "gauc_click": metrics.user_auc(u, score, rows["is_click"].to_numpy(float), eval_users),
-            "gauc_long_view": metrics.user_auc(
-                u, score, rows["long_view"].to_numpy(float), eval_users
-            ),
-            "ndcg5_click": metrics.user_ndcg(
-                u, score, rows["is_click"].to_numpy(float), eval_users
-            ),
+
+    def per_user(score: FloatArray) -> dict[str, FloatArray]:
+        return {
+            "gauc_click": metrics.user_auc(u, score, click, eval_users),
+            "gauc_long_view": metrics.user_auc(u, score, long_view, eval_users),
+            "ndcg5_click": metrics.user_ndcg(u, score, click, eval_users),
         }
 
-    fusion = {}
-    for w in FUSION_GRID:
-        score = fine.fuse(pred, w)
-        fusion[str(w)] = {
-            "gauc_click": _est(
-                metrics.estimate(
-                    metrics.user_auc(u, score, rows["is_click"].to_numpy(float), eval_users), idx
-                )
-            ),
-            "gauc_long_view": _est(
-                metrics.estimate(
-                    metrics.user_auc(u, score, rows["long_view"].to_numpy(float), eval_users), idx
-                )
-            ),
-            "ndcg5_click": _est(
-                metrics.estimate(
-                    metrics.user_ndcg(u, score, rows["is_click"].to_numpy(float), eval_users), idx
-                )
-            ),
-        }
+    ranking = {name: per_user(score) for name, score in scorers.items()}
+    fusion = {
+        str(w): {k: _est(metrics.estimate(v, idx)) for k, v in per_user(fine.fuse(pred, w)).items()}
+        for w in FUSION_GRID
+    }
 
     # Truncation study
     rng = np.random.default_rng(splits.SPLIT_SEED)
@@ -263,10 +244,7 @@ def run(root: Path, settings: Settings | None = None) -> dict[str, Any]:
     p_resolution = {"p_value_resolution": rounded(2 / s.bootstrap_samples)}
 
     # The same scorers on the fine ranker's own validation rows (standard logs, not random)
-    x_valid = builder1.build(
-        valid_rows["user_id"].to_numpy(dtype=np.int64),
-        valid_rows["video_id"].to_numpy(dtype=np.int64),
-    )
+    x_valid = builder1.build_rows(valid_rows)
     pred_valid = ranker.predict(x_valid)
     v_users = valid_rows["user_id"].to_numpy(dtype=np.int64)
     v_order = np.unique(v_users)
@@ -300,19 +278,13 @@ def run(root: Path, settings: Settings | None = None) -> dict[str, Any]:
     }
 
     # Feature drift between the two cutoffs
-    x_train = builder1.build(
-        train_rows["user_id"].to_numpy(dtype=np.int64),
-        train_rows["video_id"].to_numpy(dtype=np.int64),
-    )
+    x_train = builder1.build_rows(train_rows)
     drift: dict[str, dict[str, dict[str, float]]] = {
         f: {"c1_training_rows": _quantiles(x_train[f]), "c2_evaluation_rows": _quantiles(x_eval[f])}
         for f in DRIFT_FEATURES
     }
     # Separates the refit of the tower from the change of rows: same standard rows, c2 tower
-    x_valid_c2 = builder2.build(
-        valid_rows["user_id"].to_numpy(dtype=np.int64),
-        valid_rows["video_id"].to_numpy(dtype=np.int64),
-    )
+    x_valid_c2 = builder2.build_rows(valid_rows)
     drift["tower_score"]["c1_validation_rows"] = _quantiles(x_valid["tower_score"])
     drift["tower_score"]["c2_on_the_same_validation_rows"] = _quantiles(x_valid_c2["tower_score"])
 
@@ -320,9 +292,7 @@ def run(root: Path, settings: Settings | None = None) -> dict[str, Any]:
     single_feature = {
         f: _est(
             metrics.estimate(
-                metrics.user_auc(
-                    u, _signed(f, x_eval[f]), rows["is_click"].to_numpy(float), eval_users
-                ),
+                metrics.user_auc(u, _signed(f, x_eval[f]), click, eval_users),
                 idx,
             )
         )
