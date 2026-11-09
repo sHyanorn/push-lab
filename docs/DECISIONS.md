@@ -58,7 +58,7 @@ Entries are in the order they were made. Some entries up to D048 were corrected 
 | D052 | Reproduce workflow as built, and its first runs | Active |
 | D053 | Results differ across machines | Active |
 | D054 | Mean open probability of pushed items, measured after the fact | Active |
-| D055 | Treat-everyone interval recorded per method | Active |
+| D055 | One treat-everyone interval decides the budget shares | Active |
 | D056 | Implementation notes against METHODS | Active |
 
 ## D001 Python only, static report
@@ -218,7 +218,7 @@ Entries are in the order they were made. Some entries up to D048 were corrected 
 - METHODS Section 9 now describes the bootstrap as implemented: multinomial draws over (score group, $t$, $y$) cells on both datasets, which equals row resampling, with Criteo bin edges fixed at their full-sample values. Section 10 describes the budget boundary as $U(bn)$ with linear interpolation instead of the top $\lceil bn \rceil$ rows
 - Added so that every reported number has an interval: 95% bands for the Qini curves, and the budget share left out when the treat-everyone effect's interval contains 0
 - Added after U4 was known, and labeled post hoc in the results: response rates and uplift per score decile of the T-learner and the response model on Criteo visits. It explains U4 and is not a pre-registered comparison
-- Status: Amended by D055 (the treat-everyone interval is recorded per method)
+- Status: Amended by D055 (one treat-everyone interval per dataset and outcome decides the budget shares)
 
 ## D023 Simulator components added or changed against SPEC Section 6
 - Date: 2026-11-08
@@ -518,12 +518,11 @@ Entries are in the order they were made. Some entries up to D048 were corrected 
 - METHODS 11.5 cites a mean $p_0$ of about 0.28 for the items the policies push and attributes it to D024, which does not report it. Measured post hoc from the simulator inputs that `sim.build` writes (`data/processed/sim`), over all 27,285 users and the 112 day-slots: 0.277 for the cascade list the policies push and 0.277 for the two-tower list. The value agrees with the 0.28 the base-rate range was set from, so the range stands
 - Command: `uv run python -c "from pathlib import Path; from push_lab.data import paths; from push_lab.sim import inputs; i = inputs.Inputs.load(paths.processed_dir(Path('.'), 'sim') / inputs.CACHE); print({k: float(v.p0.mean()) for k, v in i.lists.items()})"`
 
-## D055 Treat-everyone interval recorded per method
+## D055 One treat-everyone interval decides the budget shares
 - Date: 2026-11-09
-- Fixes D022. `uplift/evaluate.py` wrote `treat_everyone_per_1000` once per dataset and outcome inside the loop over methods, so `results/uplift.json` kept only the last method's interval (random), while each method's budget shares were kept or left out by its own interval. The point is the same for every method; the interval is not, since each method's bootstrap draws its multinomial over its own (score group, $t$, $y$) cells
-- Each method now records the interval in `methods.<name>.treat_everyone_per_1000`, next to its Qini and AUUC, and the dataset-level key is gone. Nothing reads it besides the test
-- Rerun with the same seeds: apart from the moved key and timings, `results/uplift.json` is identical, which a rerun of the previous code on the same machine also gave. Every method's interval excludes 0 on both trials and outcomes, as the recorded one did, so no budget share appears or disappears and no other result, the evidence matrix, report or README changes. Across methods a bound differs by up to 0.84 visits per 1,000 on Hillstrom (upper bound, 53.88 to 54.72) and 0.04 on Criteo
-- Open point: the share rule of METHODS Section 10 is applied per method, to an interval that estimates the same quantity for every method, so on small data the methods can disagree by Monte Carlo noise; on the synthetic test fixture only the causal forest's interval excludes 0 for Hillstrom conversions. On the committed results all 24 intervals exclude 0 with the smallest lower bound at 1.079 per 1,000 (Criteo conversions)
+- Fixes D022. `uplift/evaluate.py` wrote `treat_everyone_per_1000` once per dataset and outcome inside the loop over methods, so `results/uplift.json` kept only the last method's interval (random), while each method kept or left out its budget shares by its own interval. A first fix recorded the interval per method (git history)
+- Decided: the treat-everyone effect is the same quantity for every method, and per-method bootstraps differ only by Monte Carlo noise, so on small data the methods disagreed on the shares; on the synthetic test fixture only the causal forest showed shares for Hillstrom conversions. Now one bootstrap over the (t, y) cells per dataset and outcome, 1,000 resamples with seed 0 as in D012, gives the interval in `treat_everyone_per_1000` at that level, and it decides the shares of every method as METHODS Section 10 states. Each share's own interval still comes from its method's resamples. On the fixture the shared interval for Hillstrom conversions contains 0, so no method shows shares there
+- Rerun: only the four intervals change, Hillstrom visit 36.39 to 53.94 (was 36.44 to 53.88), Hillstrom conversion 1.44 to 6.11 (1.17 to 6.12), Criteo visit 9.98 to 10.56 (9.97 to 10.58), Criteo conversion 1.081 to 1.218 (1.082 to 1.218), all per 1,000 rows. All exclude 0, as before, so every budget share is reported as before and no other result, the evidence matrix, report or README changes
 
 ## D056 Implementation notes against METHODS
 - Date: 2026-11-09

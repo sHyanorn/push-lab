@@ -27,12 +27,6 @@
             "ci_low": 0.01622,
             "ci_high": 0.036579,
             "tier": "A"
-          },
-          "treat_everyone_per_1000": {
-            "value": 45.226028,
-            "ci_low": 36.433111,
-            "ci_high": 54.261507,
-            "tier": "A"
           }
         },
         "t_learner": {
@@ -46,12 +40,6 @@
             "value": 0.018858,
             "ci_low": 0.007912,
             "ci_high": 0.029525,
-            "tier": "A"
-          },
-          "treat_everyone_per_1000": {
-            "value": 45.226028,
-            "ci_low": 36.106479,
-            "ci_high": 54.724738,
             "tier": "A"
           }
         },
@@ -67,12 +55,6 @@
             "ci_low": 0.00866,
             "ci_high": 0.028635,
             "tier": "A"
-          },
-          "treat_everyone_per_1000": {
-            "value": 45.226028,
-            "ci_low": 36.454112,
-            "ci_high": 54.258279,
-            "tier": "A"
           }
         },
         "causal_forest": {
@@ -86,12 +68,6 @@
             "value": 0.013576,
             "ci_low": 0.003739,
             "ci_high": 0.024251,
-            "tier": "A"
-          },
-          "treat_everyone_per_1000": {
-            "value": 45.226028,
-            "ci_low": 36.539302,
-            "ci_high": 54.292954,
             "tier": "A"
           }
         },
@@ -107,12 +83,6 @@
             "ci_low": 0.007165,
             "ci_high": 0.02719,
             "tier": "A"
-          },
-          "treat_everyone_per_1000": {
-            "value": 45.226028,
-            "ci_low": 35.939005,
-            "ci_high": 54.258307,
-            "tier": "A"
           }
         },
         "random": {
@@ -126,12 +96,6 @@
             "value": 0.000771,
             "ci_low": -0.00938,
             "ci_high": 0.010628,
-            "tier": "A"
-          },
-          "treat_everyone_per_1000": {
-            "value": 45.226028,
-            "ci_low": 36.436636,
-            "ci_high": 53.882663,
             "tier": "A"
           }
         }
@@ -2459,6 +2423,12 @@
             ]
           }
         }
+      },
+      "treat_everyone_per_1000": {
+        "value": 45.226028,
+        "ci_low": 36.386595,
+        "ci_high": 53.942502,
+        "tier": "A"
       }
     },
     "conversion": {
@@ -2475,12 +2445,6 @@
             "ci_low": -0.000503,
             "ci_high": 0.004845,
             "tier": "A"
-          },
-          "treat_everyone_per_1000": {
-            "value": 3.625671,
-            "ci_low": 1.561619,
-            "ci_high": 5.948591,
-            "tier": "A"
           }
         },
         "t_learner": {
@@ -2494,12 +2458,6 @@
             "value": 0.000321,
             "ci_low": -0.002431,
             "ci_high": 0.003227,
-            "tier": "A"
-          },
-          "treat_everyone_per_1000": {
-            "value": 3.625671,
-            "ci_low": 1.413369,
-            "ci_high": 5.742602,
             "tier": "A"
           }
         },
@@ -2515,12 +2473,6 @@
             "ci_low": -0.002202,
             "ci_high": 0.003321,
             "tier": "A"
-          },
-          "treat_everyone_per_1000": {
-            "value": 3.625671,
-            "ci_low": 1.3945,
-            "ci_high": 5.792262,
-            "tier": "A"
           }
         },
         "causal_forest": {
@@ -2534,12 +2486,6 @@
             "value": 0.000151,
             "ci_low": -0.002431,
             "ci_high": 0.002848,
-            "tier": "A"
-          },
-          "treat_everyone_per_1000": {
-            "value": 3.625671,
-            "ci_low": 1.539192,
-            "ci_high": 6.008152,
             "tier": "A"
           }
         },
@@ -2555,12 +2501,6 @@
             "ci_low": -0.001568,
             "ci_high": 0.003422,
             "tier": "A"
-          },
-          "treat_everyone_per_1000": {
-            "value": 3.625671,
-            "ci_low": 1.261504,
-            "ci_high": 5.976434,
-            "tier": "A"
           }
         },
         "random": {
@@ -2574,12 +2514,6 @@
             "value": -0.001026,
             "ci_low": -0.003748,
             "ci_high": 0.001593,
-            "tier": "A"
-          },
-          "treat_everyone_per_1000": {
-            "value": 3.625671,
-            "ci_low": 1.173135,
-            "ci_high": 6.120466,
             "tier": "A"
           }
         }
@@ -4907,6 +4841,12 @@
             ]
           }
         }
+      },
+      "treat_everyone_per_1000": {
+        "value": 3.625671,
+        "ci_low": 1.435191,
+        "ci_high": 6.108236,
+        "tier": "A"
       }
     }
   },
@@ -4934,12 +4874,6 @@
             "ci_low": 0.032995,
             "ci_high": 0.035346,
             "tier": "A"
-          },
-          "treat_everyone_per_1000": {
-            "value": 10.266573,
-            "ci_low": 9.96904,
-            "ci_high": 10.590231,
-            "tier": "A"
           }
         },
         "t_learner": {
@@ -4953,12 +4887,6 @@
             "value": 0.029775,
             "ci_low": 0.028611,
             "ci_high": 0.030972,
-            "tier": "A"
-          },
-          "treat_everyone_per_1000": {
-            "value": 10.266573,
-            "ci_low": 9.96098,
-            "ci_high": 10.558818,
             "tier": "A"
           }
         },
@@ -4974,12 +4902,6 @@
             "ci_low": 0.029896,
             "ci_high": 0.032233,
             "tier": "A"
-          },
-          "treat_everyone_per_1000": {
-            "value": 10.266573,
-            "ci_low": 9.989102,
-            "ci_high": 10.561266,
-            "tier": "A"
           }
         },
         "causal_forest": {
@@ -4993,12 +4915,6 @@
             "value": 0.027012,
             "ci_low": 0.025706,
             "ci_high": 0.028235,
-            "tier": "A"
-          },
-          "treat_everyone_per_1000": {
-            "value": 10.266573,
-            "ci_low": 9.975361,
-            "ci_high": 10.55494,
             "tier": "A"
           }
         },
@@ -5014,12 +4930,6 @@
             "ci_low": 0.031912,
             "ci_high": 0.034213,
             "tier": "A"
-          },
-          "treat_everyone_per_1000": {
-            "value": 10.266573,
-            "ci_low": 9.964619,
-            "ci_high": 10.57399,
-            "tier": "A"
           }
         },
         "random": {
@@ -5033,12 +4943,6 @@
             "value": 0.000356,
             "ci_low": -0.000423,
             "ci_high": 0.001198,
-            "tier": "A"
-          },
-          "treat_everyone_per_1000": {
-            "value": 10.266573,
-            "ci_low": 9.968806,
-            "ci_high": 10.579695,
             "tier": "A"
           }
         }
@@ -7367,6 +7271,12 @@
           }
         }
       },
+      "treat_everyone_per_1000": {
+        "value": 10.266573,
+        "ci_low": 9.978911,
+        "ci_high": 10.555686,
+        "tier": "A"
+      },
       "control_rows_per_bin": {
         "s_learner": {
           "bins": 193,
@@ -7668,12 +7578,6 @@
             "ci_low": 0.00486,
             "ci_high": 0.005719,
             "tier": "A"
-          },
-          "treat_everyone_per_1000": {
-            "value": 1.150648,
-            "ci_low": 1.084914,
-            "ci_high": 1.218976,
-            "tier": "A"
           }
         },
         "t_learner": {
@@ -7687,12 +7591,6 @@
             "value": 0.00391,
             "ci_low": 0.003472,
             "ci_high": 0.004307,
-            "tier": "A"
-          },
-          "treat_everyone_per_1000": {
-            "value": 1.150648,
-            "ci_low": 1.079273,
-            "ci_high": 1.222211,
             "tier": "A"
           }
         },
@@ -7708,12 +7606,6 @@
             "ci_low": 0.003174,
             "ci_high": 0.004071,
             "tier": "A"
-          },
-          "treat_everyone_per_1000": {
-            "value": 1.150648,
-            "ci_low": 1.08198,
-            "ci_high": 1.221991,
-            "tier": "A"
           }
         },
         "causal_forest": {
@@ -7727,12 +7619,6 @@
             "value": 0.001754,
             "ci_low": 0.001326,
             "ci_high": 0.002217,
-            "tier": "A"
-          },
-          "treat_everyone_per_1000": {
-            "value": 1.150648,
-            "ci_low": 1.083673,
-            "ci_high": 1.218094,
             "tier": "A"
           }
         },
@@ -7748,12 +7634,6 @@
             "ci_low": 0.005673,
             "ci_high": 0.006558,
             "tier": "A"
-          },
-          "treat_everyone_per_1000": {
-            "value": 1.150648,
-            "ci_low": 1.080788,
-            "ci_high": 1.217977,
-            "tier": "A"
           }
         },
         "random": {
@@ -7767,12 +7647,6 @@
             "value": 0.00023,
             "ci_low": -2.3e-05,
             "ci_high": 0.0005,
-            "tier": "A"
-          },
-          "treat_everyone_per_1000": {
-            "value": 1.150648,
-            "ci_low": 1.082184,
-            "ci_high": 1.218186,
             "tier": "A"
           }
         }
@@ -10101,6 +9975,12 @@
           }
         }
       },
+      "treat_everyone_per_1000": {
+        "value": 1.150648,
+        "ci_low": 1.080975,
+        "ci_high": 1.217979,
+        "tier": "A"
+      },
       "control_rows_per_bin": {
         "s_learner": {
           "bins": 195,
@@ -10194,33 +10074,33 @@
   "timings_s": {
     "hillstrom": {
       "visit": {
+        "s_learner": 0.4,
+        "t_learner": 0.3,
+        "x_learner_stage2": 0.4,
+        "causal_forest": 2.1
+      },
+      "conversion": {
         "s_learner": 0.3,
         "t_learner": 0.3,
         "x_learner_stage2": 0.4,
-        "causal_forest": 2.0
-      },
-      "conversion": {
-        "s_learner": 0.2,
-        "t_learner": 0.4,
-        "x_learner_stage2": 0.4,
-        "causal_forest": 1.7
+        "causal_forest": 1.8
       }
     },
     "criteo": {
       "visit": {
-        "s_learner": 7.8,
-        "t_learner": 7.7,
-        "x_learner_stage2": 9.4,
-        "causal_forest": 20.2
+        "s_learner": 8.3,
+        "t_learner": 7.8,
+        "x_learner_stage2": 9.5,
+        "causal_forest": 22.3
       },
       "conversion": {
-        "s_learner": 7.3,
-        "t_learner": 7.7,
-        "x_learner_stage2": 10.3,
-        "causal_forest": 22.8
+        "s_learner": 7.5,
+        "t_learner": 7.9,
+        "x_learner_stage2": 9.6,
+        "causal_forest": 20.9
       },
-      "scoring": 501.6,
-      "bootstrap": 47.1
+      "scoring": 501.0,
+      "bootstrap": 48.8
     }
   }
 }

@@ -136,6 +136,20 @@ def _control_per_bin(groups: IntArray, t: IntArray) -> dict[str, float]:
     }
 
 
+def _treat_everyone(t: IntArray, y: IntArray, samples: int) -> dict[str, Any]:
+    """Treat-everyone effect per 1,000 rows, the same quantity for every method: one bootstrap
+    over (t, y) cells decides for all of them whether budget shares are defined (D055)."""
+    one = np.zeros(len(t), dtype=np.int64)
+
+    def stat(c: list[curves.Counts]) -> FloatArray:
+        out: FloatArray = curves.uplift_at(c[0], np.array([1.0])) / c[0].n * 1000
+        return out
+
+    point = stat([curves.counts(one, t, y)])
+    boot = _bootstrap(curves.cells([one], t, y), stat, samples)
+    return _interval(point[0], boot[:, 0])
+
+
 def _assess(
     t: IntArray, y: IntArray, scores: dict[str, FloatArray], bins: int | None, samples: int
 ) -> tuple[dict[str, Any], dict[str, FloatArray]]:
@@ -146,6 +160,10 @@ def _assess(
         "budget": {},
         "qini_curve": {"tier": "A", "share": [rounded(v) for v in grid], "methods": {}},
     }
+    everyone = _treat_everyone(t, y, samples)
+    out["treat_everyone_per_1000"] = everyone
+    # A share of an effect that may be zero is not defined; it is left out then, for every method
+    share_defined = everyone["ci_low"] > 0 or everyone["ci_high"] < 0
     boot_qini: dict[str, FloatArray] = {}
     k = len(BUDGETS)
     full = 2 + 2 * k
@@ -154,16 +172,10 @@ def _assess(
         point = _statistics(curves.counts(groups, t, y))
         boot = _bootstrap(curves.cells([groups], t, y), lambda c: _statistics(c[0]), samples)
         boot_qini[name] = boot[:, 0]
-        # The point is the same for every method; the interval comes from the method's own
-        # resamples, the ones its budget shares are computed on
-        everyone = _interval(point[full], boot[:, full])
         out["methods"][name] = {
             "qini": _interval(point[0], boot[:, 0]),
             "auuc": _interval(point[1], boot[:, 1]),
-            "treat_everyone_per_1000": everyone,
         }
-        # A share of an effect that may be zero is not defined; it is left out then
-        share_defined = everyone["ci_low"] > 0 or everyone["ci_high"] < 0
         out["budget"][name] = {
             str(b): {
                 "per_1000": _interval(point[2 + i], boot[:, 2 + i]),

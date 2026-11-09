@@ -39,21 +39,20 @@ def test_pipeline_runs_on_synthetic_data(tmp_path: Path) -> None:
         difference = methods["t_learner"]["qini"]["value"] - methods["response"]["qini"]["value"]
         assert primary[paired]["value"] == pytest.approx(difference, abs=2e-6)
 
-    # Each method records the treat-everyone interval its budget shares were decided on
+    # One treat-everyone interval per trial and outcome decides the budget shares of every method
     for dataset in ("hillstrom", "criteo"):
         for outcome in evaluate.OUTCOMES:
             entry = result[dataset][outcome]
-            assert "treat_everyone_per_1000" not in entry
-            everyone = {m: v["treat_everyone_per_1000"] for m, v in entry["methods"].items()}
-            assert len({v["value"] for v in everyone.values()}) == 1
-            for name, interval in everyone.items():
-                assert interval["ci_low"] <= interval["value"] <= interval["ci_high"]
-                defined = interval["ci_low"] > 0 or interval["ci_high"] < 0
+            everyone = entry["treat_everyone_per_1000"]
+            assert everyone["ci_low"] <= everyone["value"] <= everyone["ci_high"]
+            defined = everyone["ci_low"] > 0 or everyone["ci_high"] < 0
+            for name in evaluate.METHODS:
+                assert "treat_everyone_per_1000" not in entry["methods"][name]
                 for b in entry["budget"][name].values():
                     share = b["share_of_full_effect"]
                     assert (share is not None) == defined
                     if share is not None:
-                        ratio = b["per_1000"]["value"] / interval["value"]
+                        ratio = b["per_1000"]["value"] / everyone["value"]
                         assert share["value"] == pytest.approx(ratio, rel=1e-4, abs=1e-5)
 
     curve = result["criteo"]["visit"]["qini_curve"]
