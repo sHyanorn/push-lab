@@ -58,6 +58,7 @@ Entries are in the order they were made. Some entries up to D048 were corrected 
 | D052 | Reproduce workflow as built, and its first runs | Active |
 | D053 | Results differ across machines | Active |
 | D054 | Mean open probability of pushed items, measured after the fact | Active |
+| D056 | Implementation notes against METHODS | Active |
 
 ## D001 Python only, static report
 - Date: 2026-11-08
@@ -514,3 +515,16 @@ Entries are in the order they were made. Some entries up to D048 were corrected 
 - Date: 2026-11-08
 - METHODS 11.5 cites a mean $p_0$ of about 0.28 for the items the policies push and attributes it to D024, which does not report it. Measured post hoc from the simulator inputs that `sim.build` writes (`data/processed/sim`), over all 27,285 users and the 112 day-slots: 0.277 for the cascade list the policies push and 0.277 for the two-tower list. The value agrees with the 0.28 the base-rate range was set from, so the range stands
 - Command: `uv run python -c "from pathlib import Path; from push_lab.data import paths; from push_lab.sim import inputs; i = inputs.Inputs.load(paths.processed_dir(Path('.'), 'sim') / inputs.CACHE); print({k: float(v.p0.mean()) for k, v in i.lists.items()})"`
+
+## D056 Implementation notes against METHODS
+- Date: 2026-11-09
+- Where the code differs from the wording of METHODS. Each sentence concerned ends with a pointer here; the METHODS text is otherwise unchanged. None of these changes a committed number, except where stated
+- Section 9, cross-check: the scikit-uplift difference is recorded, not enforced; `uplift.evaluate` writes it and does not fail above $10^{-9}$. The unit test asserts the bound on synthetic data, and the committed value is 0.0. No effect on results
+- Section 4, latency: `rank/evaluate.py` times feature building and prediction together, for 200 users in one call divided by 200, as the `latency_note` in `results/ranking.json` says; it is neither fine scoring alone nor a per-request latency. The truncation study itself is in `rank/truncation.py`, which uses `rank/cascade.py`. No effect on any other number
+- Section 14.1: for the `opens` reward, a count per user-day, $\hat q$ is a LightGBM regressor (L2 objective); it is a binary classifier for `visit` (`OBJECTIVE` in `ope/simulator.py`). The committed results come from this code. No effect on results
+- Section 14.3: intervals that involve the truth over run seeds use the normal quantile $z = 1.959964$, not a t quantile: the bias interval, which adds the truth's variance (`validate` in `ope/simulator.py`), and the truth's interval in the carryover post hoc ordering (`_interval` in `ope/carryover.py`); the per-day estimates of that ordering use a t quantile. With 200 truth seeds $t_{0.975,199} = 1.972$, 0.6% wider. Recomputed from the committed results without rerunning anything: with $t$ at the degrees of freedom of the log seeds, the most conservative choice ($t_{0.975,49} = 2.010$ for 50 log seeds, $t_{0.975,9} = 2.262$ for 10), no bias verdict changes in `ope_simulator.json` (96 verdicts), `ope_simulator_amended.json` (96) or `ope_carryover.json` (288); the smallest $|\text{bias}|/\text{se}$ among verdicts with a bias is 2.034, 2.234 and 2.413. None of the 150 reversal flags of the carryover post hoc ordering changes with the truth interval at $t_{0.975,99} = 1.984$ for its 100 truth runs
+- Section 14.4: besides under-coverage and bias, `validate` gives over-coverage as a reason when the Wilson interval of coverage lies above 0.95. No committed verdict has that reason. The amended run (D044) writes `results/ope_simulator_amended.json`; `results/ope_simulator.json` holds the first run (D043)
+- Section 12.7: the secondary "active days per delivered push" is computed as $(\text{active}_p - \text{active}_N)/\text{delivered}_p$, the active days a policy adds over no pushes per push it delivers (`active_days_per_push_over_N` in `results/policy.json`, for R, F, T, S, G and G2). Only that file reports it
+- Section 13.5: active days are reported as differences for every pair, and opens per delivered push (with the repeat rate) for every policy, not for every pair. The mean over the 10 seed triples carries a Student t interval (`T975` in `policy/template_compare.py`), which D040 reports and 13.5 does not mention. No effect on results
+- Section 13.4: `prior_strength` in `policy/templates.py` returns an infinite $m$, so every $\hat s_a = 0$, also when no arm has $n_a^+ > 0$ or the base rate is not in $(0, 1)$, and clips a negative $m$ to 0, where the formula has no meaning. Whether the clip occurred in the sweeps was not recorded
+- Section 5: the user categorical features of the fine ranker are those of Section 3 without the user id (`USER_CATEGORICAL` in `rank/features.py`); the user enters through its rates and the two-tower score. No effect on results

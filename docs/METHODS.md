@@ -100,11 +100,11 @@ Every reported retrieval number uses exact search; HNSW is the scalable path and
 - *Survival* (Tier A): the share of the user's clicked random-exposure items that are in the cascade's top-$N$ set. This is the only truncation measure tied to real outcomes.
 - *Top-1 agreement* (model-internal): whether the cascade's top-1 equals the catalog reference's top-1.
 - *Score regret* (model-internal): the catalog top-1's fused score minus the cascade top-1's fused score.
-- *Latency*: wall time of fine scoring per user.
+- *Latency*: wall time of fine scoring per user (D056).
 
 Model-internal measures say how much truncation changes the model's choice, not whether the change matters to users, and are labeled so in the report.
 
-**Code.** `rank/cascade.py`. **Tests.** With $N$ equal to the catalog size, the cascade returns the catalog reference's top-1; survival is monotone non-decreasing in $N$.
+**Code.** `rank/cascade.py` (D056). **Tests.** With $N$ equal to the catalog size, the cascade returns the catalog reference's top-1; survival is monotone non-decreasing in $N$.
 
 ---
 
@@ -120,7 +120,7 @@ $w = 0.5$ is fixed in advance; $w \in \{0, 0.25, 0.5, 0.75, 1\}$ is reported as 
 
 **Features**, all computed from the window before the cutoff:
 
-- *User*: the categorical fields of Section 3, log of 1 + follow, fan and friend counts, `register_days`, impressions per day, smoothed click and long-view rates.
+- *User*: the categorical fields of Section 3, log of 1 + follow, fan and friend counts, `register_days`, impressions per day, smoothed click and long-view rates (D056).
 - *Item*: `video_duration`, `upload_type`, `video_type`, first tag, days since upload at the cutoff, impressions per day, smoothed click and long-view rates.
 - *User × item*: the user's smoothed click rate on the item's author and on its first tag, the two-tower score at the same cutoff, the item's popularity rank.
 - Smoothed rate: $(k + \alpha \mu) / (n + \alpha)$ with $k$ successes in $n$ impressions, $\mu$ the window-wide rate and $\alpha = 20$.
@@ -230,7 +230,7 @@ which equal scikit-uplift's `qini_auc_score(negative_effect=True)` and `uplift_a
 
 **Bootstrap.** Rows are resampled (D012: 1,000 resamples, 95% percentile intervals, seed 0), and every statistic is recomputed on each resample, including the perfect-curve areas in the denominators, which depend on the resampled counts of the four $(t, y)$ classes. Each metric depends on the data only through the counts in cells (score group, $t$, $y$), where a group is a distinct score on Hillstrom and a score bin on Criteo, so drawing $n$ rows with replacement is the same as drawing the cell counts from a multinomial with the observed cell shares; this is how both datasets are resampled. For a paired comparison of methods $a$ and $b$ the cells are (group under $a$, group under $b$, $t$, $y$). Groups are fixed at their full-sample values: on Hillstrom this is exact, since a group is a function of the score; on Criteo the bin edges are not recomputed per resample, which at 12.6M rows moves the result by far less than the sampling error. The intervals cover test-set sampling only: each model is fitted once on a fixed training set with a fixed seed. A test checks on small synthetic data that the cell bootstrap and row resampling give the same intervals within Monte Carlo error.
 
-**Cross-check.** Hillstrom Qini coefficients and AUUC for every method are compared with scikit-uplift 0.5.1 (development dependency only) on the same scores; the largest absolute difference is reported in `results/uplift.json` and must be below $10^{-9}$. The unit tests run the same comparison on synthetic data with ties.
+**Cross-check.** Hillstrom Qini coefficients and AUUC for every method are compared with scikit-uplift 0.5.1 (development dependency only) on the same scores; the largest absolute difference is reported in `results/uplift.json` and must be below $10^{-9}$ (D056). The unit tests run the same comparison on synthetic data with ties.
 
 **References.**
 - Radcliffe, N. J. (2007). Using control groups to target on predicted lift: Building and assessing uplift models. *Direct Marketing Analytics Journal*, 14–21. Direct Marketing Association Analytics Council.
@@ -453,7 +453,7 @@ At $\Delta = \xi = 0$ the profile equals `profile_policy`, which already differs
 | H3 | G at $b = 0.5$ against T | Does the gate keep more users active with half the volume? |
 | H4 | T against F | Does the user's own best slot beat one fixed slot? |
 
-**Secondary** (intervals, no tests): G − N, T − N, F − N; H3 split as (G − T½) + (T½ − T); G2 − T; L1, T on the cascade list against T on the two-tower list; S, G, G2 with one multiplier; opens per user in week 1 and in total; active days in week 4; delivered pushes per user; share opted out by day 28; active days per delivered push; score diagnostics (12.3); fit variability, the SD of each $\Delta_h$ over the 10 refits against its bootstrap SE.
+**Secondary** (intervals, no tests): G − N, T − N, F − N; H3 split as (G − T½) + (T½ − T); G2 − T; L1, T on the cascade list against T on the two-tower list; S, G, G2 with one multiplier; opens per user in week 1 and in total; active days in week 4; delivered pushes per user; share opted out by day 28; active days per delivered push; score diagnostics (12.3); fit variability, the SD of each $\Delta_h$ over the 10 refits against its bootstrap SE (D056).
 
 **Bootstrap** (D029). 10,000 resamples of the 5,000 users (seed 0); the same resampled user sets serve every setting. Per setting $j$ and comparison $h$: $\Delta_{h,j}$ is the mean per-user difference, with its percentile interval and the two-sided p-value of the Conventions; this interval is conditional on the setting's fitted models. Sweep average $\bar\Delta_h$, the unweighted mean over the 64 settings: each resample also draws 64 settings with replacement, so its interval covers the choice of settings and, through their different seeds, model-fit and world randomness.
 
@@ -543,7 +543,7 @@ A *round* $t$ is a delivered push to user $u$ at (day $d$, slot $s$); $A_t$ is t
 
 **Fixed values**, not tuned: $\gamma_b = 0.017$ and $h_b = 15$ days (the paper's production values; the bandit does not know the simulator's $\gamma$ and $h$, which the sweep varies), $\tau = 0.005$, $\theta = 0.005$ (the paper's threshold). The paper used $\tau = 0.0025$ with arm scores from millions of rounds; here each arm sees tens of thousands, so $\tau$ is doubled for more exploration (its Table 7: about 35% of rounds off the top arm).
 
-**Prior strength** (deviation from the paper, D037). The paper sets $m$ once from arms with large samples; no arm here has one. Each day $m$ is set by the method of moments over the arms with $n_a^+ > 0$: $v = \max\big(0,\ \overline{(\bar\mu_a^+ - \mu_a)^2} - \overline{\mu_a(1 - \mu_a)/n_a^+}\big)$ and $m = \bar\mu(1 - \bar\mu)/v - 1$; if $v = 0$, every $\hat s_a = 0$. With no copy effect the scores therefore stay near 0 and RD behaves like U with a recency penalty.
+**Prior strength** (deviation from the paper, D037). The paper sets $m$ once from arms with large samples; no arm here has one. Each day $m$ is set by the method of moments over the arms with $n_a^+ > 0$: $v = \max\big(0,\ \overline{(\bar\mu_a^+ - \mu_a)^2} - \overline{\mu_a(1 - \mu_a)/n_a^+}\big)$ and $m = \bar\mu(1 - \bar\mu)/v - 1$; if $v = 0$, every $\hat s_a = 0$ (D056). With no copy effect the scores therefore stay near 0 and RD behaves like U with a recency penalty.
 
 **Pairing.** Every template policy runs with the same delivery rule T (12.2: one push a day at the user's best slot under the setting's perturbed profile) and the same run draws, so sends, items and opt-outs are identical across them; eligibility for Welcome back can diverge through visits. Each policy picks its template by inverse CDF from one uniform per (user, day, slot) drawn from a stream keyed by (run seed, day, slot) (D032), with $A_t$ in ascending id, so U, D0, RD and RAW share their random numbers. The template stream of the M5 policies is unchanged.
 
@@ -554,7 +554,7 @@ A *round* $t$ is a delivered push to user $u$ at (day $d$, slot $s$); $A_t$ is t
 **Settings** (frozen in `results/template_design.json` and pushed before any run):
 - *Main*: the 64 main-sweep points of 12.6 with their world and perturbation seeds; annoyance and opt-out act on the same volume in every arm.
 - *Grid*: the one-at-a-time points of 12.6 for base rate, copy spread, novelty penalty and novelty half-life (20 distinct settings, the reference among them).
-- *Seed variability*: the reference setting with 10 further triples of run seeds.
+- *Seed variability*: the reference setting with 10 further triples of run seeds (D056).
 - Evaluation run seeds 101, 102, 103, as in M5.
 
 **Primary metric**: opens per user over the 28 days, averaged over the run seeds. Templates act only on the open probability, so active days are secondary.
@@ -566,7 +566,7 @@ A *round* $t$ is a delivered push to user $u$ at (day $d$, slot $s$); $A_t$ is t
 | B1 | RD against U | Does the recovering bandit beat uniform templates? |
 | B2 | RD against D0 | Does the recency penalty help, given the same learned scores? |
 
-**Secondary** (intervals, no tests): D0 − U; RAW − RD; O − U and the share $(\text{RD} - \text{U})/(\text{O} - \text{U})$ where the interval of O − U excludes 0; active days and opens per delivered push for every pair; repeat rate (share of rounds whose template reached the same user within the previous 15 days); at day 28, the Spearman correlation of $\hat s_a$ with $\log c_a$ and the overlap of the 10 highest-scored templates with the 10 largest $c_a$; seed variability, the SD of each comparison over the 10 seed triples against its mean bootstrap SE.
+**Secondary** (intervals, no tests): D0 − U; RAW − RD; O − U and the share $(\text{RD} - \text{U})/(\text{O} - \text{U})$ where the interval of O − U excludes 0; active days and opens per delivered push for every pair; repeat rate (share of rounds whose template reached the same user within the previous 15 days); at day 28, the Spearman correlation of $\hat s_a$ with $\log c_a$ and the overlap of the 10 highest-scored templates with the 10 largest $c_a$; seed variability, the SD of each comparison over the 10 seed triples against its mean bootstrap SE (D056).
 
 **Decision rule** (as 12.7). Per setting, B1 and B2 each at level 0.025 (Bonferroni over two) with 10,000 bootstrap resamples of users; sweep averages over the 64 main settings with the two-level bootstrap of 12.7; Holm across the two sweep tests at 0.05; the labels of 12.7 with the same thresholds (48 of 64; 4 and 4). Flip thresholds along the four grid parameters by the rule of 12.7.
 
@@ -596,7 +596,7 @@ $$
 $$
 
 - Assumptions: the logged propensities are the true ones; overlap, $b(a \mid x) > 0$ wherever $\pi(a \mid x) > 0$; rewards of a round depend only on its context and action (no carryover). IPS is unbiased under these; SNIPS trades a small bias for lower variance; DM is unbiased only if $\hat q$ is right; DR is unbiased if either the propensities or $\hat q$ is right (Dudík et al. 2011).
-- $\hat q$ is a LightGBM classifier with the base model of Section 8, fitted with 2-fold cross-fitting by user (each fold's rows scored by the model fitted on the other fold), so no round is scored by a model that saw it.
+- $\hat q$ is a LightGBM classifier with the base model of Section 8, fitted with 2-fold cross-fitting by user (each fold's rows scored by the model fitted on the other fold), so no round is scored by a model that saw it (D056).
 - No clipping or switching: every weight is used as is. Each estimate is reported with the effective sample size $(\sum w)^2 / \sum w^2$ and the largest weight.
 - Intervals: bootstrap over the units that make rounds dependent (users in the simulator, impressions in OBD; OBD has no impression id, so rows in time order with the same user features less than a second apart form one impression, which can merge consecutive impressions of a user and only coarsens the units), 1,000 resamples, 95% percentile, with $\hat q$ held fixed. Holding $\hat q$ fixed leaves its fitting noise out of each interval, so a single interval understates the variance of DM and DR; coverage over many log seeds (14.3) exposes this, and under-coverage of DM or DR is read first as this cause. The four estimators are reported side by side; when two of their intervals do not overlap the estimate is flagged inconclusive (SPEC Section 5).
 
@@ -634,7 +634,7 @@ $$
 
 The smallest propensity of one slot-and-template action, $0.075/60 = 0.00125$, does not enter, since templates cancel. The smallest probability of a user-day vector is $0.225 \times 0.075^3 \approx 0.0001$ (the three other slots without the best one); only R can choose it, with weight 123, the largest of any target.
 
-**Truth.** Each target runs online on the same 5,000 users at the same setting; its value is the mean reward per user-day. The first run (D043) averaged 20 run seeds shared by every target. The amended run (D044) uses the exact value in the control, where days are independent and templates uniform, so a day with send vector $a$ is visited with probability $1 - (1 - v_u) \prod_{s: a_s = 1} (1 - \bar p_{u,s})$, $\bar p_{u,s}$ the open probability at slot $s$ averaged over templates; at the reference it averages 200 run seeds per target, different for every target, with a t interval. Each log's estimates are kept so that coverage can be recomputed.
+**Truth.** Each target runs online on the same 5,000 users at the same setting; its value is the mean reward per user-day. The first run (D043) averaged 20 run seeds shared by every target. The amended run (D044) uses the exact value in the control, where days are independent and templates uniform, so a day with send vector $a$ is visited with probability $1 - (1 - v_u) \prod_{s: a_s = 1} (1 - \bar p_{u,s})$, $\bar p_{u,s}$ the open probability at slot $s$ averaged over templates; at the reference it averages 200 run seeds per target, different for every target, with a t interval (D056). Each log's estimates are kept so that coverage can be recomputed.
 
 **Settings and seeds.**
 - *No-carryover control*: the reference with $\epsilon_f = \epsilon_v = \kappa_o = \kappa_r = \gamma = 0$, and each user's $p_0$ held at the mean of the first 28 items of the list, so neither behaviour nor the list position carries over and a day's reward depends only on that day's context and action; here every estimator but DM should be unbiased, which checks the implementation.
@@ -645,7 +645,7 @@ The smallest propensity of one slot-and-template action, $0.075/60 = 0.00125$, d
 
 ### 14.4 Pre-registered decision rule
 
-- *Validated in the simulator* (per setting, target and estimator): the Wilson 95% interval of coverage contains 0.95, and the bias interval contains 0. Otherwise *not validated*, with the reason (under-coverage, bias or both).
+- *Validated in the simulator* (per setting, target and estimator): the Wilson 95% interval of coverage contains 0.95, and the bias interval contains 0. Otherwise *not validated*, with the reason (under-coverage, bias or both) (D056).
 - *Primary results*: the validation verdicts of DR and IPS for each target at the reference setting. The control setting is reported first, as an implementation check; if DR or IPS is not validated there for T, T½ or N, the simulator results are reported as an implementation failure and not interpreted.
 - *Validated on OBD*: the estimate's 95% interval contains the on-policy value and the median relative error over resamples is below 0.5. The threshold is loose because of the sample size.
 - Expectation stated before any run: in the control setting all estimators but DM validated for every target; at the reference, IPS and DR biased for N and T2, whose volumes differ most from the logs, and close for T and T½.
@@ -656,7 +656,7 @@ The smallest propensity of one slot-and-template action, $0.075/60 = 0.00125$, d
 - Swaminathan, A., Joachims, T. (2015). The Self-Normalized Estimator for Counterfactual Learning. *NeurIPS 2015*.
 - Saito, Y., Aihara, S., Matsutani, M., Narita, Y. (2021). Open Bandit Dataset and Pipeline: Towards Realistic and Reproducible Off-Policy Evaluation. *NeurIPS 2021 Datasets and Benchmarks*. https://arxiv.org/abs/2008.07146
 
-**Code.** `ope/estimators.py`, `ope/obd.py`, `ope/simulator.py` (`python -m push_lab.ope.simulator`, writes `results/ope_simulator.json`), `report/evidence.py` (`results/evidence.json`). **Tests.** The estimator tests of 14.1; the BTS probabilities sum to 1 per position and match a direct Monte Carlo of the prior; logged user-day probabilities match the product formula and empirical frequencies; in a synthetic no-carryover world, IPS and DR cover the online truth at about the nominal rate; fixed seeds give identical results.
+**Code.** `ope/estimators.py`, `ope/obd.py`, `ope/simulator.py` (`python -m push_lab.ope.simulator`, writes `results/ope_simulator.json`), `report/evidence.py` (`results/evidence.json`) (D056). **Tests.** The estimator tests of 14.1; the BTS probabilities sum to 1 per position and match a direct Monte Carlo of the prior; logged user-day probabilities match the product formula and empirical frequencies; in a synthetic no-carryover world, IPS and DR cover the online truth at about the nominal rate; fixed seeds give identical results.
 
 ### 14.5 Evidence matrix
 
