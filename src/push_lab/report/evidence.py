@@ -231,6 +231,7 @@ def _randomness(data: dict[str, Any], claim: Claim) -> dict[str, Any]:
 def ope_entries(root: Path) -> list[dict[str, Any]]:
     """The OBD estimator checks, the simulator verdicts and the post hoc orderings."""
     out: list[dict[str, Any]] = []
+    carryover = _carryover(root)
     obd_file = root / paths.RESULTS / "ope_obd.json"
     if obd_file.exists():
         out += _obd_entries(json.loads(obd_file.read_text("utf-8")))
@@ -269,9 +270,9 @@ def ope_entries(root: Path) -> list[dict[str, Any]]:
                             "status": "reported",
                         }
                         | check["bias"]
-                        | _sweep_share(root, setting, target, name)
+                        | _sweep_share(carryover, setting, target, name)
                     )
-    out += _ordering_entries(root)
+    out += _ordering_entries(carryover)
     return out
 
 
@@ -280,20 +281,20 @@ def _carryover(root: Path) -> dict[str, Any] | None:
     return json.loads(path.read_text("utf-8")) if path.exists() else None
 
 
-def _sweep_share(root: Path, setting: str, target: str, name: str) -> dict[str, Any]:
+def _sweep_share(
+    data: dict[str, Any] | None, setting: str, target: str, name: str
+) -> dict[str, Any]:
     """For the reference setting, the share of the 24 sweep settings where the same estimator
     and target are validated."""
-    data = _carryover(root)
     if setting != "reference" or data is None:
         return {}
     verdicts = [s["targets"][target][name]["verdict"] for s in data["settings"]]
     return {"sweep_validated": f"{verdicts.count('validated')} of {len(verdicts)} settings"}
 
 
-def _ordering_entries(root: Path) -> list[dict[str, Any]]:
+def _ordering_entries(data: dict[str, Any] | None) -> list[dict[str, Any]]:
     """Post hoc: at the reference, the per-day DR estimate of a difference between targets
     against its truth, and how many sweep settings reverse the ordering."""
-    data = _carryover(root)
     if data is None or "post_hoc" not in data:
         return []
     out: list[dict[str, Any]] = []

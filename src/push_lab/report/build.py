@@ -15,6 +15,7 @@ from typing import Any
 
 from push_lab.data import paths
 from push_lab.report import svg, text
+from push_lab.report.svg import MINUS, num
 
 REPO = "https://github.com/shyanorn/push-lab/blob/main"
 SITE = Path("site")
@@ -26,8 +27,6 @@ FILES = (
     "ope_carryover",
     "copy",
 )
-MINUS = chr(0x2212)
-BLOCKS = ("evidence", "findings", "story")
 
 
 # Loading and formatting ---------------------------------------------------------------
@@ -42,13 +41,6 @@ def load(root: Path) -> dict[str, Any]:
 
 def claims(results: dict[str, Any]) -> dict[str, dict[str, Any]]:
     return {c["id"]: c for c in results["evidence"]["claims"]}
-
-
-def num(x: float, decimals: int, signed: bool = False) -> str:
-    text_ = f"{x:+.{decimals}f}" if signed else f"{x:.{decimals}f}"
-    if float(text_) == 0:
-        text_ = text_.lstrip("+-")
-    return text_.replace("-", MINUS)
 
 
 def interval(entry: dict[str, Any], decimals: int, signed: bool = False) -> str:
@@ -159,7 +151,8 @@ def facts(results: dict[str, Any]) -> dict[str, str]:
     seeds = results["templates"]["seed_variability"]
     n_main = sum(s["sweep"] == "main" for s in policy["settings"])
     check_readings(results)
-    ref = reference_setting(results)["policies"]
+    reference = reference_setting(results)
+    ref = reference["policies"]
     return {
         "no_tier_b": results["evidence"]["note"],
         "crossing_note": text.CROSSING_NOTE,
@@ -189,7 +182,7 @@ def facts(results: dict[str, Any]) -> dict[str, str]:
             f"{num(truth[0]['value'], 4, True)} to {num(truth[-1]['value'], 4, True)}"
         ),
         "main_settings": str(n_main),
-        "ref_lift_fn": pct_interval(reference_setting(results)["daily_lift_F_over_N"], 1),
+        "ref_lift_fn": pct_interval(reference["daily_lift_F_over_N"], 1),
         "fn_flip": interval(c["F-N"], 3),
         "fn_flip_base": crossing(policy["flips"]["base_rate"]["F-N"], 2),
         "band_low": g(band["bounds"][0] * 100) + "%",

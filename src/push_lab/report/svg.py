@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from html import escape
 from typing import Any
 
+MINUS = chr(0x2212)
+
 WIDTH, HEIGHT = 880, 320
 CHART_CSS = """
 .chart{width:100%;height:auto;display:block;
@@ -58,9 +60,12 @@ def _decimals(ticks: Sequence[float]) -> int:
     return next(d for d in range(10) if all(abs(round(t, d) - t) < 1e-12 for t in ticks))
 
 
-def _tick(value: float, decimals: int) -> str:
-    text = f"{value:.{decimals}f}"
-    return text.replace("-", chr(0x2212)) if value < 0 and float(text) != 0 else text.lstrip("-")
+def num(x: float, decimals: int, signed: bool = False) -> str:
+    """Fixed decimals with a true minus sign; values that round to zero carry no sign."""
+    text = f"{x:+.{decimals}f}" if signed else f"{x:.{decimals}f}"
+    if float(text) == 0:
+        text = text.lstrip("+-")
+    return text.replace("-", MINUS)
 
 
 def line_chart(
@@ -105,12 +110,12 @@ def line_chart(
         )
         out.append(
             f'<text class="tick" x="{LEFT - 8}" y="{py(t) + 4:.1f}" '
-            f'text-anchor="end">{_tick(t, yd)}</text>'
+            f'text-anchor="end">{num(t, yd)}</text>'
         )
     for t in x_ticks:
         out.append(
             f'<text class="tick" x="{px(t):.1f}" y="{TOP + plot_h + 18}" '
-            f'text-anchor="middle">{_tick(t, xd)}</text>'
+            f'text-anchor="middle">{num(t, xd)}</text>'
         )
     out.append(
         f'<text class="axis-title" x="{LEFT + plot_w / 2:.1f}" y="{HEIGHT - 8}" '

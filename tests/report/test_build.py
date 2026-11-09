@@ -45,7 +45,7 @@ def test_facts_quote_the_results() -> None:
     assert facts["no_tier_b"] == results["evidence"]["note"]
     assert facts["obd_ips"] == build.interval(claims["OBD-ratio-IPS"], 3)
     assert facts["ope_nt_truth"].startswith("+0.0129 ")
-    assert facts["ref_lift_fn"] == "-2.3% (-2.4% to -2.2%)".replace("-", build.MINUS)
+    assert facts["ref_lift_fn"] == "-2.3% (-2.4% to -2.2%)".replace("-", svg.MINUS)
     assert facts["b1_spread"] == "17.7"
     assert facts["b2_spread"] == "19.2"
 
@@ -88,9 +88,9 @@ def test_only_short_cells_are_kept_on_one_line() -> None:
 
 
 def test_number_formatting() -> None:
-    assert build.num(-0.00004, 4) == "0.0000"
-    assert build.num(0.0129, 4, signed=True) == "+0.0129"
-    assert build.num(-0.0044, 4) == build.MINUS + "0.0044"
+    assert svg.num(-0.00004, 4) == "0.0000"
+    assert svg.num(0.0129, 4, signed=True) == "+0.0129"
+    assert svg.num(-0.0044, 4) == svg.MINUS + "0.0044"
     assert build.sig_decimals(0.004722) == 5
     assert build.sig_decimals(0.891) == 3
 
