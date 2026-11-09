@@ -571,6 +571,7 @@ footer{margin-top:64px;color:var(--muted);font-size:14px}
 @media (max-width:640px){.reading{grid-template-columns:1fr}h1{font-size:24px}
 .chart{min-width:600px}figure{padding:12px}
 .stack thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+.stack th{white-space:nowrap}
 .stack,.stack tbody,.stack tr{display:block}
 .stack tr{padding:8px 0;border-bottom:1px solid var(--grid)}
 .stack td:first-child{font-weight:600}
