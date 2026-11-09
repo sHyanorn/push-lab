@@ -47,7 +47,7 @@ RUNS = Path("runs") / "ope"
 # Two log seeds, outputs apart from the registered runs (D050)
 SMOKE = Path("runs") / "smoke" / "ope"
 SMOKE_HELP = "two log seeds; writes under results/runs/smoke for pipeline checks only"
-# Two-sided 97.5% quantile of the normal distribution
+# 97.5% quantile of the standard normal, for two-sided 95% intervals
 Z = 1.959964
 WORLD_SEED = 10_100
 FOLDS = 2

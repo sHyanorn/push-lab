@@ -88,7 +88,8 @@ def evaluate_setting(metrics: FloatArray, kinds: list[str], boot: Bootstrap) -> 
     return SettingResult(summary, kept, points)
 
 
-# Two-sided 97.5% quantiles of Student's t by degrees of freedom, for means over seed triples
+# 97.5% quantiles of Student's t by degrees of freedom, for 95% intervals of means over seed
+# triples
 T975 = {1: 12.706, 2: 4.303, 3: 3.182, 4: 2.776, 5: 2.571, 6: 2.447, 7: 2.365, 8: 2.306, 9: 2.262}
 RESAMPLES = 10_000
 
@@ -158,14 +159,10 @@ def summarize(
     labeled: dict[str, Any] = {}
     p_all: dict[str, float] = {}
     averages: dict[str, Any] = {}
-    # Each sweep average reseeds its resampling, so computing every key once gives the same
-    # values as computing each where it is used
-    swept = (
-        {k: _averaged(results, main_ids, k, seed) for k in results[main_ids[0]].boot}
-        if main_ids
-        else {}
-    )
+    swept: dict[str, tuple[dict[str, float], FloatArray, float]] = {}
     if main_ids:
+        # Every sweep average once; each reseeds its own resampling
+        swept = {k: _averaged(results, main_ids, k, seed) for k in results[main_ids[0]].boot}
         for key in PRIMARY:
             avg, resampled, _ = swept[key]
             p = p_value(resampled)

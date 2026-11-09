@@ -136,7 +136,7 @@ def compare(a: FloatArray, b: FloatArray, idx: IntArray) -> Comparison:
 
 
 def p_value(boot: FloatArray) -> float:
-    """Twice the smaller tail share at zero over the defined resamples, capped at 1."""
+    """Twice the smaller tail share at zero, capped at 1; NaN resamples are left out."""
     boot = boot[~np.isnan(boot)]
     return min(1.0, 2 * min(float(np.mean(boot <= 0)), float(np.mean(boot >= 0))))
 
