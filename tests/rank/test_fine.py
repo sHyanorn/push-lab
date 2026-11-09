@@ -64,3 +64,14 @@ def test_fit_is_deterministic() -> None:
         np.testing.assert_array_equal(pa[target], pb[target])
     fused = fine.fuse(pa)
     assert ((fused >= 0) & (fused <= 1)).all()
+
+
+def test_early_stopping_reads_the_validation_rows() -> None:
+    # Fixture clicks are noise, so validation loss is lowest after a few rounds
+    log = _log()
+    builder = _parts(log, splits.CUTOFF_TRAIN)
+    labels = splits.between(log, 20220416, 20220419)
+    valid = splits.between(log, 20220420, 20220420)
+    ranker = fine.FineRanker.fit(builder, labels, valid, {"min_data_in_leaf": 5, "num_threads": 1})
+    # LightGBM disables early stopping when the validation set is the training set (best 0)
+    assert all(0 < r < fine.MAX_ROUNDS // 4 for r in ranker.best_rounds.values())

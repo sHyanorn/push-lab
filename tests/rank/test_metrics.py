@@ -60,3 +60,17 @@ def test_holm() -> None:
     assert metrics.holm({"C1": 0.03, "C2": 0.04}) == {"C1": False, "C2": False}
     assert metrics.holm({"C1": 0.001, "C2": 0.03}) == {"C1": True, "C2": True}
     assert metrics.holm({"C1": 0.001, "C2": 0.06}) == {"C1": True, "C2": False}
+
+
+def test_interval_brackets_the_estimate_and_pairing_narrows_it() -> None:
+    rng = np.random.default_rng(1)
+    b = rng.random(400)
+    a = b + 0.01 + rng.normal(0.0, 0.001, 400)
+    idx = metrics.resample_indices(400, samples=200)
+    est = metrics.estimate(a, idx)
+    assert est.low <= est.value <= est.high
+    diff = metrics.compare(a, b, idx).difference
+    assert diff.low <= diff.value <= diff.high
+    assert diff.value == pytest.approx(0.01, abs=0.001)
+    # Paired differences vary by about 0.001 while the levels vary by about 0.3
+    assert diff.high - diff.low < 0.002
