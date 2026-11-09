@@ -50,6 +50,15 @@ def test_facts_quote_the_results() -> None:
     assert facts["b2_spread"] == "19.2"
 
 
+def test_reference_facts_come_from_the_registered_grid_point() -> None:
+    results = build.load(ROOT)
+    ref = build.reference_setting(results)
+    assert ref["sweep"] == "grid"
+    assert ref["values"] == results["policy_design"]["reference"]
+    gate = ref["policies"]["G"]["opens_week1"]
+    assert build.facts(results)["opens_w1_g"] == build.interval(gate, 3)
+
+
 def test_committed_readme_matches_the_results() -> None:
     assert build.main(["--root", str(ROOT), "--check"]) == 0
 

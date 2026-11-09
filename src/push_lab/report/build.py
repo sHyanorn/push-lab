@@ -131,12 +131,13 @@ def check_readings(results: dict[str, Any]) -> None:
 
 
 def reference_setting(results: dict[str, Any]) -> dict[str, Any]:
-    """First refit setting: every refit runs at the design's reference values."""
+    """The registered reference setting: the grid point at the design's reference values.
+    The refits share these values but use other exploration seeds (METHODS 12.6)."""
     reference = results["policy_design"]["reference"]
     for s in results["policy"]["settings"]:
-        if s["sweep"] == "refit" and s["values"] == reference:
+        if s["sweep"] == "grid" and s["values"] == reference:
             return dict(s)
-    raise ValueError("no refit setting at the reference values")
+    raise ValueError("no grid setting at the reference values")
 
 
 def facts(results: dict[str, Any]) -> dict[str, str]:
