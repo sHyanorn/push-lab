@@ -19,6 +19,7 @@ import numpy as np
 from push_lab.creative import generate
 from push_lab.creative.families import FAMILIES, render
 from push_lab.data import paths
+from push_lab.runtime import write_json
 
 QUESTIONS = {
     "clear": "Easy to understand at a glance?",
@@ -107,7 +108,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     results = args.root / paths.RESULTS / generate.RESULTS_FILE
     data = json.loads(results.read_text("utf-8"))
     data["rating"] = tally(args.root, args.ratings)
-    results.write_text(json.dumps(data, indent=1) + "\n", encoding="utf-8", newline="\n")
+    write_json(results, data)
     print(f"added the rating counts to {results}")
     return 0
 

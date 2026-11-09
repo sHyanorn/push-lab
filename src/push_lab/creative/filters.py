@@ -101,7 +101,8 @@ def charset(v: Variant) -> bool:
 def placeholders(v: Variant, family: Family) -> bool:
     text = v.title + v.body
     names = PLACEHOLDER.findall(text)
-    if "{" in PLACEHOLDER.sub("", text) or "}" in PLACEHOLDER.sub("", text):
+    rest = PLACEHOLDER.sub("", text)
+    if "{" in rest or "}" in rest:
         return False
     if family.placeholder is None:
         return not names
