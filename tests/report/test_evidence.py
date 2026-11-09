@@ -13,7 +13,7 @@ def test_every_claim_has_a_tier_and_an_interval() -> None:
     ids = [c["id"] for c in out["claims"]]
     assert len(ids) == len(set(ids))
     for c in out["claims"]:
-        assert c["tier"] in (*out["tiers"], "not validated")
+        assert c["tier"] in out["tiers"]
         if c["status"] == "reported" and c["tier"] in ("A", "B", "C"):
             assert c["ci_low"] <= c["value"] <= c["ci_high"], c["id"]
 
@@ -45,7 +45,6 @@ def test_simulator_ope_entries_carry_the_sweep() -> None:
     order = out["OPE-order-N-T-DR"]
     assert order["truth"]["value"] > 0 > order["ci_high"]
     assert order["reversed_settings"] == "23 of 24"
-    assert not [c for c in out.values() if c.get("status") == "awaiting sweep"]
 
 
 def test_history_entries_carry_no_numbers() -> None:

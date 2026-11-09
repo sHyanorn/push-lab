@@ -1,7 +1,5 @@
 import copy
 import json
-import random
-import string
 from pathlib import Path
 from typing import Any
 
@@ -10,18 +8,9 @@ import pytest
 from push_lab.creative import filters, generate
 from push_lab.creative.families import FAMILIES, REQUESTED
 
+from .test_filters import good
+
 RECORDED = json.loads((Path(__file__).parent / "message.json").read_text("utf-8"))
-
-
-def _variants(family_id: int) -> list[dict[str, str]]:
-    rng = random.Random(family_id)
-    p = FAMILIES[family_id].placeholder
-    tag = "" if p is None else f" {{{p.name}}}"
-
-    def words(k: int) -> str:
-        return " ".join("".join(rng.choices(string.ascii_lowercase, k=6)) for _ in range(k))
-
-    return [{"title": f"Go {words(2)}{tag}", "body": f"{words(4)}."} for _ in range(REQUESTED)]
 
 
 class FakeApi:
@@ -34,7 +23,7 @@ class FakeApi:
         self.params.append(params)
         family = len(self.params) - 1
         message = copy.deepcopy(RECORDED)
-        message["content"][1]["text"] = json.dumps({"variants": _variants(family)})
+        message["content"][1]["text"] = json.dumps({"variants": good(FAMILIES[family], REQUESTED)})
         return message, f"req_{family}"
 
 

@@ -9,12 +9,12 @@ from push_lab.uplift import evaluate
 pytestmark = pytest.mark.filterwarnings("ignore:Function stable_cumsum:FutureWarning")
 
 
+SMALL = evaluate.Settings(bootstrap_samples=50, criteo_bins=20, forest_rows=300, batch_rows=700)
+
+
 def test_pipeline_runs_on_synthetic_data(tmp_path: Path) -> None:
     fixtures.write_processed(tmp_path, n=4_000)
-    settings = evaluate.Settings(
-        bootstrap_samples=50, criteo_bins=20, forest_rows=300, batch_rows=700
-    )
-    result = evaluate.run(tmp_path, settings)
+    result = evaluate.run(tmp_path, SMALL)
     primary = result["primary"]
     assert set(primary) == {
         "U1_hillstrom_t_learner_qini",
@@ -71,11 +71,8 @@ def test_criteo_scores_and_labels_come_from_the_same_rows(tmp_path: Path) -> Non
 
 def test_hillstrom_only_matches_the_full_run(tmp_path: Path) -> None:
     fixtures.write_processed(tmp_path, n=3_000)
-    settings = evaluate.Settings(
-        bootstrap_samples=50, criteo_bins=20, forest_rows=300, batch_rows=700
-    )
-    full = evaluate.run(tmp_path, settings)
-    only = evaluate.run(tmp_path, settings, criteo=False)
+    full = evaluate.run(tmp_path, SMALL)
+    only = evaluate.run(tmp_path, SMALL, criteo=False)
     assert "criteo" not in only
     assert only["hillstrom"] == full["hillstrom"]
     for name, entry in only["primary"].items():

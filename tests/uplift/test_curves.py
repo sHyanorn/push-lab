@@ -106,8 +106,8 @@ def test_cell_bootstrap_matches_row_bootstrap() -> None:
         idx = rng.integers(0, len(score), len(score))
         by_row.append(curves.qini_coefficient(curves.counts(groups[idx], t[idx], y[idx])))
 
-    cell = curves.cells([curves.quantile_groups(score, bins=10)], t, y)
     binned_rows = curves.quantile_groups(score, bins=10)
+    cell = curves.cells([binned_rows], t, y)
     by_row_binned = []
     rng = np.random.default_rng(7)
     for _ in range(samples):
