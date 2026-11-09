@@ -537,3 +537,22 @@ Entries are in the order they were made. Some entries up to D048 were corrected 
 - Section 13.5: active days are reported as differences for every pair, and opens per delivered push (with the repeat rate) for every policy, not for every pair. The mean over the 10 seed triples carries a Student t interval (`T975` in `policy/template_compare.py`), which D040 reports and 13.5 does not mention. No effect on results
 - Section 13.4: `prior_strength` in `policy/templates.py` returns an infinite $m$, so every $\hat s_a = 0$, also when no arm has $n_a^+ > 0$ or the base rate is not in $(0, 1)$, and clips a negative $m$ to 0, where the formula has no meaning. Whether the clip occurred in the sweeps was not recorded
 - Section 5: the user categorical features of the fine ranker are those of Section 3 without the user id (`USER_CATEGORICAL` in `rank/features.py`); the user enters through its rates and the two-tower score. No effect on results
+
+## D057 Sweep labels with refit and seed spread, post hoc
+- Date: 2026-11-09
+- Post hoc, after every registered result. The per-setting verdicts behind the labels of METHODS 12.7 and 13.5 rest on intervals that cover user sampling only, conditional on one model fit and one seed triple. At the reference the SD over the 10 refits is 3.3, 1.2 and 2.2 times the mean bootstrap SE for H1, H2 and H3 (D034), and the SD over the 10 seed triples is 17.7 times for B1 and 19.2 for B2 (D040)
+- Sensitivity: each main-sweep setting's SE (its interval half-width over 1.96) is combined with that SD, $\sqrt{SE_j^2 + SD^2}$, and the verdicts are recounted at the registered levels (0.0125 for H1 to H4, 0.025 for B1 and B2). Wins / losses / neither, registered then with the spread:
+
+| Id | Registered | With spread | Label then |
+|---|---|---|---|
+| B1 | 57 / 7 / 0, beats in most sampled settings | 44 / 0 / 20 | better on average |
+| H2-af | 58 / 0 / 6, beats in most sampled settings | 37 / 0 / 27 | better on average |
+| H1-af | 0 / 56 / 8, loses in most sampled settings | 0 / 5 / 59 | worse on average |
+| H2 | 64 / 0 / 0, beats in most sampled settings | 62 / 0 / 2 | unchanged |
+| H3 | 43 / 19 / 2, depends on the setting | 39 / 18 / 7 | unchanged |
+| H3-af | 0 / 64 / 0, loses in most sampled settings | 0 / 64 / 0 | unchanged |
+| H1 | 1 / 29 / 34, worse on average | 0 / 3 / 61 | unchanged |
+| B2 | 28 / 28 / 8, depends on the setting | 10 / 5 / 49 | unchanged |
+
+- Limits: the spread was measured at the reference setting only and may differ elsewhere; the policy refits vary the exploration seed, not the world or evaluation seeds. The sweep averages resample settings with their own seeds, so their intervals and the Holm decisions are unaffected; only the "in most sampled settings" part of three labels depends on this
+- Kept: the registered labels and every results file. The report shows the reading beside the label of B1, H1-af and H2-af (`SENSITIVITY` in `report/build.py`), and `check_readings` fails the build if one of those registered labels changes

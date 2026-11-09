@@ -1,4 +1,5 @@
 import ast
+import copy
 import html
 import itertools
 import re
@@ -136,3 +137,16 @@ def test_stacked_tables_label_every_cell() -> None:
     assert stacked.count('role="columnheader"') == 2
     assert '<td class="nw" role="cell" data-label="A">x</td>' in stacked
     assert 'data-label="B &amp; C">y</td>' in stacked
+
+
+def test_post_hoc_readings_sit_beside_the_labels_they_were_written_for() -> None:
+    results = build.load(ROOT)
+    c = build.claims(results)
+    for key, (label, reading) in build.SENSITIVITY.items():
+        shown = build.shown_label(c[key])
+        assert shown.startswith(label) and reading in shown and "D057" in shown
+    assert build.shown_label(c["H2"]) == c["H2"]["label"]
+    changed = copy.deepcopy(results)
+    next(x for x in changed["evidence"]["claims"] if x["id"] == "H2-af")["label"] = "other"
+    with pytest.raises(ValueError, match="H2-af"):
+        build.check_readings(changed)

@@ -84,6 +84,24 @@ def crossing(flip: dict[str, Any], decimals: int) -> str:
     return interval(only | {"value": only["at"]}, decimals)
 
 
+# Registered labels that a post hoc sensitivity reads more weakly once the refit or seed
+# spread at the reference is added to each setting's interval (D057): id -> (label, reading)
+SENSITIVITY = {
+    "B1": ("beats in most sampled settings", "better on average"),
+    "H1-af": ("loses in most sampled settings", "worse on average"),
+    "H2-af": ("beats in most sampled settings", "better on average"),
+}
+
+
+def shown_label(claim: dict[str, Any]) -> str:
+    """The registered label, followed by the post hoc reading of D057 where one applies."""
+    label = str(claim.get("label", ""))
+    if claim["id"] in SENSITIVITY:
+        reading = SENSITIVITY[claim["id"]][1]
+        label += f"; read as {reading} with refit or seed spread (D057, post hoc)"
+    return label
+
+
 def check_readings(results: dict[str, Any]) -> None:
     """Readings the prose states in words; a rerun that changes one fails the build."""
     c = claims(results)
@@ -93,7 +111,8 @@ def check_readings(results: dict[str, Any]) -> None:
         "H2": "beats in most sampled settings",
         "H4": "no detectable difference",
         "H4-af": "worse on average",
-        "B1": "beats in most sampled settings",
+        # D057 readings were written for these registered labels
+        **{key: label for key, (label, _) in SENSITIVITY.items()},
     }
     for key, label in labels.items():
         if c[key]["label"] != label:
@@ -244,7 +263,7 @@ def sweep_rows(results: dict[str, Any], ids: Sequence[str]) -> list[list[str]]:
         [
             i,
             c[i]["statement"],
-            c[i].get("label", ""),
+            shown_label(c[i]),
             interval(c[i], 3, signed=True),
             wln(c[i]),
             spread(c[i]),
@@ -284,7 +303,7 @@ def matrix_value(claim: dict[str, Any]) -> str:
 def matrix_detail(claim: dict[str, Any]) -> str:
     parts = []
     if "label" in claim:
-        parts.append(claim["label"])
+        parts.append(shown_label(claim))
     if wln(claim):
         parts.append(f"wins / losses / neither {wln(claim)}")
     if holm(claim):
