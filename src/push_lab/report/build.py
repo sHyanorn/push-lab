@@ -352,20 +352,28 @@ def table(
     rows: Sequence[Sequence[str]],
     cls: str = "",
     nowrap: Sequence[int] = (),
+    stack: bool = False,
 ) -> str:
-    attr = f' class="{cls}"' if cls else ""
-    th = "".join(f"<th>{escape(h)}</th>" for h in head)
+    """A table in a horizontal scroller. With ``stack``, narrow screens show each row as a
+    labeled block; the ARIA roles keep the header-cell pairing that block display can drop."""
+    classes = " ".join(c for c in (cls, "stack" if stack else "") if c)
+    attr = f' class="{classes}"' if classes else ""
+
+    def role(name: str) -> str:
+        return f' role="{name}"' if stack else ""
+
+    th = "".join(f"<th{role('columnheader')}>{escape(h)}</th>" for h in head)
 
     def cell(k: int, value: str) -> str:
-        return (
-            f'<td class="nw">{escape(value)}</td>' if k in nowrap else f"<td>{escape(value)}</td>"
-        )
+        nw = ' class="nw"' if k in nowrap else ""
+        label = f' data-label="{escape(head[k])}"' if stack else ""
+        return f"<td{nw}{role('cell')}{label}>{escape(value)}</td>"
 
-    body = "".join(
-        "<tr>" + "".join(cell(k, v) for k, v in enumerate(row)) + "</tr>" for row in rows
-    )
-    inner = f"<thead><tr>{th}</tr></thead><tbody>{body}</tbody>"
-    return f'<div class="scroll"><table{attr}>{inner}</table></div>'
+    row = f"<tr{role('row')}>"
+    body = "".join(row + "".join(cell(k, v) for k, v in enumerate(r)) + "</tr>" for r in rows)
+    group = role("rowgroup")
+    inner = f"<thead{group}>{row}{th}</tr></thead><tbody{group}>{body}</tbody>"
+    return f'<div class="scroll"><table{attr}{role("table")}>{inner}</table></div>'
 
 
 def legend(names: Sequence[str]) -> str:
@@ -559,8 +567,16 @@ padding:12px 14px}
 .matrix td.value{min-width:190px}
 .matrix td:first-child{overflow-wrap:anywhere;min-width:7rem}
 footer{margin-top:64px;color:var(--muted);font-size:14px}
+@media (max-width:979px){th{white-space:normal}}
 @media (max-width:640px){.reading{grid-template-columns:1fr}h1{font-size:24px}
-.chart{min-width:600px}figure{padding:12px}}
+.chart{min-width:600px}figure{padding:12px}
+.stack thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+.stack,.stack tbody,.stack tr{display:block}
+.stack tr{padding:8px 0;border-bottom:1px solid var(--grid)}
+.stack td:first-child{font-weight:600}
+.stack td{display:grid;grid-template-columns:8rem 1fr;gap:8px;padding:2px 0;border:0}
+.stack td::before{content:attr(data-label);content:attr(data-label) / "";color:var(--ink-2);
+font-weight:600}}
 """
 
 
@@ -603,7 +619,7 @@ def html(results: dict[str, Any]) -> str:
         + f"<p>{escape(text.MATRIX_NOTE)}</p>"
         + matrix_table(matrix_rows(results))
         + f"<h2>{escape(text.TIERS_HEAD)}</h2>"
-        + table(TIER_HEAD, tier_rows(results), nowrap=(0,))
+        + table(TIER_HEAD, tier_rows(results), nowrap=(0,), stack=True)
         + "</section>"
         + f"<footer>{docs}</footer></main>"
     )

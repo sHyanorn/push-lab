@@ -117,3 +117,13 @@ def test_tick_labels_keep_every_digit() -> None:
         str,
     )
     assert ">0.025<" in chart and ">0.000<" in chart
+
+
+def test_stacked_tables_label_every_cell() -> None:
+    plain = build.table(("A", "B"), [["x", "y"]], nowrap=(0,))
+    assert "role=" not in plain and "data-label" not in plain
+    stacked = build.table(("A", "B & C"), [["x", "y"]], nowrap=(0,), stack=True)
+    assert '<table class="stack" role="table">' in stacked
+    assert stacked.count('role="columnheader"') == 2
+    assert '<td class="nw" role="cell" data-label="A">x</td>' in stacked
+    assert 'data-label="B &amp; C">y</td>' in stacked
