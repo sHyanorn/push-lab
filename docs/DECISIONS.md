@@ -60,6 +60,9 @@ Entries are in the order they were made. Some entries up to D048 were corrected 
 | D054 | Mean open probability of pushed items, measured after the fact | Active |
 | D055 | One treat-everyone interval decides the budget shares | Active |
 | D056 | Implementation notes against METHODS | Active |
+| D057 | Sweep labels with refit and seed spread, post hoc | Active |
+| D058 | Measurements behind three METHODS corrections, post hoc | Active |
+| D059 | One integer seed shared by draws, folds and bootstrap in the off-policy checks | Active |
 
 ## D001 Python only, static report
 - Date: 2026-11-08
@@ -540,6 +543,7 @@ Entries are in the order they were made. Some entries up to D048 were corrected 
 - Section 1: the snapshot user fields were listed in part, and the claim that they leave per-user AUC and NDCG unaffected did not hold for the models used; corrected in METHODS with the measurement of D058
 - Section 11.1: the reported validation users also set the stopping round; stated in METHODS and in the evidence claim R1 (D058)
 - Section 11.2: $\eta$ is solved on the simulated users, so it differs slightly between the fit and evaluation users of a setting (D058)
+- Section 14.1 and D032: one integer seed feeds the draws, the folds and the bootstrap in the simulator check, and the folds and the bootstrap on OBD (D059)
 - Section 11.5: the report quoted the first refit as the reference setting; it now quotes the registered grid point, which moved the gate's week-one opens from 0.054 to 0.056
 - Section 13.5: the report described B2 as showing no detectable effect next to its registered label "depends on the setting"; it now gives both
 
@@ -568,3 +572,10 @@ Entries are in the order they were made. Some entries up to D048 were corrected 
 - Response-model validation (METHODS 11.1): the 20% of simulator-half users that give the reported AUC also choose the stopping round. Splitting them in two, stopping on one half and scoring the other: the committed model (51 rounds) scores AUC 0.6863 on that half, a model stopped on the first half (69 rounds) 0.6854. The optimism is about 0.001, inside the reported interval (0.682 to 0.705); no number changes
 - Timing exponent (METHODS 11.2): $\eta$ is solved on the users being simulated. At the reference lift 0.10 it is 0.1637 for the fit users and 0.1639 for the evaluation users; with the fit users' $\eta$ the evaluation users' lift is 0.0999. The difference is negligible and the code is kept
 - Commands: one-off scripts against the prepared data and `data/processed/sim/inputs.npz`, not committed
+
+## D059 One integer seed shared by draws, folds and bootstrap in the off-policy checks
+- Date: 2026-11-09
+- Breaks the rule of D032 that integer seeds used in one run stay distinct: `default_rng(s)` with the same `s` gives the same numbers. In the simulator check one log seed feeds the simulator's draws (`env.draws`, `ope/simulator.py:230`), the cross-fitting folds (`ope/simulator.py:211`) and the estimators' bootstrap (`ope/simulator.py:252` into `ope/estimators.py:71`); the carryover sweep passes its log seeds the same way (`ope/carryover.py:73`). On OBD the fold seed and the bootstrap seed are both 0 (`ope/obd.py:42-43`, used at 140 and 206). In the first bootstrap resample of log seed 1001, every second resampled user index equals the open draw of day 0, slot 0 for one user times 5,000, rounded down
+- Effect: a user's count in a resample is set by other users' draws and matches the user's own draw only with probability about 1/5,000, so the resamples carry no information about the user's own outcome and no bias follows. Measured post hoc on the control setting, log seeds 1,001 to 1,010, against folds and bootstrap from keyed streams on the same logs: IPS estimates are identical (they use neither); DR means differ by at most 0.00012 per target; mean interval widths differ by up to about 3% in either direction; of the 18 coverage counts (six targets, IPS, DR and DM) all agree except F with DR (10 against 9), R with DM (8 against 9) and N with DM (3 against 4)
+- Not rerun: the registered results are kept as frozen. The analysis and the measurement show no bias, and a rerun with new streams would move borderline verdicts by Monte Carlo noise only, which would be a change of method after seeing the results
+- Rule from now on: new code draws every random stream from `world.stream(purpose, *key)` with its own purpose, or from a seed sequence spawned for that use; an integer seed is passed to `default_rng` for one use in a run only. The uses listed here and the shared seed 0 of the evaluation sample and the policy bootstrap (`world.quick_sample`, `design.BOOTSTRAP_SEED`, D033) stay as they are
