@@ -7,7 +7,7 @@ import pytest
 from push_lab.uplift import curves
 from push_lab.uplift import forest as forest_module
 from push_lab.uplift.forest import CausalForest
-from push_lab.uplift.learners import SLearner, TLearner, XLearner
+from push_lab.uplift.learners import SLearner, TLearner, XLearner, predict
 
 FloatArray = npt.NDArray[np.float64]
 IntArray = npt.NDArray[np.int64]
@@ -100,3 +100,16 @@ def test_forest_chunks_match_one_pass(
     forest = CausalForest.fit(x[:5_000], t[:5_000], y[:5_000])
     whole = np.asarray(forest.model.effect(x_test), dtype=np.float64).ravel()
     np.testing.assert_array_equal(forest.effect(x_test), whole)
+
+
+def test_x_learner_weights_the_control_effect_by_the_propensity(
+    trial: tuple[FloatArray, IntArray, IntArray, FloatArray, FloatArray],
+) -> None:
+    # Kunzel et al. (2019) with g(x) = e: tau = e tau_0 + (1 - e) tau_1 (METHODS Section 8)
+    x, t, y, x_test, _ = trial
+    keep = (t == 0) | (np.arange(len(t)) % 3 == 0)
+    model = XLearner.fit(x[keep], t[keep], y[keep])
+    e = model.propensity
+    assert e < 0.4
+    expected = e * predict(model.tau_control, x_test) + (1 - e) * predict(model.tau_treated, x_test)
+    np.testing.assert_allclose(model.effect(x_test), expected)

@@ -114,3 +114,27 @@ def test_treat_everyone_is_the_same_effect_every_method_sees() -> None:
     direct = (y[t == 1].mean() - y[t == 0].mean()) * 1000
     assert shared["value"] == pytest.approx(direct, abs=1e-6)
     assert shared["ci_low"] < shared["value"] < shared["ci_high"]
+
+
+def test_hillstrom_learners_see_only_training_rows_and_random_ignores_outcomes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fixtures.write_processed(tmp_path, n=4_000)
+    fitted_rows: list[int] = []
+    fit = evaluate._fit
+
+    def spy(
+        x: np.ndarray, t: np.ndarray, y: np.ndarray, forest: np.ndarray, timings: dict[str, float]
+    ) -> dict[str, evaluate.Effect]:
+        fitted_rows.append(len(x))
+        assert len(t) == len(y) == len(x) and forest.max() < len(x)
+        return fit(x, t, y, forest, timings)
+
+    monkeypatch.setattr(evaluate, "_fit", spy)
+    trial, setup = evaluate.run_hillstrom(tmp_path, {})
+    assert fitted_rows == [setup["training_rows"]] * len(evaluate.OUTCOMES)
+    assert setup["training_rows"] + setup["test_rows"] == 4_000
+    # The random baseline is a fixed uniform draw (METHODS Section 8), unrelated to the outcomes
+    expected = np.random.default_rng(evaluate.SEED).random(setup["test_rows"])
+    for outcome in evaluate.OUTCOMES:
+        np.testing.assert_array_equal(trial.scores[outcome]["random"], expected)
