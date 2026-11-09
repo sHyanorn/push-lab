@@ -33,6 +33,8 @@ def test_published_figures_are_checked(tree: Path) -> None:
     errors = quality.build(tree).errors
     assert any("kuairand.log_random: 5000 rows, published" in e for e in errors)
     assert any("criteo.criteo: 5000 rows, published" in e for e in errors)
+    # Tables whose columns the report does not read are counted too
+    assert any(e.startswith("kuairand.users: ") and "published 27285" in e for e in errors)
     # Synthetic Criteo is drawn with the published treatment share
     assert not any(e.startswith("criteo: treatment share") for e in errors)
 

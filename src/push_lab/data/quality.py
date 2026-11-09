@@ -89,13 +89,12 @@ def _table(
         "rows": n_rows,
         "missing_share": {c: rounded(v / n_rows) for c, v in nulls.items() if v and n_rows},
     }
-    if key not in COLUMNS:
-        return None
-    df = pd.read_parquet(path, columns=COLUMNS[key])
     rows = PUBLISHED.get(f"{label}.rows")
     if published and rows is not None:
         report.check(n_rows == rows, f"{label}: {n_rows} rows, published {rows:.0f}")
-    return df
+    if key not in COLUMNS:
+        return None
+    return pd.read_parquet(path, columns=COLUMNS[key])
 
 
 def _kuairand(report: Report, logs: dict[str, pd.DataFrame]) -> None:
