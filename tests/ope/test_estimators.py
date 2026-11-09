@@ -98,3 +98,15 @@ def test_disjoint_intervals_are_inconclusive() -> None:
     assert out["inconclusive"] is True
     exact, _ = _world(2_000, 4, exact_q=True)
     assert est.evaluate(exact, samples=200)["inconclusive"] is False
+
+
+def test_estimators_on_a_hand_example() -> None:
+    logged = est.Logged(
+        reward=np.array([1.0, 0.0]),
+        weight=np.array([2.0, 0.5]),
+        q_logged=np.array([0.5, 0.5]),
+        q_target=np.array([0.6, 0.4]),
+        cluster=np.arange(2),
+    )
+    # DM 0.5; IPS (2 + 0) / 2; SNIPS 2 / 2.5; DR 0.5 + (2 * 0.5 + 0.5 * -0.5) / 2
+    assert est.point(logged) == pytest.approx({"DM": 0.5, "IPS": 1.0, "SNIPS": 0.8, "DR": 0.875})

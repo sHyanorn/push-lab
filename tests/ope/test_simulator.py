@@ -1,5 +1,7 @@
+from dataclasses import replace
 from typing import Any
 
+import lightgbm as lgb
 import numpy as np
 import pytest
 
@@ -141,3 +143,48 @@ def test_logs_keep_the_send_decision_of_opted_out_users() -> None:
             axis=1,
         )
         np.testing.assert_array_equal(rows.bits[d * USERS : (d + 1) * USERS], coins)
+
+
+def test_validate_reads_coverage_with_the_wilson_interval() -> None:
+    ests = [{"value": 0.5, "ci_low": 0.45, "ci_high": 0.55}] * 48
+    ests += [{"value": 0.5, "ci_low": 0.6, "ci_high": 0.7}] * 2
+    coverage = sim_ope.validate(ests, 0.5, 0.0)["coverage"]
+    # Wilson 95% interval of 48 hits in 50
+    assert coverage["ci_low"] == pytest.approx(0.8654, abs=1e-4)
+    assert coverage["ci_high"] == pytest.approx(0.9890, abs=1e-4)
+
+
+def test_bias_interval_adds_the_truth_variance() -> None:
+    ests = [{"value": v, "ci_low": v - 0.05, "ci_high": v + 0.05} for v in (0.514, 0.516)]
+    check = sim_ope.validate(ests, 0.5, 0.01)
+    half = (check["bias"]["ci_high"] - check["bias"]["ci_low"]) / 2
+    assert half == pytest.approx(sim_ope.Z * np.sqrt(1e-6 + 1e-4))
+    # A bias of 0.015 lies within the interval once the truth's standard error of 0.01 is added
+    assert "bias" not in check["reasons"]
+
+
+def test_outcome_models_score_each_row_with_the_other_fold(monkeypatch: pytest.MonkeyPatch) -> None:
+    explorer = EpsilonGreedy(CTX.best, seed=2)
+    out = env.simulate(CTX.pop, sim_ope.CONTROL, explorer, env.draws(USERS, 2), 1)
+    rows = sim_ope.user_days(out, CTX.static)
+    # The first column tags each row, so the rows a model saw and scored can be read back
+    tagged = replace(rows, x=np.column_stack([np.arange(len(rows.user)), rows.x]))
+    seen: list[tuple[set[int], set[int]]] = []
+    train = lgb.train
+
+    class Spy:
+        def __init__(self, booster: lgb.Booster, trained: set[int]) -> None:
+            self.booster, self.trained = booster, trained
+
+        def predict(self, x: np.ndarray) -> Any:
+            seen.append((self.trained, set(x[:, 0].astype(int).tolist())))
+            return self.booster.predict(x)
+
+    def spy(params: dict[str, Any], data: lgb.Dataset, num_boost_round: int) -> Spy:
+        trained = set(np.asarray(data.data)[:, 0].astype(int).tolist())
+        return Spy(train(params, data, num_boost_round=num_boost_round), trained)
+
+    monkeypatch.setattr(lgb, "train", spy)
+    sim_ope.outcome_models(tagged, "visit", seed=2)
+    assert all(not trained & scored for trained, scored in seen)
+    assert set().union(*(scored for _, scored in seen)) == set(range(len(rows.user)))

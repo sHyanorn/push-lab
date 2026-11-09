@@ -90,3 +90,23 @@ def test_empirical_target_recovers_the_bts_value() -> None:
     random_log, bts_log, _, _ = _logs(20_000, 4)
     ratio = obd.empirical_target(random_log, bts_log, samples=200)["ratio_to_on_policy"]
     assert ratio["ci_low"] <= 1 <= ratio["ci_high"]
+
+
+def test_weights_use_the_position_of_each_row() -> None:
+    # The target shows item 0, 1 and 2 at positions 1, 2 and 3; only item 2 at position 3 gets
+    # clicks, at rate 0.5, so the target's click rate per row is 0.5 / 3
+    rng = np.random.default_rng(3)
+    n = 60_000
+    log = pd.DataFrame(
+        {
+            "item_id": rng.integers(0, OBD_MEN_ACTIONS, n),
+            "position": rng.integers(1, 4, n),
+            "propensity_score": np.full(n, 1 / OBD_MEN_ACTIONS),
+        }
+    )
+    dist = np.zeros((OBD_MEN_ACTIONS, 3))
+    dist[0, 0] = dist[1, 1] = dist[2, 2] = 1.0
+    rate = np.zeros((OBD_MEN_ACTIONS, 3))
+    rate[2, 2] = 0.5
+    click = rng.random(n) < rate[log["item_id"], log["position"] - 1]
+    assert float(np.mean(obd._weights(log, dist) * click)) == pytest.approx(0.5 / 3, abs=0.03)
