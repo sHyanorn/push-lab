@@ -75,7 +75,8 @@ CLAIMS = (
     Claim(
         "R1",
         "A",
-        "The simulator's response model ranks held-out random exposures (AUC)",
+        "The simulator's response model ranks random exposures of users held out from fitting "
+        "(AUC; these users also set the stopping round, D058)",
         "simulator.json",
         ("response_model", "auc"),
     ),

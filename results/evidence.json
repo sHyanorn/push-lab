@@ -65,7 +65,7 @@
   {
    "id": "R1",
    "tier": "A",
-   "statement": "The simulator's response model ranks held-out random exposures (AUC)",
+   "statement": "The simulator's response model ranks random exposures of users held out from fitting (AUC; these users also set the stopping round, D058)",
    "source": {
     "file": "results/simulator.json",
     "path": [

@@ -129,8 +129,9 @@ TPL_SCOPE = (
     "reference (D034)."
 )
 TPL_BODY = (
-    "The recovering bandit beats uniform templates on average (B1); the recency penalty shows "
-    "no detectable effect (B2). At the reference setting the spread of results over seed "
+    "The recovering bandit beats uniform templates on average (B1). The recency penalty "
+    "depends on the setting by the registered rule and shows no detectable effect on average "
+    "(B2). At the reference setting the spread of results over seed "
     "triples is {b1_spread} times the bootstrap standard error for B1 and {b2_spread} for B2, "
     "so the per-setting win and loss counts are far less certain than their intervals. At the "
     "reference itself B1 averages {b1_reference} over {b1_triples} seed triples, "
@@ -202,7 +203,8 @@ STORY = (
     ),
     (
         "Every number carries an evidence tier",
-        "Holds for the results in the evidence matrix, each Tier A or C with an interval, and "
+        "Holds for the results in the evidence matrix, each Tier A or C with an interval or a "
+        "verdict, and "
         "there is no Tier B result (D046). Counts of the generated copy and its rating are "
         "descriptive; registered verdicts later overturned are kept as history.",
     ),

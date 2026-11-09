@@ -111,6 +111,7 @@ def check_readings(results: dict[str, Any]) -> None:
         "H2": "beats in most sampled settings",
         "H4": "no detectable difference",
         "H4-af": "worse on average",
+        "B2": "depends on the setting",
         # D057 readings were written for these registered labels
         **{key: label for key, (label, _) in SENSITIVITY.items()},
     }

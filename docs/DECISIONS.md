@@ -537,6 +537,11 @@ Entries are in the order they were made. Some entries up to D048 were corrected 
 - Section 13.5: active days are reported as differences for every pair, and opens per delivered push (with the repeat rate) for every policy, not for every pair. The mean over the 10 seed triples carries a Student t interval (`T975` in `policy/template_compare.py`), which D040 reports and 13.5 does not mention. No effect on results
 - Section 13.4: `prior_strength` in `policy/templates.py` returns an infinite $m$, so every $\hat s_a = 0$, also when no arm has $n_a^+ > 0$ or the base rate is not in $(0, 1)$, and clips a negative $m$ to 0, where the formula has no meaning. Whether the clip occurred in the sweeps was not recorded
 - Section 5: the user categorical features of the fine ranker are those of Section 3 without the user id (`USER_CATEGORICAL` in `rank/features.py`); the user enters through its rates and the two-tower score. No effect on results
+- Section 1: the snapshot user fields were listed in part, and the claim that they leave per-user AUC and NDCG unaffected did not hold for the models used; corrected in METHODS with the measurement of D058
+- Section 11.1: the reported validation users also set the stopping round; stated in METHODS and in the evidence claim R1 (D058)
+- Section 11.2: $\eta$ is solved on the simulated users, so it differs slightly between the fit and evaluation users of a setting (D058)
+- Section 11.5: the report quoted the first refit as the reference setting; it now quotes the registered grid point, which moved the gate's week-one opens from 0.054 to 0.056
+- Section 13.5: the report described B2 as showing no detectable effect next to its registered label "depends on the setting"; it now gives both
 
 ## D057 Sweep labels with refit and seed spread, post hoc
 - Date: 2026-11-09
@@ -556,3 +561,10 @@ Entries are in the order they were made. Some entries up to D048 were corrected 
 
 - Limits: the spread was measured at the reference setting only and may differ elsewhere; the policy refits vary the exploration seed, not the world or evaluation seeds. The sweep averages resample settings with their own seeds, so their intervals and the Holm decisions are unaffected; only the "in most sampled settings" part of three labels depends on this
 - Kept: the registered labels and every results file. The report shows the reading beside the label of B1, H1-af and H2-af (`SENSITIVITY` in `report/build.py`), and `check_readings` fails the build if one of those registered labels changes
+
+## D058 Measurements behind three METHODS corrections, post hoc
+- Date: 2026-11-09
+- Undated user attributes (METHODS 1): the snapshot fields can reorder items within a user, since both models let them interact with item features; METHODS said they could not. Refitting the fine ranker without the 27 user snapshot columns (`USER_CATEGORICAL`, the three log counts and `register_days`), everything else as in M2, raises fused GAUC (click) on the evaluation half from 0.545 (0.541 to 0.548) to 0.554 (0.551 to 0.558); paired difference with them minus without −0.009 (−0.011 to −0.008), 1,000 user resamples. So they do not inflate the fine ranker's number, and C2 keeps its direction (two-tower 0.598). The two-tower score still uses them; that part was not measured
+- Response-model validation (METHODS 11.1): the 20% of simulator-half users that give the reported AUC also choose the stopping round. Splitting them in two, stopping on one half and scoring the other: the committed model (51 rounds) scores AUC 0.6863 on that half, a model stopped on the first half (69 rounds) 0.6854. The optimism is about 0.001, inside the reported interval (0.682 to 0.705); no number changes
+- Timing exponent (METHODS 11.2): $\eta$ is solved on the users being simulated. At the reference lift 0.10 it is 0.1637 for the fit users and 0.1639 for the evaluation users; with the fit users' $\eta$ the evaluation users' lift is 0.0999. The difference is negligible and the code is kept
+- Commands: one-off scripts against the prepared data and `data/processed/sim/inputs.npz`, not committed
