@@ -39,6 +39,18 @@ def test_pipeline_runs_on_synthetic_data(tmp_path: Path) -> None:
         difference = methods["t_learner"]["qini"]["value"] - methods["response"]["qini"]["value"]
         assert primary[paired]["value"] == pytest.approx(difference, abs=2e-6)
 
+    # Each method records the treat-everyone interval its budget shares were decided on
+    for dataset in ("hillstrom", "criteo"):
+        for outcome in evaluate.OUTCOMES:
+            entry = result[dataset][outcome]
+            assert "treat_everyone_per_1000" not in entry
+            everyone = {m: v["treat_everyone_per_1000"] for m, v in entry["methods"].items()}
+            assert len({v["value"] for v in everyone.values()}) == 1
+            for name, interval in everyone.items():
+                defined = interval["ci_low"] > 0 or interval["ci_high"] < 0
+                shares = [b["share_of_full_effect"] for b in entry["budget"][name].values()]
+                assert all((s is not None) == defined for s in shares)
+
     curve = result["criteo"]["visit"]["qini_curve"]
     assert curve["tier"] == "A"
     band = curve["methods"]["t_learner"]

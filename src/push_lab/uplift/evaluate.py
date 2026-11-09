@@ -154,11 +154,14 @@ def _assess(
         point = _statistics(curves.counts(groups, t, y))
         boot = _bootstrap(curves.cells([groups], t, y), lambda c: _statistics(c[0]), samples)
         boot_qini[name] = boot[:, 0]
+        # The point is the same for every method; the interval comes from the method's own
+        # resamples, the ones its budget shares are computed on
+        everyone = _interval(point[full], boot[:, full])
         out["methods"][name] = {
             "qini": _interval(point[0], boot[:, 0]),
             "auuc": _interval(point[1], boot[:, 1]),
+            "treat_everyone_per_1000": everyone,
         }
-        everyone = _interval(point[full], boot[:, full])
         # A share of an effect that may be zero is not defined; it is left out then
         share_defined = everyone["ci_low"] > 0 or everyone["ci_high"] < 0
         out["budget"][name] = {
@@ -170,7 +173,6 @@ def _assess(
             }
             for i, b in enumerate(BUDGETS)
         }
-        out["treat_everyone_per_1000"] = everyone
         out["qini_curve"]["methods"][name] = _band(point[full + 1 :], boot[:, full + 1 :])
         if bins is not None:
             out.setdefault("control_rows_per_bin", {})[name] = _control_per_bin(groups, t)
