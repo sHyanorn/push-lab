@@ -47,9 +47,14 @@ def test_pipeline_runs_on_synthetic_data(tmp_path: Path) -> None:
             everyone = {m: v["treat_everyone_per_1000"] for m, v in entry["methods"].items()}
             assert len({v["value"] for v in everyone.values()}) == 1
             for name, interval in everyone.items():
+                assert interval["ci_low"] <= interval["value"] <= interval["ci_high"]
                 defined = interval["ci_low"] > 0 or interval["ci_high"] < 0
-                shares = [b["share_of_full_effect"] for b in entry["budget"][name].values()]
-                assert all((s is not None) == defined for s in shares)
+                for b in entry["budget"][name].values():
+                    share = b["share_of_full_effect"]
+                    assert (share is not None) == defined
+                    if share is not None:
+                        ratio = b["per_1000"]["value"] / interval["value"]
+                        assert share["value"] == pytest.approx(ratio, rel=1e-4, abs=1e-5)
 
     curve = result["criteo"]["visit"]["qini_curve"]
     assert curve["tier"] == "A"
