@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 
 from push_lab.policy import compare, design, sweep
-from push_lab.sim import inputs
+from push_lab.sim import env, inputs
 from push_lab.sim.world import DAYS
 
 from .conftest import CANDIDATES, make_world
@@ -124,3 +124,21 @@ def test_resume_refuses_settings_from_another_commit(tmp_path: Path) -> None:
     assert sweep.finished(tmp_path, 3, "abc")
     with pytest.raises(SystemExit, match="commit"):
         sweep.finished(tmp_path, 3, "def")
+
+
+def test_policies_run_on_the_evaluation_users(monkeypatch: pytest.MonkeyPatch) -> None:
+    ctx = _context()
+    seen: list[np.ndarray] = []
+    population = sweep.Context.population
+
+    def spy(self: sweep.Context, users: np.ndarray, name: str = "cascade") -> env.Population:
+        seen.append(np.asarray(users).copy())
+        return population(self, users, name)
+
+    monkeypatch.setattr(sweep.Context, "population", spy)
+    setting = next(s for s in design.settings() if s["id"] == 0)
+    metrics, _ = sweep.run_setting(ctx, setting)
+    groups = {"fit": ctx.fit, "diagnostic": ctx.diagnostic, "evaluation": ctx.evaluation}
+    used = [next(k for k, g in groups.items() if np.array_equal(u, g)) for u in seen]
+    assert sorted(used) == ["diagnostic", "evaluation", "evaluation", "fit"]
+    assert metrics.shape[2] == len(ctx.evaluation)
