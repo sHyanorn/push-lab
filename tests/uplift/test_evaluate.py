@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from push_lab.data import fixtures, paths
-from push_lab.uplift import evaluate
+from push_lab.uplift import curves, evaluate
 
 pytestmark = pytest.mark.filterwarnings("ignore:Function stable_cumsum:FutureWarning")
 
@@ -99,3 +99,18 @@ def test_hillstrom_only_matches_the_full_run(tmp_path: Path) -> None:
             if not k.startswith(("holm", "p_value_res"))
         }
         assert entry == expected
+
+
+def test_treat_everyone_is_the_same_effect_every_method_sees() -> None:
+    rng = np.random.default_rng(3)
+    t = rng.integers(0, 2, 2_000)
+    y = (rng.random(2_000) < 0.1 + 0.05 * t).astype(np.int64)
+    shared = evaluate._treat_everyone(t, y, samples=200)
+    full = 2 + 2 * len(evaluate.BUDGETS)
+    for groups in (rng.integers(0, 7, 2_000), curves.exact_groups(rng.random(2_000))):
+        point = evaluate._statistics(curves.counts(groups, t, y))[full]
+        assert shared["value"] == pytest.approx(point, abs=1e-6)
+    # U(n) / n is the difference in response rates between the arms
+    direct = (y[t == 1].mean() - y[t == 0].mean()) * 1000
+    assert shared["value"] == pytest.approx(direct, abs=1e-6)
+    assert shared["ci_low"] < shared["value"] < shared["ci_high"]
