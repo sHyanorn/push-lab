@@ -273,20 +273,31 @@ def sweep_average(
     return interval(point, averaged), p_value(averaged), averaged
 
 
-def summarize(
-    results: dict[int, SettingResult], frozen: dict[str, Any], infos: dict[int, dict[str, Any]]
-) -> dict[str, Any]:
+def finished_by_sweep(
+    results: dict[int, SettingResult], frozen: dict[str, Any]
+) -> tuple[dict[int, dict[str, Any]], dict[str, list[int]], dict[str, bool]]:
+    """Settings by id, finished ids by sweep and whether each sweep is complete."""
     settings = {s["id"]: s for s in frozen["settings"]}
     by_sweep: dict[str, list[int]] = {}
     for sid in sorted(results):
         by_sweep.setdefault(settings[sid]["sweep"], []).append(sid)
-    seed = frozen["bootstrap"]["settings_seed"]
 
     designed = {
         sweep: sum(s["sweep"] == sweep for s in frozen["settings"])
         for sweep in sorted({s["sweep"] for s in frozen["settings"]})
     }
     complete = {sweep: len(by_sweep.get(sweep, [])) == n for sweep, n in designed.items()}
+    return settings, by_sweep, complete
+
+
+def label_primary(
+    results: dict[int, SettingResult],
+    settings: dict[int, dict[str, Any]],
+    by_sweep: dict[str, list[int]],
+    complete: dict[str, bool],
+    seed: int,
+) -> tuple[dict[str, dict[str, Any]], dict[str, bool]]:
+    """Labeled entries of the primary comparisons per labeled sweep and the Holm decisions."""
     labeled: dict[str, dict[str, Any]] = {}
     p_all: dict[str, float] = {}
     for sweep in LABELED_SWEEPS:
@@ -308,29 +319,37 @@ def summarize(
             add_label(entry, rejected.get(f"{sweep}.{key}"))
             if key == "H2":
                 entry["note"] = H2_NOTE
+    return labeled, rejected
 
+
+def stress_verdicts(
+    results: dict[int, SettingResult], by_sweep: dict[str, list[int]]
+) -> dict[str, dict[str, Any]]:
+    """Counts of the per-setting verdicts of each primary comparison over the stress sweep."""
     stress: dict[str, dict[str, Any]] = {}
     if by_sweep.get("stress"):
         for key in PRIMARY:
             verdicts = [results[i].summary["primary"][key]["verdict"] for i in by_sweep["stress"]]
             stress[key] = {v: verdicts.count(v) for v in ("win", "loss", "neither")}
+    return stress
 
+
+def band_counts(
+    results: dict[int, SettingResult], by_sweep: dict[str, list[int]]
+) -> dict[str, int]:
+    """Main-sweep settings by the band class of the daily lift of F over N."""
     band: dict[str, int] = {}
     for i in by_sweep.get("main", []):
         c = results[i].summary["daily_lift_F_over_N"]["band"]
         band[c] = band.get(c, 0) + 1
+    return band
 
-    flipped = grid_flips(
-        results,
-        settings,
-        by_sweep.get("grid", []),
-        frozen["names"],
-        FLIP_COMPARISONS,
-        lambda r, key: (r.summary["primary"] | r.summary["secondary"])[key],
-    )
 
+def refit_variability(
+    results: dict[int, SettingResult], refits: list[int]
+) -> dict[str, dict[str, Any]]:
+    """Spread of each primary comparison over the refits against its bootstrap error."""
     fit_variability: dict[str, dict[str, Any]] = {}
-    refits = by_sweep.get("refit", [])
     if len(refits) > 1:
         for key in PRIMARY:
             pts = np.array([results[i].points[key] for i in refits])
@@ -341,13 +360,61 @@ def summarize(
                 "refits": len(refits),
             }
         fit_variability["H2"]["note"] = H2_NOTE
+    return fit_variability
 
+
+def diagnostics_median(
+    by_sweep: dict[str, list[int]], infos: dict[int, dict[str, Any]]
+) -> dict[str, dict[str, float]]:
     diagnostics: dict[str, dict[str, float]] = {}
     for sweep, ids in by_sweep.items():
         keys = list(infos[ids[0]]["diagnostics"])
         diagnostics[sweep] = {
             k: rounded(float(np.median([infos[i]["diagnostics"][k] for i in ids]))) for k in keys
         }
+    return diagnostics
+
+
+def setting_rows(
+    results: dict[int, SettingResult],
+    settings: dict[int, dict[str, Any]],
+    infos: dict[int, dict[str, Any]],
+) -> list[dict[str, Any]]:
+    return [
+        {
+            "id": i,
+            "sweep": settings[i]["sweep"],
+            "values": {k: rounded(v) for k, v in settings[i]["values"].items()},
+            "multipliers": infos[i].get("multipliers", {}),
+            "cap_binding_days": infos[i].get("cap_binding_days", {}),
+            "fixed_slot": infos[i]["fixed_slot"],
+            "diagnostics": {k: rounded(v) for k, v in infos[i]["diagnostics"].items()},
+            "timings_s": infos[i]["timings_s"],
+        }
+        | results[i].summary
+        for i in sorted(results)
+    ]
+
+
+def summarize(
+    results: dict[int, SettingResult], frozen: dict[str, Any], infos: dict[int, dict[str, Any]]
+) -> dict[str, Any]:
+    settings, by_sweep, complete = finished_by_sweep(results, frozen)
+    seed = frozen["bootstrap"]["settings_seed"]
+
+    labeled, rejected = label_primary(results, settings, by_sweep, complete, seed)
+    stress = stress_verdicts(results, by_sweep)
+    band = band_counts(results, by_sweep)
+    flipped = grid_flips(
+        results,
+        settings,
+        by_sweep.get("grid", []),
+        frozen["names"],
+        FLIP_COMPARISONS,
+        lambda r, key: (r.summary["primary"] | r.summary["secondary"])[key],
+    )
+    fit_variability = refit_variability(results, by_sweep.get("refit", []))
+    diagnostics = diagnostics_median(by_sweep, infos)
 
     samples = len(next(iter(results.values())).boot["H1"])
     return {
@@ -363,20 +430,7 @@ def summarize(
         "flips": flipped,
         "fit_variability": fit_variability,
         "score_diagnostics_median": diagnostics,
-        "settings": [
-            {
-                "id": i,
-                "sweep": settings[i]["sweep"],
-                "values": {k: rounded(v) for k, v in settings[i]["values"].items()},
-                "multipliers": infos[i].get("multipliers", {}),
-                "cap_binding_days": infos[i].get("cap_binding_days", {}),
-                "fixed_slot": infos[i]["fixed_slot"],
-                "diagnostics": {k: rounded(v) for k, v in infos[i]["diagnostics"].items()},
-                "timings_s": infos[i]["timings_s"],
-            }
-            | results[i].summary
-            for i in sorted(results)
-        ],
+        "settings": setting_rows(results, settings, infos),
     }
 
 
