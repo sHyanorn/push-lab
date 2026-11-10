@@ -7,10 +7,10 @@
 import argparse
 import json
 import sys
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal, TypedDict
 
 from push_lab.data import paths
 from push_lab.runtime import write_json
@@ -47,14 +47,98 @@ TIERS = {
     },
 }
 
+Status = Literal["pending", "reported", "verdict"]
+
+
+class Source(TypedDict):
+    file: str
+    path: list[str]
+
+
+class Interval(TypedDict):
+    value: float
+    ci_low: float
+    ci_high: float
+
+
+class ClaimEntry(TypedDict, total=False):
+    """A row of the matrix. Every row has the first five fields; the others depend on the
+    claim, and a pending or verdict row has none of them."""
+
+    id: str
+    tier: str
+    statement: str
+    source: Source
+    status: Status
+    value: float
+    ci_low: float
+    ci_high: float
+    # Tested comparisons; None for a sweep that has not finished
+    holm_rejected: bool | None
+    # Sweep comparisons
+    label: str
+    wins: int
+    losses: int
+    neither: int
+    spread_over_bootstrap_se: float
+    spread_source: str
+    # Generated copy
+    returned: int
+    passed: int
+    kept: int
+    # Simulator off-policy checks
+    sweep_validated: str
+    truth: Interval
+    reversed_settings: str
+    # OBD, IPS only
+    post_hoc_empirical_target: Interval
+    post_hoc_difference: Interval
+
+
+def _interval(found: Any) -> ClaimEntry:
+    return {"value": found["value"], "ci_low": found["ci_low"], "ci_high": found["ci_high"]}
+
+
+def _tested(found: Any) -> ClaimEntry:
+    return {**_interval(found), "holm_rejected": found["holm_rejected"]}
+
+
+def _sweep(found: Any) -> ClaimEntry:
+    """The sweep average of a comparison with its label and per-setting verdict counts."""
+    return {
+        **_interval(found["sweep_average"]),
+        "label": found["label"],
+        "holm_rejected": found["holm_rejected"],
+        "wins": found["wins"],
+        "losses": found["losses"],
+        "neither": found["neither"],
+    }
+
+
+def _crossing(found: Any) -> ClaimEntry:
+    """Where a comparison changes sign along a grid."""
+    return {"value": found["at"], "ci_low": found["ci_low"], "ci_high": found["ci_high"]}
+
+
+def _copy_counts(found: Any) -> ClaimEntry:
+    """Totals over the copy families."""
+    return {
+        "returned": sum(c["returned"] for c in found.values()),
+        "passed": sum(c["passed"] for c in found.values()),
+        "kept": sum(c["kept"] for c in found.values()),
+    }
+
 
 @dataclass(frozen=True)
 class Claim:
+    """A claim whose numbers sit at one path of one results file; ``read`` names their layout."""
+
     id: str
     tier: str
     statement: str
     file: str
     path: tuple[str, ...]
+    read: Callable[[Any], ClaimEntry]
 
 
 CLAIMS = (
@@ -65,6 +149,7 @@ CLAIMS = (
         "200 than popularity (difference in Recall@200)",
         "ranking.json",
         ("primary", "C1_two_tower_vs_popularity_recall200"),
+        _tested,
     ),
     Claim(
         "C2",
@@ -73,6 +158,7 @@ CLAIMS = (
         "(difference in click GAUC)",
         "ranking.json",
         ("primary", "C2_fused_vs_two_tower_gauc_click"),
+        _tested,
     ),
     Claim(
         "R1",
@@ -81,6 +167,7 @@ CLAIMS = (
         "(AUC; these users also set the stopping round, D058)",
         "simulator.json",
         ("response_model", "auc"),
+        _interval,
     ),
     Claim(
         "U1",
@@ -88,6 +175,7 @@ CLAIMS = (
         "On Hillstrom, the T-learner targets visits better than random (Qini coefficient)",
         "uplift.json",
         ("primary", "U1_hillstrom_t_learner_qini"),
+        _tested,
     ),
     Claim(
         "U2",
@@ -95,6 +183,7 @@ CLAIMS = (
         "On Hillstrom, the T-learner against the response model (difference in Qini)",
         "uplift.json",
         ("primary", "U2_hillstrom_t_learner_vs_response_qini"),
+        _tested,
     ),
     Claim(
         "U3",
@@ -102,6 +191,7 @@ CLAIMS = (
         "On Criteo, the T-learner targets visits better than random (Qini coefficient)",
         "uplift.json",
         ("primary", "U3_criteo_t_learner_qini"),
+        _tested,
     ),
     Claim(
         "U4",
@@ -109,6 +199,7 @@ CLAIMS = (
         "On Criteo, the T-learner against the response model (difference in Qini)",
         "uplift.json",
         ("primary", "U4_criteo_t_learner_vs_response_qini"),
+        _tested,
     ),
     *(
         Claim(
@@ -118,6 +209,7 @@ CLAIMS = (
             "active days per user over 28 days)",
             "policy.json",
             ("primary", sweep, h),
+            _sweep,
         )
         for sweep in ("main", "annoyance_free")
         for h, text in (
@@ -134,6 +226,7 @@ CLAIMS = (
         "(one-at-a-time grid)",
         "policy.json",
         ("flips", "annoyance", "F-N", "crossings", "0"),
+        _crossing,
     ),
     *(
         Claim(
@@ -145,6 +238,7 @@ CLAIMS = (
             "ranges",
             "ope_carryover.json",
             ("flips", "annoyance", f"{target}.DR", "crossings", "0"),
+            _crossing,
         )
         for target, text in (("T_half", "half the push volume"), ("N", "no pushes"))
     ),
@@ -155,6 +249,7 @@ CLAIMS = (
         "user over 28 days)",
         "templates.json",
         ("primary", "B1"),
+        _sweep,
     ),
     Claim(
         "B2",
@@ -163,6 +258,7 @@ CLAIMS = (
         "28 days)",
         "templates.json",
         ("primary", "B2"),
+        _sweep,
     ),
     Claim(
         "copy",
@@ -170,8 +266,15 @@ CLAIMS = (
         "Generated variants that passed every filter, of those returned",
         "copy.json",
         ("counts",),
+        _copy_counts,
     ),
 )
+
+
+def _load(root: Path, file: str) -> Any:
+    """A results file, or None before it is written."""
+    path = root / paths.RESULTS / file
+    return json.loads(path.read_text("utf-8")) if path.exists() else None
 
 
 def _get(data: Any, path: Sequence[str]) -> Any:
@@ -180,113 +283,99 @@ def _get(data: Any, path: Sequence[str]) -> Any:
     return data
 
 
-def _interval(found: Any) -> dict[str, Any]:
-    """The estimate and interval of a results entry, whichever layout it uses."""
-    entry = found.get("sweep_average", found) if isinstance(found, dict) else found
-    keys = ("value", "ci_low", "ci_high") if "value" in entry else ("at", "ci_low", "ci_high")
-    out = {"value": entry[keys[0]], "ci_low": entry["ci_low"], "ci_high": entry["ci_high"]}
-    for extra in ("label", "holm_rejected", "wins", "losses", "neither"):
-        if extra in found:
-            out[extra] = found[extra]
-    return out
-
-
-def _copy_counts(counts: dict[str, dict[str, int]]) -> dict[str, Any]:
+def _entry(
+    claim_id: str, tier: str, statement: str, file: str, path: Sequence[str], status: Status
+) -> ClaimEntry:
     return {
-        "returned": sum(c["returned"] for c in counts.values()),
-        "passed": sum(c["passed"] for c in counts.values()),
-        "kept": sum(c["kept"] for c in counts.values()),
+        "id": claim_id,
+        "tier": tier,
+        "statement": statement,
+        "source": {"file": f"results/{file}", "path": list(path)},
+        "status": status,
     }
 
 
-def claim_entry(root: Path, claim: Claim) -> dict[str, Any]:
-    source = root / paths.RESULTS / claim.file
-    entry: dict[str, Any] = {
-        "id": claim.id,
-        "tier": claim.tier,
-        "statement": claim.statement,
-        "source": {"file": f"results/{claim.file}", "path": list(claim.path)},
-    }
-    if not source.exists():
-        return entry | {"status": "pending"}
-    data = json.loads(source.read_text("utf-8"))
-    found = _get(data, claim.path)
-    result = _copy_counts(found) if claim.id == "copy" else _interval(found)
-    return entry | {"status": "reported"} | result | _randomness(data, claim)
+def claim_entry(root: Path, claim: Claim) -> ClaimEntry:
+    header = (claim.id, claim.tier, claim.statement, claim.file, claim.path)
+    data = _load(root, claim.file)
+    if data is None:
+        return _entry(*header, "pending")
+    numbers = claim.read(_get(data, claim.path))
+    return _entry(*header, "reported") | numbers | _spread(data, claim)
 
 
-def _randomness(data: dict[str, Any], claim: Claim) -> dict[str, Any]:
+def _comparison(claim_id: str) -> str:
+    """The registered comparison of a claim: H1 for both H1 and H1-af, whose two sweeps share
+    the refits at the reference."""
+    return claim_id.split("-")[0]
+
+
+def _spread(data: Any, claim: Claim) -> ClaimEntry:
     """How much wider the spread over refits or seed triples is than a per-setting interval,
-    wherever the results measured it; win and loss counts are read with it."""
-    key = claim.id.split("-")[0]
+    wherever the results measured it."""
+    key = _comparison(claim.id)
     if claim.file == "templates.json":
-        v = data["seed_variability"][key]
-        source = "10 seed triples at the reference setting"
-        return {"spread_over_bootstrap_se": v["ratio"], "spread_source": source}
-    variability = data.get("fit_variability", {}).get(key) if claim.file == "policy.json" else None
-    if variability and variability["sd_over_refits"] > 0:
-        ratio = variability["sd_over_refits"] / variability["mean_bootstrap_se"]
-        source = "10 model refits at the reference setting"
-        return {"spread_over_bootstrap_se": round(ratio, 2), "spread_source": source}
+        seeds = data["seed_variability"][key]
+        return {
+            "spread_over_bootstrap_se": seeds["ratio"],
+            "spread_source": "10 seed triples at the reference setting",
+        }
+    fits = data.get("fit_variability", {}).get(key) if claim.file == "policy.json" else None
+    if fits and fits["sd_over_refits"] > 0:
+        ratio = fits["sd_over_refits"] / fits["mean_bootstrap_se"]
+        return {
+            "spread_over_bootstrap_se": round(ratio, 2),
+            "spread_source": "10 model refits at the reference setting",
+        }
     return {}
 
 
-def ope_entries(root: Path) -> list[dict[str, Any]]:
+def ope_entries(root: Path) -> list[ClaimEntry]:
     """The OBD estimator checks, the simulator verdicts and the post hoc orderings."""
-    out: list[dict[str, Any]] = []
-    carryover = _carryover(root)
-    obd_file = root / paths.RESULTS / "ope_obd.json"
-    if obd_file.exists():
-        out += _obd_entries(json.loads(obd_file.read_text("utf-8")))
-    first = root / paths.RESULTS / "ope_simulator.json"
-    if first.exists():
+    out: list[ClaimEntry] = []
+    carryover = _load(root, "ope_carryover.json")
+    obd = _load(root, "ope_obd.json")
+    if obd is not None:
+        out += _obd_entries(obd)
+    if (root / paths.RESULTS / "ope_simulator.json").exists():
         out.append(
-            {
-                "id": "OPE-first-run",
-                "tier": "C",
-                "statement": "First simulator check (D043): registered verdict 'implementation "
+            _entry(
+                "OPE-first-run",
+                "C",
+                "First simulator check (D043): registered verdict 'implementation "
                 "failure', since IPS and DR failed the no-carryover control for T-half and N; "
                 "post hoc, against exact truths computed afterwards, the biases contain 0, "
                 "consistent with a chance false alarm among 12 unadjusted tests",
-                "source": {"file": "results/ope_simulator.json", "path": ["control"]},
-                "status": "verdict",
-            }
+                "ope_simulator.json",
+                ("control",),
+                "verdict",
+            )
         )
-    sim_file = root / paths.RESULTS / "ope_simulator_amended.json"
-    if sim_file.exists():
-        data = json.loads(sim_file.read_text("utf-8"))
+    amended = _load(root, "ope_simulator_amended.json")
+    if amended is not None:
         for setting in ("control", "reference"):
-            for target, rewards in data[setting].items():
+            for target, rewards in amended[setting].items():
                 for name in ("DR", "IPS"):
                     check = rewards["visit"][name]
                     out.append(
-                        {
-                            "id": f"OPE-{setting}-{target}-{name}",
-                            "tier": "C",
-                            "statement": f"{name} bias against simulator truth for target "
+                        _entry(
+                            f"OPE-{setting}-{target}-{name}",
+                            "C",
+                            f"{name} bias against simulator truth for target "
                             f"{target}, {setting} setting (active-day share): "
                             f"{check['verdict']}",
-                            "source": {
-                                "file": "results/ope_simulator_amended.json",
-                                "path": [setting, target, "visit", name],
-                            },
-                            "status": "reported",
-                        }
-                        | check["bias"]
+                            "ope_simulator_amended.json",
+                            (setting, target, "visit", name),
+                            "reported",
+                        )
+                        | _interval(check["bias"])
                         | _sweep_share(carryover, setting, target, name)
                     )
     out += _ordering_entries(carryover)
     return out
 
 
-def _carryover(root: Path) -> dict[str, Any] | None:
-    path = root / paths.RESULTS / "ope_carryover.json"
-    return json.loads(path.read_text("utf-8")) if path.exists() else None
-
-
-def _sweep_share(
-    data: dict[str, Any] | None, setting: str, target: str, name: str
-) -> dict[str, Any]:
+def _sweep_share(data: Any, setting: str, target: str, name: str) -> ClaimEntry:
     """For the reference setting, the share of the 24 sweep settings where the same estimator
     and target are validated."""
     if setting != "reference" or data is None:
@@ -295,49 +384,45 @@ def _sweep_share(
     return {"sweep_validated": f"{verdicts.count('validated')} of {len(verdicts)} settings"}
 
 
-def _ordering_entries(data: dict[str, Any] | None) -> list[dict[str, Any]]:
+def _ordering_entries(data: Any) -> list[ClaimEntry]:
     """Post hoc: at the reference, the per-day DR estimate of a difference between targets
     against its truth, and how many sweep settings reverse the ordering."""
     if data is None or "post_hoc" not in data:
         return []
-    out: list[dict[str, Any]] = []
-    grid = data["post_hoc"]["orderings"]["annoyance"]
-    reference = grid["values"].index(0.05)
+    out: list[ClaimEntry] = []
+    orderings = data["post_hoc"]["orderings"]
+    reference = orderings["annoyance"]["values"].index(0.05)
     for pair, text in (("N-T", "no pushes minus one a day"), ("T2-T", "two a day minus one")):
-        found = grid[pair]
-        reversed_at = {
-            sid
-            for name, entry in data["post_hoc"]["orderings"].items()
-            for sid, s in enumerate(data["settings"])
-            for g in s["grid"]
-            if g[0] == name and entry[pair]["reversed"]["DR"][g[1]]
-        }
+        found = orderings["annoyance"][pair]
+        reversals = [
+            any(orderings[grid][pair]["reversed"]["DR"][point] for grid, point in setting["grid"])
+            for setting in data["settings"]
+        ]
         out.append(
             {
-                "id": f"OPE-order-{pair}-DR",
-                "tier": "C",
-                "statement": f"Post hoc: per-day DR estimate of {text} (active-day share) at the "
-                "reference, against the simulator truth; an ordering is reversed where both "
-                "intervals exclude 0 with opposite signs",
-                "source": {
-                    "file": "results/ope_carryover.json",
-                    "path": ["post_hoc", "orderings", "annoyance", pair, "DR", str(reference)],
-                },
-                "status": "reported",
+                **_entry(
+                    f"OPE-order-{pair}-DR",
+                    "C",
+                    f"Post hoc: per-day DR estimate of {text} (active-day share) at the "
+                    "reference, against the simulator truth; an ordering is reversed where both "
+                    "intervals exclude 0 with opposite signs",
+                    "ope_carryover.json",
+                    ("post_hoc", "orderings", "annoyance", pair, "DR", str(reference)),
+                    "reported",
+                ),
                 "truth": found["truth"][reference],
-                "reversed_settings": f"{len(reversed_at)} of {len(data['settings'])}",
+                "reversed_settings": f"{sum(reversals)} of {len(reversals)}",
+                **_interval(found["DR"][reference]),
             }
-            | found["DR"][reference]
         )
     return out
 
 
-def _obd_entries(data: dict[str, Any]) -> list[dict[str, Any]]:
+def _obd_entries(data: Any) -> list[ClaimEntry]:
     """The real-data result first: on the full campaign, how far IPS and DR fall from the
     on-policy value; then each registered small-sample estimate with its outcome on both."""
-    out: list[dict[str, Any]] = []
+    out: list[ClaimEntry] = []
     small, full = data.get("small"), data.get("full")
-    source = "results/ope_obd.json"
     if isinstance(full, dict):
         for name in ("IPS", "DR"):
             ratio = full["validation"][name].get("ratio_to_on_policy")
@@ -350,21 +435,22 @@ def _obd_entries(data: dict[str, Any]) -> list[dict[str, Any]]:
                 "that includes 0)"
             )
             out.append(
-                {
-                    "id": f"OBD-ratio-{name}",
+                _entry(
+                    f"OBD-ratio-{name}",
                     # Randomized real data measuring the estimator itself, not a policy value
-                    "tier": "A",
-                    "statement": f"The estimator {name}, on real randomized logs (full Men's "
+                    "A",
+                    f"The estimator {name}, on real randomized logs (full Men's "
                     "campaign of OBD), estimates the BTS click rate at this fraction of its "
                     "on-policy value. The target is BTS "
                     "with its fixed prior, which the deployed BTS was not, so the shortfall may "
                     "come from the estimator or from that mismatch, and these data do not "
                     f"separate the two{note if post_hoc else ''}. Post hoc reading: the small "
                     "sample has too little power to show the shortfall",
-                    "source": {"file": source, "path": ["full", "validation", name]},
-                    "status": "reported",
-                }
-                | ratio
+                    "ope_obd.json",
+                    ("full", "validation", name),
+                    "reported",
+                )
+                | _interval(ratio)
                 | post_hoc
             )
     if isinstance(small, dict):
@@ -376,21 +462,22 @@ def _obd_entries(data: dict[str, Any]) -> list[dict[str, Any]]:
                 + ("" if on_full is None else f", {'passes' if on_full else 'fails'} on the full")
             )
             out.append(
-                {
-                    "id": f"OBD-small-{name}",
+                _entry(
+                    f"OBD-small-{name}",
                     # Registered verdict history only: no estimator passed on the full campaign
-                    "tier": "history",
-                    "statement": f"Registered verdict on the BTS click rate estimated by {name} "
+                    "history",
+                    f"Registered verdict on the BTS click rate estimated by {name} "
                     f"from the small sample's random logs ({outcome}); not a Tier B result, and "
                     "its numbers are not reported here",
-                    "source": {"file": source, "path": ["small", "estimates", name]},
-                    "status": "verdict",
-                }
+                    "ope_obd.json",
+                    ("small", "estimates", name),
+                    "verdict",
+                )
             )
     return out
 
 
-def _empirical_target(full: dict[str, Any], name: str) -> dict[str, Any]:
+def _empirical_target(full: dict[str, Any], name: str) -> ClaimEntry:
     """Post hoc IPS ratio with the BTS logs' own frequencies as the target and its paired
     difference from the registered ratio, where computed."""
     post_hoc = full.get("post_hoc")
