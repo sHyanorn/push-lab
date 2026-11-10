@@ -75,10 +75,17 @@ def _interval(point: float, boot: FloatArray) -> dict[str, Any]:
     return {"value": rounded(point), "ci_low": rounded(low), "ci_high": rounded(high), "tier": "A"}
 
 
-# Statistics of one method's counts: Qini, AUUC, then per budget the incremental responders per
-# 1,000 rows and the share of the treat-everyone effect, then the treat-everyone effect per 1,000,
-# then the Qini curve on the grid
+# Where each statistic sits in the vector of ``_statistics``: Qini, AUUC, then per budget the
+# incremental responders per 1,000 rows and the share of the treat-everyone effect, then the
+# treat-everyone effect per 1,000 (one entry), then the Qini curve on the grid
+QINI, AUUC = 0, 1
+PER_1000 = slice(2, 2 + len(BUDGETS))
+SHARE = slice(PER_1000.stop, PER_1000.stop + len(BUDGETS))
+CURVE = slice(SHARE.stop + 1, None)
+
+
 def _statistics(c: curves.Counts) -> FloatArray:
+    """Every statistic of one method's counts, laid out as the slices above."""
     at = curves.uplift_at(c, np.r_[BUDGETS, 1.0])
     full = at[-1]
     share = at[:-1] / full if full != 0 else np.full(len(BUDGETS), np.nan)
@@ -166,27 +173,25 @@ def _assess(
     # A share of an effect that may be zero is not defined; it is left out then, for every method
     share_defined = everyone["ci_low"] > 0 or everyone["ci_high"] < 0
     boot_qini: dict[str, FloatArray] = {}
-    k = len(BUDGETS)
-    full = 2 + 2 * k
     for name, score in scores.items():
         groups = _groups(score, bins)
         point = _statistics(curves.counts(groups, t, y))
         boot = _bootstrap(curves.cells([groups], t, y), lambda c: _statistics(c[0]), samples)
-        boot_qini[name] = boot[:, 0]
+        boot_qini[name] = boot[:, QINI]
         out["methods"][name] = {
-            "qini": _interval(point[0], boot[:, 0]),
-            "auuc": _interval(point[1], boot[:, 1]),
+            "qini": _interval(point[QINI], boot[:, QINI]),
+            "auuc": _interval(point[AUUC], boot[:, AUUC]),
         }
         out["budget"][name] = {
             str(b): {
-                "per_1000": _interval(point[2 + i], boot[:, 2 + i]),
-                "share_of_full_effect": _interval(point[2 + k + i], boot[:, 2 + k + i])
+                "per_1000": _interval(point[PER_1000][i], boot[:, PER_1000][:, i]),
+                "share_of_full_effect": _interval(point[SHARE][i], boot[:, SHARE][:, i])
                 if share_defined
                 else None,
             }
             for i, b in enumerate(BUDGETS)
         }
-        out["qini_curve"]["methods"][name] = _band(point[full + 1 :], boot[:, full + 1 :])
+        out["qini_curve"]["methods"][name] = _band(point[CURVE], boot[:, CURVE])
         if bins is not None:
             out.setdefault("control_rows_per_bin", {})[name] = _control_per_bin(groups, t)
     return out, boot_qini
