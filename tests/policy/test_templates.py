@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 from scipy.stats import spearmanr
 
+from push_lab.creative import families
 from push_lab.policy import templates as tp
 from push_lab.sim import env, world
 from push_lab.sim.world import DAYS, SLOTS, Params
@@ -306,3 +307,17 @@ def test_choices_do_not_depend_on_the_same_day_outcomes() -> None:
     ]
     assert not np.array_equal(runs[0].opened[day], runs[1].opened[day])
     np.testing.assert_array_equal(runs[0].template[: day + 1], runs[1].template[: day + 1])
+
+
+def test_template_constants_agree_across_modules() -> None:
+    """The simulator, the copy catalog and the eligibility rules number templates and families
+    separately; they must describe the same catalog."""
+    assert world.TEMPLATES == families.TEMPLATES
+    assert len(families.FAMILIES) == world.FAMILIES
+    assert [f.id for f in families.FAMILIES] == list(range(world.FAMILIES))
+    by_name = {f.name: f.id for f in families.FAMILIES}
+    assert (
+        by_name["Creator update"],
+        by_name["Popular now"],
+        by_name["Welcome back"],
+    ) == (tp.CREATOR, tp.POPULAR, tp.BACK)
