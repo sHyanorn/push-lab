@@ -46,8 +46,8 @@ Entries are in the order they were made. Some entries up to D048 were corrected 
 | D040 | Template comparisons: cost and results | Active |
 | D041 | Off-policy evaluation: tiers and units | Superseded in part by D046 |
 | D042 | Off-policy checks, pre-registered | Amended by D044, D046 |
-| D043 | Off-policy checks: cost and results | Superseded in part by D046, D048 |
-| D044 | Amended simulator check, pre-registered | Results in D045 |
+| D043 | Off-policy checks: cost and results | Superseded in part by D046, D048; wording corrected by D060 |
+| D044 | Amended simulator check, pre-registered | Results in D045; wording corrected by D060 |
 | D045 | Amended simulator check: results | Superseded in part by D046, D048 |
 | D046 | Corrections after the M7 results | Superseded in part by D048 |
 | D047 | Carryover sweep of the simulator check, pre-registered | Results in D048 |
@@ -63,6 +63,7 @@ Entries are in the order they were made. Some entries up to D048 were corrected 
 | D057 | Sweep labels with refit and seed spread, post hoc | Active |
 | D058 | Measurements behind three METHODS corrections, post hoc | Active |
 | D059 | One integer seed shared by draws, folds and bootstrap in the off-policy checks | Active |
+| D060 | "Paired" in the OBD check, corrected | Active |
 
 ## D001 Python only, static report
 - Date: 2026-11-08
@@ -416,7 +417,7 @@ Entries are in the order they were made. Some entries up to D048 were corrected 
 - Post hoc reading of the reference, given that diagnosis: per-day OPE does not see carryover, and its bias is 22 to 37 times its standard error for the targets whose volume differs most from the logs. It underestimates no pushes by 3.1% and overestimates two pushes a day by 3.4% at the reference setting; D046 narrows this reading
 - Two readings of the Tier B result, both kept. Registered: the small-sample IPS and DR estimates of the BTS value are the Tier B results, since they pass the rule. Stronger: on the full campaign, a check on real logs against a known answer, IPS and DR estimate the BTS click rate at 0.89 and 0.90 of its on-policy value with intervals that exclude it, a shortfall the small sample has too little power to show. They do not conflict: the registered definition names the estimate, and the second states how accurate such an estimate was found to be. The evidence matrix lists the shortfall first and each small-sample estimate under it with its outcome on both samples
 - Post hoc on OBD: the deployed BTS was not the fixed prior (its logged propensities vary from 0.0002 to 0.73 across rows of the small sample and from 0.000001 to 0.73 in the full campaign). Using the empirical (item, position) frequencies of the BTS logs as the target moves the full-campaign IPS estimate from 0.89 to 0.92 (0.85 to 0.99) of the on-policy value, with the interval still excluding 1. The paired change has an interval that includes 0 (D046), and those frequencies cover the whole logging period, so they also carry what the policy learned from clicks; these data do not show where the underestimate comes from
-- Status: Superseded in part by D046: the OBD numbers above come from the row-level run, and the OBD tier readings are replaced. The registered simulator verdict stands, with the amended run in D045. The post hoc reading of the reference is superseded by the amended run in D045 and narrowed by D046 and D048
+- Status: Superseded in part by D046: the OBD numbers above come from the row-level run, and the OBD tier readings are replaced. The registered simulator verdict stands, with the amended run in D045. The post hoc reading of the reference is superseded by the amended run in D045 and narrowed by D046 and D048. "Paired resamples" of the two OBD logs is corrected by D060
 
 ## D044 Amended simulator check, pre-registered
 - Date: 2026-11-08
@@ -425,7 +426,7 @@ Entries are in the order they were made. Some entries up to D048 were corrected 
 - Unchanged: the estimators, outcome models, targets, rewards, users, world seed, log seeds 1,001 to 1,050, bootstrap, settings and the decision rule of METHODS 14.4, including that a failure of DR or IPS in the control for T, T½ or N makes the run an implementation failure
 - The OBD check is rerun only to add each estimate's ratio to the on-policy value with its paired-resample interval; every other OBD number must come out unchanged, which the rerun checks
 - Cost: about 22 minutes for the logs as before, plus about 1 minute for the 1,200 truth runs
-- Status: Results in D045
+- Status: Results in D045. "Paired-resample interval" is corrected by D060
 
 ## D045 Amended simulator check: results
 - Date: 2026-11-08
@@ -581,3 +582,11 @@ Entries are in the order they were made. Some entries up to D048 were corrected 
 - Effect: a user's count in a resample is set by other users' draws and matches the user's own draw only with probability about 1/5,000, so the resamples carry no information about the user's own outcome and no bias follows. Measured post hoc on the control setting, log seeds 1,001 to 1,010, against folds and bootstrap from keyed streams on the same logs: IPS estimates are identical (they use neither); DR means differ by at most 0.00012 per target; mean interval widths differ by up to about 3% in either direction; of the 18 coverage counts (six targets, IPS, DR and DM) all agree except F with DR (10 against 9), R with DM (8 against 9) and N with DM (3 against 4)
 - Not rerun: the registered results are kept as frozen. The analysis and the measurement show no bias, and a rerun with new streams would move borderline verdicts by Monte Carlo noise only, which would be a change of method after seeing the results
 - Rule from now on: new code draws every random stream from `world.stream(purpose, *key)` with its own purpose, or from a seed sequence spawned for that use; an integer seed is passed to `default_rng` for one use in a run only. The uses listed here and the shared seed 0 of the evaluation sample and the policy bootstrap (`world.quick_sample`, `design.BOOTSTRAP_SEED`, D033) stay as they are
+
+## D060 "Paired" in the OBD check, corrected
+- Date: 2026-11-10
+- Wording only. `results/ope_obd.json`, the evidence matrix and the report are unchanged to the byte, and no code that computes a number changed
+- In `validate` (`ope/obd.py`) the random logs are resampled with seed 0 and the BTS logs with seed 1, each over its own impressions (147,487 and 1,268,311 in the full campaign). Resample $i$ of an estimate is set against resample $i$ of the on-policy value, so the two are independent draws matched by index, not a paired resample. The ratio intervals and the relative-error summaries are valid for independent resampling of the two logs; only the word was wrong
+- Corrected: the docstring of `_ratio` ("the interval of the paired resamples") and METHODS 14.2 ("over 1,000 paired resamples of both logs"). D043 ("median relative error over paired resamples") and D044 ("its paired-resample interval") keep their text and point here
+- Still paired: in `empirical_target` the two targets share the seed, the impressions and the resamples of the random logs, so the difference of the two IPS estimates (the "paired change" of D046) is paired. The on-policy resamples in its denominator are independent, as above
+- Limitation of that post hoc check: the empirical (item, position) frequencies are computed once from the BTS logs and held fixed while those logs are resampled for the on-policy value, so its interval leaves out the sampling noise of the target itself

@@ -170,7 +170,9 @@ def _weights(log: pd.DataFrame, dist: FloatArray) -> FloatArray:
 def _ratio(
     value: float, truth: float, boot: FloatArray, truth_boot: FloatArray
 ) -> dict[str, float]:
-    """An estimate over the on-policy value, with the interval of the paired resamples."""
+    """An estimate over the on-policy value. Resample i of the estimate is divided by resample
+    i of the on-policy value; the two come from different logs and seeds, so they are
+    independent and the index only matches them up (D060)."""
     ratio = boot / truth_boot
     return {
         "value": value / truth,
@@ -207,6 +209,7 @@ def validate(
     data = logged(random_log, items, dist)
     boot = est.bootstrap(data, samples, seed)
     report: Any = est.summarize(data, boot)
+    # The BTS logs are resampled on their own, with another seed and their own impressions
     truth, truth_boot = on_policy(bts_log, samples, seed + 1)
     low, high = np.percentile(truth_boot, [2.5, 97.5])
     verdicts: dict[str, Any] = {}
@@ -245,7 +248,9 @@ def empirical_target(
 ) -> dict[str, Any]:
     """Post hoc: IPS with the BTS logs' own (item, position) frequencies as the target, as a
     ratio to the on-policy value, and that ratio minus the one with the target ``prior``. Both
-    are resampled by impression as in ``validate``, with the same resamples for the two."""
+    are resampled by impression as in ``validate``, with the same resamples of the random logs
+    for the two targets, so their difference is paired. The on-policy resamples are independent
+    of them, and the empirical target is held fixed across resamples (D060)."""
     dist = np.zeros((len(ALPHA), POSITIONS))
     position = bts_log["position"].to_numpy(dtype=np.int64) - 1
     np.add.at(dist, (bts_log["item_id"].to_numpy(dtype=np.int64), position), 1)
