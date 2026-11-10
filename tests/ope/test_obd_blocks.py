@@ -41,6 +41,9 @@ def test_multiplicities_follow_the_registered_stream() -> None:
     rng = np.random.default_rng([20261110, 0, 2])
     np.testing.assert_array_equal(draws[2], rng.multinomial(1008, np.full(1008, 1 / 1008)))
     assert draws.shape == (3, 1008) and (draws.sum(axis=1) == 1008).all()
+    other = obd_blocks.multiplicities(3, seed=7)
+    rng = np.random.default_rng([7, 0, 1])
+    np.testing.assert_array_equal(other[1], rng.multinomial(1008, np.full(1008, 1 / 1008)))
 
 
 def test_both_logs_are_resampled_with_the_same_blocks() -> None:
@@ -64,6 +67,30 @@ def test_check_applies_the_registered_rule_to_block_intervals() -> None:
         low.reward.mean() / high.reward.mean()
     )
     assert out["rounds"] == 6000
+
+
+def test_streams_count_the_verdicts_of_other_random_streams() -> None:
+    low, high = _logged(_log(1, rate=0.1)), _logged(_log(2, rate=0.2))
+    seeds = [1, 2, 3, 4]
+    same = obd_blocks.streams(high, high, seeds, samples=50)
+    assert same["streams"] == 4 and same["on_policy"] == high.reward.mean()
+    assert same["IPS"]["passes"] == 4
+    # Each stream gives its own interval
+    assert same["IPS"]["ci_high_min"] < same["IPS"]["ci_high_max"]
+    alone = [obd_blocks.check(high, high, obd_blocks.multiplicities(50, s)) for s in seeds]
+    upper = [run["estimates"]["IPS"]["ci_high"] for run in alone]
+    assert (same["IPS"]["ci_high_min"], same["IPS"]["ci_high_max"]) == (min(upper), max(upper))
+    short = obd_blocks.streams(low, high, seeds, samples=50)
+    assert short["IPS"]["passes"] == 0
+    assert short["IPS"]["ci_high_max"] < short["on_policy"]
+    # An on-policy value between the upper ends: some streams pass and some do not
+    between = (min(upper) + max(upper)) / 2
+    clicks = (np.arange(6000) < round(between * 6000)).astype(np.float64)
+    ones, zeros = np.ones(6000), np.zeros(6000)
+    target = est.Logged(clicks, ones, zeros, zeros, high.cluster)
+    mixed = obd_blocks.streams(high, target, seeds, samples=50)
+    assert mixed["IPS"]["passes"] == sum(u >= mixed["on_policy"] for u in upper)
+    assert 0 < mixed["IPS"]["passes"] < 4
 
 
 def test_a_block_without_rows_of_a_log_keeps_its_place() -> None:

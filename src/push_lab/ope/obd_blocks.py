@@ -5,7 +5,8 @@
 across impressions and clicks cluster within minutes, so impressions are not independent. A
 resample draws 1,008 ten-minute UTC blocks with replacement, and a block carries the rows of
 both logs that fall in it (Section 5 of the registration in github.com/sHyanorn/ope-checks,
-whose random stream is used). The registered file and its verdicts are unchanged.
+whose random stream is used). The verdicts are also counted under ``STREAMS`` other random
+streams. The registered file and its verdicts are unchanged.
 """
 
 import argparse
@@ -32,6 +33,7 @@ WEEK_START_US = 1_574_553_600_000_000  # 2019-11-24T00:00:00Z, the first day of 
 BLOCK_US = 600_000_000
 BLOCKS = 1008
 SAMPLES, SEED = 10_000, 20261110
+STREAMS = 100  # other streams of the check, seeded SEED + 1 onwards
 
 
 def blocks(log: pd.DataFrame) -> IntArray:
@@ -44,10 +46,10 @@ def blocks(log: pd.DataFrame) -> IntArray:
     return block
 
 
-def multiplicities(samples: int = SAMPLES) -> FloatArray:
-    """How often each block is drawn [sample, block]."""
+def multiplicities(samples: int = SAMPLES, seed: int = SEED) -> FloatArray:
+    """How often each block is drawn [sample, block]; ``SEED`` gives the registered stream."""
     p = np.full(BLOCKS, 1 / BLOCKS)
-    draws = [np.random.default_rng([SEED, 0, i]).multinomial(BLOCKS, p) for i in range(samples)]
+    draws = [np.random.default_rng([seed, 0, i]).multinomial(BLOCKS, p) for i in range(samples)]
     return np.stack(draws).astype(np.float64)
 
 
@@ -74,17 +76,31 @@ def check(random: est.Logged, bts: est.Logged, draws: FloatArray) -> dict[str, A
     }
 
 
-def validate(
-    random_log: pd.DataFrame,
-    bts_log: pd.DataFrame,
-    items: pd.DataFrame,
-    dist: FloatArray,
-    draws: FloatArray,
+def streams(
+    random: est.Logged, bts: est.Logged, seeds: Sequence[int], samples: int = SAMPLES
 ) -> dict[str, Any]:
+    """How the verdicts of ``check`` depend on the random stream: for each estimator, the
+    number of ``seeds`` under which it passes and the range of its interval's upper end."""
+    runs = [check(random, bts, multiplicities(samples, seed)) for seed in seeds]
+    out: dict[str, Any] = {"streams": len(runs), "on_policy": est.point(bts)["IPS"]}
+    for name in est.ESTIMATORS:
+        high = [run["estimates"][name]["ci_high"] for run in runs]
+        out[name] = {
+            "passes": sum(run["validation"][name]["validated"] for run in runs),
+            "ci_high_min": min(high),
+            "ci_high_max": max(high),
+        }
+    return out
+
+
+def clustered(
+    random_log: pd.DataFrame, bts_log: pd.DataFrame, items: pd.DataFrame, dist: FloatArray
+) -> tuple[est.Logged, est.Logged]:
+    """The two logs of ``obd.validate`` with blocks as their clusters."""
     random = replace(obd.logged(random_log, items, dist), cluster=blocks(random_log))
     clicks = bts_log["click"].to_numpy(dtype=np.float64)
     ones, zeros = np.ones(len(clicks)), np.zeros(len(clicks))
-    return check(random, est.Logged(clicks, ones, zeros, zeros, blocks(bts_log)), draws)
+    return random, est.Logged(clicks, ones, zeros, zeros, blocks(bts_log))
 
 
 def _cells(log: pd.DataFrame, weights: FloatArray | None = None) -> FloatArray:
@@ -138,6 +154,8 @@ def run(root: Path) -> dict[str, Any]:
     random_log, bts_log = data.load(folder, "random"), data.load(folder, "bts")
     items = data.load(folder, "random", items=True)
     dist, draws = obd.bts_distribution(), multiplicities()
+    random, bts = clustered(random_log, bts_log, items, dist)
+    others = range(SEED + 1, SEED + 1 + STREAMS)
     return {
         "note": "Post hoc: results/ope_obd.json with ten-minute blocks as resampling units",
         "registered": "results/ope_obd.json holds the registered result and verdicts, unchanged",
@@ -149,8 +167,16 @@ def run(root: Path) -> dict[str, Any]:
         },
         "rule": f"interval contains the on-policy value and median relative error below "
         f"{obd.MAX_RELATIVE_ERROR}",
-        "full": validate(random_log, bts_log, items, dist, draws)
-        | {"post_hoc": empirical_target(random_log, bts_log, dist, draws)},
+        "full": check(random, bts, draws)
+        | {
+            "post_hoc": empirical_target(random_log, bts_log, dist, draws),
+            "other_streams": {
+                "note": f"The check under the streams seeded {others[0]} to {others[-1]} in "
+                "place of the registered one: for each estimator, the number of streams "
+                "under which it passes and the range of its interval's upper end",
+            }
+            | streams(random, bts, others),
+        },
     }
 
 
