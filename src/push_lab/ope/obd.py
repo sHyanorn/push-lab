@@ -171,8 +171,9 @@ def _ratio(
     value: float, truth: float, boot: FloatArray, truth_boot: FloatArray
 ) -> dict[str, float]:
     """An estimate over the on-policy value. Resample i of the estimate is divided by resample
-    i of the on-policy value; the two come from different logs and seeds, so they are
-    independent and the index only matches them up (D060)."""
+    i of the on-policy value. In ``validate`` the two come from different logs and seeds, so
+    they are independent and the index only matches them up (D060); in ``obd_blocks`` they
+    come from the same blocks."""
     ratio = boot / truth_boot
     return {
         "value": value / truth,

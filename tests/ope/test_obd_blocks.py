@@ -68,11 +68,15 @@ def test_check_applies_the_registered_rule_to_block_intervals() -> None:
 
 def test_a_block_without_rows_of_a_log_keeps_its_place() -> None:
     log = _log(3)
-    late = _logged(log[obd_blocks.blocks(log) >= 500])
+    block = obd_blocks.blocks(log)
+    clicked = np.bincount(block[log["click"] == 1], minlength=1008)
+    chosen = 500 + int(np.flatnonzero(clicked[500:])[0])
+    late = _logged(log[block >= 500])
     draws = np.zeros((1, 1008))
-    draws[0, 600] = 1008
+    draws[0, chosen] = 1008
     out = obd_blocks.check(late, late, draws)
-    in_block = log[obd_blocks.blocks(log) == 600]["click"].mean()
+    in_block = log[block == chosen]["click"].mean()
+    assert in_block > 0
     assert out["on_policy"]["ci_low"] == pytest.approx(in_block)
 
 

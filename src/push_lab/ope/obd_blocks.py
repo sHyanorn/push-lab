@@ -1,4 +1,4 @@
-"""Post hoc: the OBD check of METHODS 14.2 with ten-minute blocks as resampling units (D063).
+"""Post hoc: the OBD check of METHODS 14.2 with ten-minute blocks as resampling units.
 
 ``python -m push_lab.ope.obd_blocks`` recomputes every interval of the full Men's campaign in
 ``results/ope_obd.json`` and writes ``results/ope_obd_blocks.json``. Served lists are reused
@@ -140,6 +140,7 @@ def run(root: Path) -> dict[str, Any]:
     dist, draws = obd.bts_distribution(), multiplicities()
     return {
         "note": "Post hoc: results/ope_obd.json with ten-minute blocks as resampling units",
+        "registered": "results/ope_obd.json holds the registered result and verdicts, unchanged",
         "resampling": {
             "unit": "ten-minute UTC blocks, the same blocks in both logs",
             "blocks": BLOCKS,
