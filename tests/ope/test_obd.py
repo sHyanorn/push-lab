@@ -86,6 +86,20 @@ def test_impressions_group_rows_shown_together() -> None:
     np.testing.assert_array_equal(obd.impressions(log), [0, 0, 0, 1, 2])
 
 
+def test_impressions_split_a_user_at_one_second() -> None:
+    log = pd.DataFrame(
+        {
+            "timestamp": [
+                "2019-11-24 00:00:00.000000+00:00",
+                "2019-11-24 00:00:00.999999+00:00",
+                "2019-11-24 00:00:05.999999+00:00",
+            ],
+            "user_feature_0": ["a", "a", "a"],
+        }
+    )
+    np.testing.assert_array_equal(obd.impressions(log), [0, 0, 1])
+
+
 def test_empirical_target_recovers_the_bts_value() -> None:
     random_log, bts_log, _, _ = _logs(20_000, 4)
     ratio = obd.empirical_target(random_log, bts_log, samples=200)["ratio_to_on_policy"]

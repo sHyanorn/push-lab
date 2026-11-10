@@ -116,8 +116,9 @@ def impressions(log: pd.DataFrame) -> IntArray:
     """Impression of each row: OBD has no impression id, so rows in time order with the same
     user features less than ``IMPRESSION_GAP_US`` apart form one. Chains can merge consecutive
     impressions of a user, which only makes the resampling units coarser; a row of another
-    user in between splits one, which happens about 140 times in the full random logs."""
-    t = pd.to_datetime(log["timestamp"], format="ISO8601").astype("int64").to_numpy() // 1000
+    user in between splits one, which happens about 110 times in the full random logs."""
+    stamp = pd.to_datetime(log["timestamp"], format="ISO8601")
+    t = stamp.dt.as_unit("us").astype("int64").to_numpy()
     order = np.argsort(t, kind="stable")
     user = [c for c in log.columns if c.startswith("user_feature_")]
     key = pd.util.hash_pandas_object(log[user].iloc[order], index=False).to_numpy()
