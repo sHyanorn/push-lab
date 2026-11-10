@@ -1,5 +1,5 @@
 {
- "commit": "3f26e5d7a591ded72a9f2c55612bc239a8df79b8",
+ "commit": "4bf80eb1e624da2c7ebef6084e5219567a71798a",
  "tier": "B for an estimator that passes; the check itself is on real data",
  "target": "BTS with the production prior of the Men's campaign, no updates",
  "bts_distribution": {
@@ -10,36 +10,36 @@
  "small": {
   "on_policy": {
    "value": 0.0069,
-   "ci_low": 0.0053131501763924085,
-   "ci_high": 0.008504635699627904
+   "ci_low": 0.005306287997868806,
+   "ci_high": 0.008610676110676108
   },
   "random_rows": 10000,
-  "random_impressions": 9390,
-  "bts_impressions": 9685,
+  "random_impressions": 9664,
+  "bts_impressions": 9954,
   "random_clicks": 46,
   "bts_rows": 10000,
   "bts_clicks": 69,
   "inconclusive": false,
   "estimates": {
    "DM": {
-    "value": 0.004771663228680699,
-    "ci_low": 0.004645541973261443,
-    "ci_high": 0.0048965050734386725
+    "value": 0.004450304658382172,
+    "ci_low": 0.004359374959034003,
+    "ci_high": 0.0045465941367119405
    },
    "IPS": {
-    "value": 0.0045408598,
-    "ci_low": 0.002408378378739517,
-    "ci_high": 0.007243123200708526
+    "value": 0.004540859800000001,
+    "ci_low": 0.002478276408030314,
+    "ci_high": 0.007139637164930488
    },
    "SNIPS": {
-    "value": 0.00461107272426015,
-    "ci_low": 0.002474714054009958,
-    "ci_high": 0.007388056980881261
+    "value": 0.0046110727242601466,
+    "ci_low": 0.002504323989595253,
+    "ci_high": 0.007275256256152249
    },
    "DR": {
-    "value": 0.004514835701843617,
-    "ci_low": 0.0024007417121832877,
-    "ci_high": 0.007296628896931585
+    "value": 0.004655367791366438,
+    "ci_low": 0.0025178150896444664,
+    "ci_high": 0.007237896430745922
    }
   },
   "effective_size": 2476.118691826204,
@@ -48,61 +48,61 @@
   "validation": {
    "DM": {
     "ratio_to_on_policy": {
-     "value": 0.6915453954609709,
-     "ci_low": 0.5586961498757956,
-     "ci_high": 0.8995999592477218
+     "value": 0.6449716896206047,
+     "ci_low": 0.512100496098172,
+     "ci_high": 0.8358827115669853
     },
-    "relative_error_median": 0.3121201181380343,
+    "relative_error_median": 0.3541933523577083,
     "relative_error_interval": [
-     0.1004000407522781,
-     0.4413038501242043
+     0.16411728843301468,
+     0.487899503901828
     ],
-    "rmse": 0.0023097246207203726,
+    "rmse": 0.002591724132863047,
     "interval_contains_on_policy": false,
     "validated": false
    },
    "IPS": {
     "ratio_to_on_policy": {
-     "value": 0.6580956231884058,
-     "ci_low": 0.3515583153996429,
-     "ci_high": 1.1158416785347365
+     "value": 0.6580956231884059,
+     "ci_low": 0.3544615301795858,
+     "ci_high": 1.123170678089956
     },
-    "relative_error_median": 0.35344594260547946,
+    "relative_error_median": 0.35158099645296415,
     "relative_error_interval": [
-     0.02794779396866424,
-     0.6484416846003569
+     0.028155349513430607,
+     0.6455384698204142
     ],
-    "rmse": 0.002796402137329659,
+    "rmse": 0.0027442631317900878,
     "interval_contains_on_policy": true,
     "validated": true
    },
    "SNIPS": {
     "ratio_to_on_policy": {
-     "value": 0.6682714093130653,
-     "ci_low": 0.35267009879566497,
-     "ci_high": 1.122686331174712
+     "value": 0.6682714093130647,
+     "ci_low": 0.3605219250574005,
+     "ci_high": 1.127444262594445
     },
-    "relative_error_median": 0.34572445244282285,
+    "relative_error_median": 0.34062816464026435,
     "relative_error_interval": [
-     0.02538250695667855,
-     0.647329901204335
+     0.02563915703296408,
+     0.6394780749425995
     ],
-    "rmse": 0.0027467598783360017,
+    "rmse": 0.002690357214831978,
     "interval_contains_on_policy": true,
     "validated": true
    },
    "DR": {
     "ratio_to_on_policy": {
-     "value": 0.6543240147599445,
-     "ci_low": 0.33951116406679954,
-     "ci_high": 1.109274691853234
+     "value": 0.6746909842560056,
+     "ci_low": 0.36394314779869347,
+     "ci_high": 1.1384181535226103
     },
-    "relative_error_median": 0.36124052727090483,
+    "relative_error_median": 0.33218945390375215,
     "relative_error_interval": [
-     0.026820541858013185,
-     0.6604888359332005
+     0.01927253152385339,
+     0.6360568522013064
     ],
-    "rmse": 0.002834480036497068,
+    "rmse": 0.00266529136884354,
     "interval_contains_on_policy": true,
     "validated": true
    }
@@ -111,36 +111,36 @@
  "full": {
   "on_policy": {
    "value": 0.006742727014339116,
-   "ci_low": 0.006653521902141224,
-   "ci_high": 0.006839616079619463
+   "ci_low": 0.006649064080704103,
+   "ci_high": 0.006831410722261481
   },
   "random_rows": 452949,
-  "random_impressions": 136474,
-  "bts_impressions": 1254978,
+  "random_impressions": 147487,
+  "bts_impressions": 1268311,
   "random_clicks": 2321,
   "bts_rows": 4077727,
   "bts_clicks": 27495,
   "inconclusive": false,
   "estimates": {
    "DM": {
-    "value": 0.005978278001109388,
-    "ci_low": 0.005943418624862554,
-    "ci_high": 0.006010642733059262
+    "value": 0.005942869435649773,
+    "ci_low": 0.005911070943654497,
+    "ci_high": 0.005975476249859887
    },
    "IPS": {
-    "value": 0.006007306509121342,
-    "ci_low": 0.005455926292068979,
-    "ci_high": 0.006511524482557392
+    "value": 0.006007306509121344,
+    "ci_low": 0.005505095441501311,
+    "ci_high": 0.006509130202080433
    },
    "SNIPS": {
-    "value": 0.006123177263722663,
-    "ci_low": 0.005563802644914273,
-    "ci_high": 0.0066340664309769894
+    "value": 0.006123177263722616,
+    "ci_low": 0.005617924363211135,
+    "ci_high": 0.006632954488856381
    },
    "DR": {
-    "value": 0.006041581527642177,
-    "ci_low": 0.005517301098036345,
-    "ci_high": 0.006518905868105563
+    "value": 0.006050777460780804,
+    "ci_low": 0.005579143634025853,
+    "ci_high": 0.006525802102204331
    }
   },
   "effective_size": 112213.08957107796,
@@ -149,72 +149,77 @@
   "validation": {
    "DM": {
     "ratio_to_on_policy": {
-     "value": 0.886626136338599,
-     "ci_low": 0.8729545734767307,
-     "ci_high": 0.8991948127246088
+     "value": 0.8813747646926292,
+     "ci_low": 0.8682499230421884,
+     "ci_high": 0.8949977980622585
     },
-    "relative_error_median": 0.11349253459165823,
+    "relative_error_median": 0.11871338232620873,
     "relative_error_interval": [
-     0.10080518727539126,
-     0.1270454265232693
+     0.10500220193774144,
+     0.13175007695781166
     ],
-    "rmse": 0.0007679901648592754,
+    "rmse": 0.0008015804085230314,
     "interval_contains_on_policy": false,
     "validated": false
    },
    "IPS": {
     "ratio_to_on_policy": {
-     "value": 0.8909312947634057,
-     "ci_low": 0.80977395876837,
-     "ci_high": 0.9690720761504081
+     "value": 0.890931294763406,
+     "ci_low": 0.8151836061017322,
+     "ci_high": 0.9657417906663236
     },
-    "relative_error_median": 0.11200950895454476,
+    "relative_error_median": 0.10993734024741211,
     "relative_error_interval": [
-     0.03103961207591107,
-     0.19022604123163006
+     0.03425820933367637,
+     0.18481639389826782
     ],
-    "rmse": 0.0007947395786788055,
+    "rmse": 0.0007828157658927336,
     "interval_contains_on_policy": false,
     "validated": false
    },
    "SNIPS": {
     "ratio_to_on_policy": {
-     "value": 0.908115848484016,
-     "ci_low": 0.8249097242337285,
-     "ci_high": 0.9871017273460013
+     "value": 0.9081158484840092,
+     "ci_low": 0.8304584378401528,
+     "ci_high": 0.9846083289698725
     },
-    "relative_error_median": 0.09529245362007352,
+    "relative_error_median": 0.0932676302428965,
     "relative_error_interval": [
-     0.015984054266676498,
-     0.1750902757662714
+     0.01741743611820897,
+     0.16954156215984714
     ],
-    "rmse": 0.0006889370993295708,
+    "rmse": 0.000676422713319456,
     "interval_contains_on_policy": false,
     "validated": false
    },
    "DR": {
     "ratio_to_on_policy": {
-     "value": 0.896014552390171,
-     "ci_low": 0.8159625624347296,
-     "ci_high": 0.967859203272055
+     "value": 0.8973783823537853,
+     "ci_low": 0.8235542139250612,
+     "ci_high": 0.9749144817604827
     },
-    "relative_error_median": 0.10760180525602292,
+    "relative_error_median": 0.10369708947425985,
     "relative_error_interval": [
-     0.03216567819645289,
-     0.18403743756527033
+     0.02508551823951737,
+     0.17644578607493883
     ],
-    "rmse": 0.0007604273984607976,
+    "rmse": 0.0007405853213326442,
     "interval_contains_on_policy": false,
     "validated": false
    }
   },
   "post_hoc": {
-   "commit": "5b2e5de7dac1b84ceb1210c11f9eae9fbf851050",
+   "commit": "4bf80eb1e624da2c7ebef6084e5219567a71798a",
    "note": "Post hoc: IPS against the BTS logs' empirical (item, position) frequencies",
    "ratio_to_on_policy": {
     "value": 0.9169346751089856,
-    "ci_low": 0.8441624545740208,
-    "ci_high": 0.9827193214418721
+    "ci_low": 0.8478295413217157,
+    "ci_high": 0.9891775194599407
+   },
+   "difference_from_fixed_prior": {
+    "value": 0.02600338034557961,
+    "ci_low": -0.004225426760075365,
+    "ci_high": 0.05940153336740714
    }
   }
  },
