@@ -1,0 +1,118 @@
+{
+ "commit": "9cf89fd2721e0f4495b8f40d9c6f385f0eaf81c9",
+ "note": "Post hoc: results/ope_obd.json with ten-minute blocks as resampling units",
+ "resampling": {
+  "unit": "ten-minute UTC blocks, the same blocks in both logs",
+  "blocks": 1008,
+  "samples": 10000,
+  "stream": "numpy.random.default_rng([20261110, 0, i]).multinomial for resample i"
+ },
+ "rule": "interval contains the on-policy value and median relative error below 0.5",
+ "full": {
+  "on_policy": {
+   "value": 0.006742727014339116,
+   "ci_low": 0.00659644304065648,
+   "ci_high": 0.006893206368682031
+  },
+  "inconclusive": false,
+  "estimates": {
+   "DM": {
+    "value": 0.005942869435646909,
+    "ci_low": 0.005896862602911,
+    "ci_high": 0.005989990122316667
+   },
+   "IPS": {
+    "value": 0.006007306509121339,
+    "ci_low": 0.005322876434129173,
+    "ci_high": 0.006752742016824604
+   },
+   "SNIPS": {
+    "value": 0.006123177263722853,
+    "ci_low": 0.005434906514270921,
+    "ci_high": 0.0068759557108408545
+   },
+   "DR": {
+    "value": 0.006050777460777943,
+    "ci_low": 0.005379698577959267,
+    "ci_high": 0.006771491146441434
+   }
+  },
+  "effective_size": 112213.08957107796,
+  "rounds": 452949,
+  "max_weight": 10.65475,
+  "validation": {
+   "DM": {
+    "ratio_to_on_policy": {
+     "value": 0.8813747646922044,
+     "ci_low": 0.8617324724533159,
+     "ci_high": 0.9015958788038381
+    },
+    "relative_error_median": 0.11867240268407306,
+    "relative_error_interval": [
+     0.09840412119616192,
+     0.13826752754668414
+    ],
+    "rmse": 0.0008036639370498466,
+    "interval_contains_on_policy": false,
+    "validated": false
+   },
+   "IPS": {
+    "ratio_to_on_policy": {
+     "value": 0.8909312947634054,
+     "ci_low": 0.7890948183064072,
+     "ci_high": 1.0042872385840265
+    },
+    "relative_error_median": 0.10980655881460166,
+    "relative_error_interval": [
+     0.01105975917258889,
+     0.21090518169359287
+    ],
+    "rmse": 0.0008226937415643411,
+    "interval_contains_on_policy": true,
+    "validated": true
+   },
+   "SNIPS": {
+    "ratio_to_on_policy": {
+     "value": 0.9081158484840443,
+     "ci_low": 0.8043658543731107,
+     "ci_high": 1.0218943381727161
+    },
+    "relative_error_median": 0.0928236201434677,
+    "relative_error_interval": [
+     0.006643218250476132,
+     0.19563414562688938
+    ],
+    "rmse": 0.0007235272778472724,
+    "interval_contains_on_policy": true,
+    "validated": true
+   },
+   "DR": {
+    "ratio_to_on_policy": {
+     "value": 0.8973783823533609,
+     "ci_low": 0.7962866944781896,
+     "ci_high": 1.0060459365806032
+    },
+    "relative_error_median": 0.1032863432398182,
+    "relative_error_interval": [
+     0.00921914135728927,
+     0.20371330552181044
+    ],
+    "rmse": 0.0007790434586848104,
+    "interval_contains_on_policy": true,
+    "validated": true
+   }
+  },
+  "post_hoc": {
+   "ratio_to_on_policy": {
+    "value": 0.9169346751089844,
+    "ci_low": 0.8216556467109055,
+    "ci_high": 1.0170057488380255
+   },
+   "difference_from_fixed_prior": {
+    "value": 0.026003380345579474,
+    "ci_low": -0.021108683888765675,
+    "ci_high": 0.07368324911600119
+   }
+  }
+ }
+}
