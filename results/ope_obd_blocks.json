@@ -1,6 +1,7 @@
 {
- "commit": "9cf89fd2721e0f4495b8f40d9c6f385f0eaf81c9",
+ "commit": "846d5130a5f620a015e27d6ef0ef9e14c7a53a12",
  "note": "Post hoc: results/ope_obd.json with ten-minute blocks as resampling units",
+ "registered": "results/ope_obd.json holds the registered result and verdicts, unchanged",
  "resampling": {
   "unit": "ten-minute UTC blocks, the same blocks in both logs",
   "blocks": 1008,
