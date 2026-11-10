@@ -76,9 +76,13 @@ def test_truth_is_deterministic() -> None:
 
 
 @pytest.mark.filterwarnings("ignore::UserWarning")
-def test_ips_and_dr_cover_the_truth_without_carryover() -> None:
+def test_ips_and_dr_cover_the_truth_without_carryover(monkeypatch: pytest.MonkeyPatch) -> None:
     seeds = range(6)
-    logs = {s: sim_ope.estimate_log(CTX, sim_ope.CONTROL, s) for s in seeds}
+    logs = {0: sim_ope.estimate_log(CTX, sim_ope.CONTROL, 0)}
+    assert set(logs[0]["T"]) == set(sim_ope.REWARDS)
+    # The checks below read visits only, so the other logs skip the models of the opens reward
+    monkeypatch.setattr(sim_ope, "REWARDS", ("visit",))
+    logs |= {s: sim_ope.estimate_log(CTX, sim_ope.CONTROL, s) for s in seeds[1:]}
     for target in ("T", "N", "T2"):
         for name in ("IPS", "DR"):
             ests: list[Any] = [logs[s][target]["visit"]["estimates"][name] for s in seeds]

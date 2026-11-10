@@ -12,7 +12,10 @@ from push_lab.sim.world import DAYS
 from .conftest import CANDIDATES, make_world
 
 USERS = 700
-Ran = tuple[list[dict[str, Any]], dict[int, tuple[np.ndarray, dict[str, Any]]]]
+# The settings run, their metrics and info by id, and the users each setting simulated, in order
+Ran = tuple[
+    list[dict[str, Any]], dict[int, tuple[np.ndarray, dict[str, Any]]], dict[int, list[np.ndarray]]
+]
 
 
 def _context() -> sweep.Context:
@@ -44,13 +47,27 @@ def ran() -> Ran:
     ctx = _context()
     chosen = [s for s in design.settings() if s["id"] in (0, 64, 128)]
     chosen = [s | {"values": s["values"] | {"base_rate": 0.2}} for s in chosen]
-    return chosen, {s["id"]: sweep.run_setting(ctx, s) for s in chosen}
+    seen: list[np.ndarray] = []
+    population = sweep.Context.population
+
+    def spy(self: sweep.Context, users: np.ndarray, name: str = "cascade") -> env.Population:
+        seen.append(np.asarray(users).copy())
+        return population(self, users, name)
+
+    out, simulated = {}, {}
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(sweep.Context, "population", spy)
+        for s in chosen:
+            seen.clear()
+            out[s["id"]] = sweep.run_setting(ctx, s)
+            simulated[s["id"]] = list(seen)
+    return chosen, out, simulated
 
 
 def test_run_setting_outputs(
     ran: Ran,
 ) -> None:
-    _, out = ran
+    _, out, _ = ran
     metrics, info = out[0]
     names = info["policies"]
     assert names == list(sweep.PRIMARY + sweep.SECONDARY)
@@ -77,7 +94,7 @@ def test_run_setting_outputs(
 def test_compare_summarizes_the_settings(
     ran: Ran,
 ) -> None:
-    chosen, out = ran
+    chosen, out, _ = ran
     boot = compare.Bootstrap(200, samples=500, seed=0)
     results = {
         sid: compare.evaluate_setting(m.astype(np.float64), info["policies"], boot)
@@ -97,7 +114,7 @@ def test_compare_summarizes_the_settings(
 
 
 def test_a_partial_run_gets_no_labels(ran: Ran) -> None:
-    chosen, out = ran
+    chosen, out, _ = ran
     boot = compare.Bootstrap(200, samples=200, seed=0)
     results = {
         sid: compare.evaluate_setting(m.astype(np.float64), info["policies"], boot)
@@ -126,19 +143,11 @@ def test_resume_refuses_settings_from_another_commit(tmp_path: Path) -> None:
         runs.finished(tmp_path, 3, "def", runs.POLICY_RUNS)
 
 
-def test_policies_run_on_the_evaluation_users(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_policies_run_on_the_evaluation_users(ran: Ran) -> None:
     ctx = _context()
-    seen: list[np.ndarray] = []
-    population = sweep.Context.population
-
-    def spy(self: sweep.Context, users: np.ndarray, name: str = "cascade") -> env.Population:
-        seen.append(np.asarray(users).copy())
-        return population(self, users, name)
-
-    monkeypatch.setattr(sweep.Context, "population", spy)
-    setting = next(s for s in design.settings() if s["id"] == 0)
-    metrics, _ = sweep.run_setting(ctx, setting)
+    _, out, simulated = ran
     groups = {"fit": ctx.fit, "diagnostic": ctx.diagnostic, "evaluation": ctx.evaluation}
-    used = [next(k for k, g in groups.items() if np.array_equal(u, g)) for u in seen]
-    assert sorted(used) == ["diagnostic", "evaluation", "evaluation", "fit"]
-    assert metrics.shape[2] == len(ctx.evaluation)
+    for sid, (metrics, _) in out.items():
+        used = [next(k for k, g in groups.items() if np.array_equal(u, g)) for u in simulated[sid]]
+        assert sorted(used) == ["diagnostic", "evaluation", "evaluation", "fit"]
+        assert metrics.shape[2] == len(ctx.evaluation)
