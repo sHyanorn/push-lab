@@ -1,14 +1,14 @@
 import ast
 import copy
-import html
 import itertools
 import re
 import shutil
+from html import unescape
 from pathlib import Path
 
 import pytest
 
-from push_lab.report import build, svg, text
+from push_lab.report import build, facts, html, readme, svg, text
 
 ROOT = Path(__file__).parents[2]
 # Identifiers such as H1, T2, C2, U4 or D046, section references and the interval level
@@ -31,33 +31,33 @@ def test_prose_holds_no_numbers() -> None:
 
 
 def test_every_placeholder_is_filled_from_the_results() -> None:
-    facts = build.facts(build.load(ROOT))
+    values = facts.facts(facts.load(ROOT))
     names = {
         name for value in _strings(Path(text.__file__)) for name in re.findall(r"\{(\w+)\}", value)
     }
-    assert names <= set(facts)
-    assert all(facts.values())
+    assert names <= set(values)
+    assert all(values.values())
 
 
 def test_facts_quote_the_results() -> None:
-    results = build.load(ROOT)
-    facts = build.facts(results)
-    claims = build.claims(results)
-    assert facts["no_tier_b"] == results["evidence"]["note"]
-    assert facts["obd_ips"] == build.interval(claims["OBD-ratio-IPS"], 3)
-    assert facts["ope_nt_truth"].startswith("+0.0129 ")
-    assert facts["ref_lift_fn"] == "-2.3% (-2.4% to -2.2%)".replace("-", svg.MINUS)
-    assert facts["b1_spread"] == "17.7"
-    assert facts["b2_spread"] == "19.2"
+    results = facts.load(ROOT)
+    values = facts.facts(results)
+    ips = facts.claims(results)["OBD-ratio-IPS"]
+    assert values["no_tier_b"] == results["evidence"]["note"]
+    assert values["obd_ips"] == facts.interval(ips, 3)
+    assert values["ope_nt_truth"].startswith("+0.0129 ")
+    assert values["ref_lift_fn"] == "-2.3% (-2.4% to -2.2%)".replace("-", svg.MINUS)
+    assert values["b1_spread"] == "17.7"
+    assert values["b2_spread"] == "19.2"
 
 
 def test_reference_facts_come_from_the_registered_grid_point() -> None:
-    results = build.load(ROOT)
-    ref = build.reference_setting(results)
+    results = facts.load(ROOT)
+    ref = facts.reference_setting(results)
     assert ref["sweep"] == "grid"
     assert ref["values"] == results["policy_design"]["reference"]
     gate = ref["policies"]["G"]["opens_week1"]
-    assert build.facts(results)["opens_w1_g"] == build.interval(gate, 3)
+    assert facts.facts(results)["opens_w1_g"] == facts.interval(gate, 3)
 
 
 def test_committed_readme_matches_the_results() -> None:
@@ -66,22 +66,22 @@ def test_committed_readme_matches_the_results() -> None:
 
 def test_build_writes_the_report_and_refreshes_a_stale_readme(tmp_path: Path) -> None:
     shutil.copytree(ROOT / "results", tmp_path / "results", ignore=shutil.ignore_patterns("runs"))
-    readme = (ROOT / "README.md").read_text("utf-8")
-    stale = readme.replace("<!-- /results:story -->", "stale\n<!-- /results:story -->")
+    committed = (ROOT / "README.md").read_text("utf-8")
+    stale = committed.replace("<!-- /results:story -->", "stale\n<!-- /results:story -->")
     (tmp_path / "README.md").write_text(stale, encoding="utf-8")
     assert build.main(["--root", str(tmp_path), "--check"]) == 1
     assert build.main(["--root", str(tmp_path)]) == 0
-    assert (tmp_path / "README.md").read_text("utf-8") == readme
+    assert (tmp_path / "README.md").read_text("utf-8") == committed
     page = (tmp_path / "site" / "index.html").read_text("utf-8")
-    facts = build.facts(build.load(ROOT))
+    values = facts.facts(facts.load(ROOT))
     for name in ("ope_nt_truth", "flip_n", "ref_lift_fn", "obd_dr", "b2_spread"):
-        assert facts[name] in page
+        assert values[name] in page
     assert "<script" not in page
 
 
 def test_render_readme_needs_every_block() -> None:
     with pytest.raises(ValueError, match="results:story"):
-        build.render_readme(
+        readme.render(
             "<!-- results:evidence -->\n<!-- /results:evidence -->",
             {
                 "evidence": "x",
@@ -91,8 +91,8 @@ def test_render_readme_needs_every_block() -> None:
 
 
 def test_only_short_cells_are_kept_on_one_line() -> None:
-    page = build.html(build.load(ROOT))
-    cells = [html.unescape(c) for c in re.findall(r'<td class="nw">(.*?)</td>', page)]
+    page = html.page(facts.load(ROOT))
+    cells = [unescape(c) for c in re.findall(r'<td class="nw">(.*?)</td>', page)]
     assert cells
     assert max(len(c) for c in cells) <= 32
 
@@ -101,8 +101,8 @@ def test_number_formatting() -> None:
     assert svg.num(-0.00004, 4) == "0.0000"
     assert svg.num(0.0129, 4, signed=True) == "+0.0129"
     assert svg.num(-0.0044, 4) == svg.MINUS + "0.0044"
-    assert build.sig_decimals(0.004722) == 5
-    assert build.sig_decimals(0.891) == 3
+    assert facts.sig_decimals(0.004722) == 5
+    assert facts.sig_decimals(0.891) == 3
 
 
 def test_nice_ticks_cover_the_range() -> None:
@@ -130,9 +130,9 @@ def test_tick_labels_keep_every_digit() -> None:
 
 
 def test_stacked_tables_label_every_cell() -> None:
-    plain = build.table(("A", "B"), [["x", "y"]], nowrap=(0,))
+    plain = html.table(("A", "B"), [["x", "y"]], nowrap=(0,))
     assert "role=" not in plain and "data-label" not in plain
-    stacked = build.table(("A", "B & C"), [["x", "y"]], nowrap=(0,), stack=True)
+    stacked = html.table(("A", "B & C"), [["x", "y"]], nowrap=(0,), stack=True)
     assert '<table class="stack" role="table">' in stacked
     assert stacked.count('role="columnheader"') == 2
     assert '<td class="nw" role="cell" data-label="A">x</td>' in stacked
@@ -140,26 +140,26 @@ def test_stacked_tables_label_every_cell() -> None:
 
 
 def test_post_hoc_readings_sit_beside_the_labels_they_were_written_for() -> None:
-    results = build.load(ROOT)
-    c = build.claims(results)
-    for key, (label, reading) in build.SENSITIVITY.items():
-        shown = build.shown_label(c[key])
+    results = facts.load(ROOT)
+    c = facts.claims(results)
+    for key, (label, reading) in facts.SENSITIVITY.items():
+        shown = facts.shown_label(c[key])
         assert shown.startswith(label) and reading in shown and "D057" in shown
-    assert build.shown_label(c["H2"]) == c["H2"]["label"]
+    assert facts.shown_label(c["H2"]) == c["H2"]["label"]
     changed = copy.deepcopy(results)
     next(x for x in changed["evidence"]["claims"] if x["id"] == "H2-af")["label"] = "other"
     with pytest.raises(ValueError, match="H2-af"):
-        build.check_readings(changed)
+        facts.check_readings(changed)
 
 
 def test_prose_on_the_obd_post_hoc_change_fails_once_it_excludes_zero() -> None:
-    results = build.load(ROOT)
+    results = facts.load(ROOT)
     ips = next(x for x in results["evidence"]["claims"] if x["id"] == "OBD-ratio-IPS")
-    assert build.facts(results)["obd_ips_change"] == build.interval(
+    assert facts.facts(results)["obd_ips_change"] == facts.interval(
         ips["post_hoc_difference"], 3, signed=True
     )
     changed = copy.deepcopy(results)
     claim = next(x for x in changed["evidence"]["claims"] if x["id"] == "OBD-ratio-IPS")
     claim["post_hoc_difference"]["ci_low"] = 0.001
     with pytest.raises(ValueError, match="post hoc"):
-        build.check_readings(changed)
+        facts.check_readings(changed)

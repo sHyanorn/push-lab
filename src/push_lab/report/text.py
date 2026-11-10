@@ -1,6 +1,6 @@
 """Prose for the report and the README.
 
-Templates hold no numbers: every placeholder is filled from the results by ``build.facts``,
+Templates hold no numbers: every placeholder is filled from the results by ``facts.facts``,
 and a test fails if a digit appears here outside identifiers and the interval level.
 """
 
