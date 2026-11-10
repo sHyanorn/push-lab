@@ -349,9 +349,11 @@ def _obd_entries(data: dict[str, Any]) -> list[dict[str, Any]]:
                     "statement": f"The estimator {name}, on real randomized logs (full Men's "
                     "campaign of OBD), estimates the BTS click rate at this fraction of its "
                     "on-policy value. The target is BTS "
-                    "with its fixed prior, which the deployed BTS was not, so the shortfall mixes "
-                    "estimator error with that mismatch (post_hoc_empirical_target re-weights to "
-                    "the BTS logs' own frequencies). Post hoc reading: the small sample has too "
+                    "with its fixed prior, which the deployed BTS was not, so the shortfall may "
+                    "come from the estimator or from that mismatch, and these data do not "
+                    "separate the two (post_hoc_empirical_target re-weights to the BTS logs' own "
+                    "frequencies; post_hoc_difference is its paired change from this ratio, with "
+                    "an interval that includes 0). Post hoc reading: the small sample has too "
                     "little power to show the shortfall",
                     "source": {"file": source, "path": ["full", "validation", name]},
                     "status": "reported",
@@ -383,11 +385,15 @@ def _obd_entries(data: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def _empirical_target(full: dict[str, Any], name: str) -> dict[str, Any]:
-    """Post hoc IPS ratio with the BTS logs' own frequencies as the target, where computed."""
+    """Post hoc IPS ratio with the BTS logs' own frequencies as the target and its paired
+    difference from the registered ratio, where computed."""
     post_hoc = full.get("post_hoc")
     if name != "IPS" or not isinstance(post_hoc, dict):
         return {}
-    return {"post_hoc_empirical_target": post_hoc["ratio_to_on_policy"]}
+    return {
+        "post_hoc_empirical_target": post_hoc["ratio_to_on_policy"],
+        "post_hoc_difference": post_hoc["difference_from_fixed_prior"],
+    }
 
 
 NO_TIER_B = (

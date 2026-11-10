@@ -150,3 +150,16 @@ def test_post_hoc_readings_sit_beside_the_labels_they_were_written_for() -> None
     next(x for x in changed["evidence"]["claims"] if x["id"] == "H2-af")["label"] = "other"
     with pytest.raises(ValueError, match="H2-af"):
         build.check_readings(changed)
+
+
+def test_prose_on_the_obd_post_hoc_change_fails_once_it_excludes_zero() -> None:
+    results = build.load(ROOT)
+    ips = next(x for x in results["evidence"]["claims"] if x["id"] == "OBD-ratio-IPS")
+    assert build.facts(results)["obd_ips_change"] == build.interval(
+        ips["post_hoc_difference"], 3, signed=True
+    )
+    changed = copy.deepcopy(results)
+    claim = next(x for x in changed["evidence"]["claims"] if x["id"] == "OBD-ratio-IPS")
+    claim["post_hoc_difference"]["ci_low"] = 0.001
+    with pytest.raises(ValueError, match="post hoc"):
+        build.check_readings(changed)

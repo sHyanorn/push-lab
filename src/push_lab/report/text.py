@@ -107,13 +107,14 @@ F3_BODY = (
 )
 F3_OBD_MISMATCH = (
     "The target is BTS with its fixed production prior, which the deployed BTS was not. Post "
-    "hoc, re-weighting to the BTS logs' own frequencies moves IPS to {obd_ips_post_hoc}."
+    "hoc, re-weighting to the BTS logs' own frequencies moves IPS to {obd_ips_post_hoc}, a "
+    "paired change of {obd_ips_change} whose interval includes zero."
 )
 F3_SHOWS = (
     "A ranker fitted on logged impressions can rank random candidates worse than its retrieval "
     "score; where uplift grows with baseline response, a response threshold is a strong "
-    "baseline; standard estimators fell short of a known policy value on real logs, with a "
-    "target mismatch explaining part of the gap."
+    "baseline; standard estimators fell short of a known policy value on real logs, and these "
+    "data do not show where the shortfall comes from."
 )
 F3_LIMITS = (
     "Anything about push: the data are video feed, e-mail, ads and e-commerce recommendations. "

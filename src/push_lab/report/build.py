@@ -124,6 +124,9 @@ def check_readings(results: dict[str, Any]) -> None:
         raise ValueError("C2 or U4 no longer goes against expectation")
     if any(c[f"OBD-ratio-{e}"]["ci_high"] >= 1 for e in ("IPS", "DR")):
         raise ValueError("an OBD interval now reaches the on-policy value")
+    change = c["OBD-ratio-IPS"]["post_hoc_difference"]
+    if not change["ci_low"] < 0 < change["ci_high"]:
+        raise ValueError("the OBD post hoc change no longer includes 0")
     reference_b1 = results["templates"]["seed_variability"]["B1"]["mean_over_triples"]
     if not reference_b1["ci_low"] < 0 < reference_b1["ci_high"]:
         raise ValueError("B1 at the reference is no longer undetectable")
@@ -218,6 +221,7 @@ def facts(results: dict[str, Any]) -> dict[str, str]:
         "obd_ips": interval(c["OBD-ratio-IPS"], 3),
         "obd_dr": interval(c["OBD-ratio-DR"], 3),
         "obd_ips_post_hoc": interval(c["OBD-ratio-IPS"]["post_hoc_empirical_target"], 3),
+        "obd_ips_change": interval(c["OBD-ratio-IPS"]["post_hoc_difference"], 3, signed=True),
         "b1_spread": num(c["B1"]["spread_over_bootstrap_se"], 1),
         "b2_spread": num(c["B2"]["spread_over_bootstrap_se"], 1),
         "b1_reference": interval(seeds["B1"]["mean_over_triples"], 4, signed=True),
