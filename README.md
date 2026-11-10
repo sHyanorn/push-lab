@@ -11,7 +11,7 @@ The [report](https://shyanorn.github.io/push-lab/) and the numbers below are gen
 <!-- results:evidence -->
 | Tier | Evidence | Can support | Cannot support | Claims |
 |---|---|---|---|---|
-| A | Randomized real data: KuaiRand random exposures, Hillstrom, Criteo | A component ranks or targets better in that domain | Anything about push, fatigue or long-term effects | 9 |
+| A | Randomized real data: KuaiRand random exposures, Hillstrom, Criteo, Open Bandit Dataset | A component ranks or targets better in that domain; on the Open Bandit Dataset, how close an off-policy estimator comes to a known policy value | Anything about push, fatigue or long-term effects | 9 |
 | B | Off-policy estimate on real logs from an estimator first validated against a known answer | The value of a new policy within the support of the logging policy | Policies outside that support; long horizons | 0 |
 | C | Simulator runs with a sensitivity sweep | Policy A beats B across a stated share of assumptions, or flips at a stated threshold | Real-world effect sizes | 40 |
 

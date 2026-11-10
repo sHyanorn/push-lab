@@ -1,8 +1,8 @@
 {
  "tiers": {
   "A": {
-   "evidence": "Randomized real data: KuaiRand random exposures, Hillstrom, Criteo",
-   "supports": "A component ranks or targets better in that domain",
+   "evidence": "Randomized real data: KuaiRand random exposures, Hillstrom, Criteo, Open Bandit Dataset",
+   "supports": "A component ranks or targets better in that domain; on the Open Bandit Dataset, how close an off-policy estimator comes to a known policy value",
    "cannot": "Anything about push, fatigue or long-term effects"
   },
   "B": {
