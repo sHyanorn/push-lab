@@ -45,7 +45,7 @@ def test_facts_quote_the_results() -> None:
     values = facts.facts(results)
     ips = facts.claims(results)["OBD-ratio-IPS"]
     assert values["no_tier_b"] == results["evidence"]["note"]
-    assert values["obd_ips"] == facts.interval(ips, 3)
+    assert values["obd_ips"] == f"{ips['value']:.3f} ({ips['ci_low']:.3f} to {ips['ci_high']:.3f})"
     assert values["ope_nt_truth"].startswith("+0.0129 ")
     assert values["ref_lift_fn"] == "-2.3% (-2.4% to -2.2%)".replace("-", svg.MINUS)
     assert values["b1_spread"] == "17.7"
@@ -58,7 +58,8 @@ def test_reference_facts_come_from_the_registered_grid_point() -> None:
     assert ref["sweep"] == "grid"
     assert ref["values"] == results["policy_design"]["reference"]
     gate = ref["policies"]["G"]["opens_week1"]
-    assert facts.facts(results)["opens_w1_g"] == facts.interval(gate, 3)
+    shown = f"{gate['value']:.3f} ({gate['ci_low']:.3f} to {gate['ci_high']:.3f})"
+    assert facts.facts(results)["opens_w1_g"] == shown
 
 
 def test_committed_readme_matches_the_results() -> None:
@@ -170,9 +171,9 @@ def test_post_hoc_readings_sit_beside_the_labels_they_were_written_for() -> None
 def test_prose_on_the_obd_post_hoc_change_fails_once_it_excludes_zero() -> None:
     results = facts.load(ROOT)
     ips = next(x for x in results["evidence"]["claims"] if x["id"] == "OBD-ratio-IPS")
-    assert facts.facts(results)["obd_ips_change"] == facts.interval(
-        ips["post_hoc_difference"], 3, signed=True
-    )
+    change = ips["post_hoc_difference"]
+    shown = f"{change['value']:+.3f} ({change['ci_low']:.3f} to {change['ci_high']:.3f})"
+    assert facts.facts(results)["obd_ips_change"] == shown.replace("-", svg.MINUS)
     changed = copy.deepcopy(results)
     claim = next(x for x in changed["evidence"]["claims"] if x["id"] == "OBD-ratio-IPS")
     claim["post_hoc_difference"]["ci_low"] = 0.001
