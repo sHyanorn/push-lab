@@ -107,7 +107,7 @@ The pipeline in order; each step is `uv run python -m push_lab.<module>`:
 | 17 | `report.evidence` | `results/*.json` | `results/evidence.json` |
 | 18 | `report.build` | `results/*.json` | `site/index.html`, the generated blocks of this README |
 
-Steps 4 and 5 are independent of each other, as are 14 to 16. `results/runs/` is not committed, and `results/ope_simulator.json` is the first run of step 15, kept as history ([D044](docs/DECISIONS.md)). Measured run times are recorded in the decisions. The manual `reproduce` workflow runs the steps that work on synthetic fixtures, or reruns part of the pipeline on a small real sample and compares the numbers with the committed results ([D052](docs/DECISIONS.md)). The results reproduce exactly on the machine that produced them; on other machines the fitted models and what follows from them differ ([D053](docs/DECISIONS.md)).
+Steps 4 and 5 are independent of each other, as are 14 to 16. `results/runs/` is not committed, and `results/ope_simulator.json` is the first run of step 15, kept as history ([D044](docs/DECISIONS.md)). Measured run times are recorded in the decisions. The manual `reproduce` workflow runs the steps that work on synthetic fixtures, or reruns part of the pipeline on a small real sample and compares the numbers with the committed results ([D052](docs/DECISIONS.md)). The results reproduce exactly on the machine that produced them, apart from a rare last-bit deviation in the two-tower fit and the few numbers that follow from it ([D062](docs/DECISIONS.md)); on other machines the fitted models and what follows from them differ ([D053](docs/DECISIONS.md)).
 
 ## Layout
 

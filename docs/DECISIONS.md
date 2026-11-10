@@ -56,7 +56,7 @@ Entries are in the order they were made. Some entries up to D048 were corrected 
 | D050 | Scope of the reproduce workflow | Amended by D052 |
 | D051 | The notebook is checked against its committed outputs | Active |
 | D052 | Reproduce workflow as built, and its first runs | Active |
-| D053 | Results differ across machines | Active |
+| D053 | Results differ across machines | Qualified by D062 |
 | D054 | Mean open probability of pushed items, measured after the fact | Active |
 | D055 | One treat-everyone interval decides the budget shares | Active |
 | D056 | Implementation notes against METHODS | Active |
@@ -65,6 +65,7 @@ Entries are in the order they were made. Some entries up to D048 were corrected 
 | D059 | One integer seed shared by draws, folds and bootstrap in the off-policy checks | Active |
 | D060 | "Paired" in the OBD check, corrected | Active |
 | D061 | Crossing intervals are conditional on a crossing | Active |
+| D062 | Outputs of the two-tower fit vary between runs | Active |
 
 ## D001 Python only, static report
 - Date: 2026-11-08
@@ -518,6 +519,7 @@ Entries are in the order they were made. Some entries up to D048 were corrected 
 - Date: 2026-11-08
 - The sample mode on a GitHub runner (ubuntu-latest, the same locked packages: CPython 3.14.10, torch 2.15.0+cpu, LightGBM 4.7.0, faiss-cpu 1.15.1) reproduced the Hillstrom part of the uplift evaluation exactly, and differed from the committed results in ranking, the simulator inputs and policy setting 0. The simulator's response model stopped early at 68 rounds against 51, so its outputs and every simulated policy downstream move; its held-out AUC was 0.693 against 0.694. In the container of D015 the same mode reproduced all four exactly (D052)
 - The committed results are those of the container of D015. No tolerance is set: the runner's numbers differ beyond rounding in fitted models and their downstream, so a tolerance would need its own study. The sample mode therefore exits with an error on GitHub runners, and its report of differences is the record of how far a rerun on another machine moves
+- Status: Qualified by D062: on one machine, a rare last-bit deviation in the two-tower fit moves a few numbers that follow from it
 
 ## D054 Mean open probability of pushed items, measured after the fact
 - Date: 2026-11-08
@@ -598,3 +600,13 @@ Entries are in the order they were made. Some entries up to D048 were corrected 
 - A note on METHODS 12.7, which says a flip is located "with an interval from the same bootstrap" and leaves out which resamples enter. No code and no result file changed
 - The interval is the 2.5% to 97.5% range of the interpolated crossing over the resamples in which the two points have opposite signs; resamples without a sign change are left out, so it is conditional on a crossing, and the share of resamples kept is reported as `resamples_crossing`
 - Applies wherever the rule of 12.7 locates a flip (`flips` in `stats.py`): `results/policy.json`, `results/templates.json` and `results/ope_carryover.json`
+
+## D062 Outputs of the two-tower fit vary between runs
+- Date: 2026-11-10
+- Found by comparing runs of unchanged source on synthetic fixtures (4,000 rows). No code and no result file changed
+- Cause: the first call of `torch.logsumexp` in a process, with 4 threads, occasionally returns values 1 to 45 float32 ulps off for the rows of one thread's chunk; 4 of 280 fresh processes that run torch 2.15.0+cpu alone show it. `rank.evaluate` and `sim.build` both start with the two-tower fit of the evaluation cutoff, so in such a run the tower's weights differ in their last bits. The repository's code plays no part
+- Seen in `rank.evaluate`: under `feature_drift.tower_score`, the five quantiles of `c2_evaluation_rows` and the five of `c2_on_the_same_validation_rows` differ by 1 to 5 units of $10^{-6}$, in 6 of 71 runs with fixture seed 0, and the deviating runs do not all agree with each other. Every other number of `ranking.json` was identical in each deviating run compared in full
+- Seen in `sim.build`: in 1 of 18 runs the two-tower scores of the candidate lists differ by up to $7 \times 10^{-6}$, which swaps 4 of 5,600 positions of the two-tower list and their $p_0$. The cascade list, which every primary comparison uses, and `results/simulator.json` were identical
+- Scope: the ten quantiles are diagnostics that no comparison, verdict or reported number reads. The two-tower list feeds only T on that list and the secondary comparison L1. Anything computed from the tower could move in such a run; apart from the above, nothing did. The committed results come from one run of each step on the real data and may hold either outcome; the size of the difference on the real data was not measured
+- Kept as is: one torch thread, or a warm-up call before the first fit, would remove the variation and would change how the registered outputs are produced
+- D053 said the container of D015 reproduces the results exactly; that holds apart from this
