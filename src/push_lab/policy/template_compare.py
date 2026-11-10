@@ -4,7 +4,6 @@
 ``results/templates.json``.
 """
 
-import argparse
 import sys
 from collections.abc import Sequence
 from pathlib import Path
@@ -13,13 +12,13 @@ from typing import Any
 import numpy as np
 import numpy.typing as npt
 
-from push_lab.data import paths
+from push_lab import stats
 from push_lab.policy import compare, template_design
 from push_lab.policy.compare import Bootstrap, SettingResult
 from push_lab.policy.runs import TEMPLATE_METRICS, TEMPLATE_RUNS
 from push_lab.policy.template_design import GRID_NAMES, PRIMARY, SETTING_LEVEL
 from push_lab.policy.templates import KINDS
-from push_lab.runtime import rounded, write_json
+from push_lab.runtime import rounded
 from push_lab.stats import holm, interval, p_value
 
 FloatArray = npt.NDArray[np.float64]
@@ -46,11 +45,7 @@ def evaluate_setting(metrics: FloatArray, kinds: list[str], boot: Bootstrap) -> 
     for key, (a, b) in PAIRS.items():
         rows[f"opens.{key}"] = metrics[pos[a], opens] - metrics[pos[b], opens]
         rows[f"active.{key}"] = metrics[pos[a], active] - metrics[pos[b], active]
-    keys = list(rows)
-    stacked = np.stack([rows[k] for k in keys])
-    point = dict(zip(keys, stacked.mean(axis=1), strict=True))
-    means = boot.means(stacked)
-    bt = {k: means[:, i] for i, k in enumerate(keys)}
+    point, bt = boot.named_means(rows)
 
     def iv(key: str) -> dict[str, float]:
         return interval(point[key], bt[key])
@@ -58,7 +53,7 @@ def evaluate_setting(metrics: FloatArray, kinds: list[str], boot: Bootstrap) -> 
     def ratio(num: str, den: str) -> dict[str, float] | None:
         if point[den] == 0:
             return None
-        return interval(point[num] / point[den], bt[num] / bt[den])
+        return stats.ratio(point[num], point[den], bt[num], bt[den])
 
     primary = {}
     for key in PRIMARY:
@@ -112,7 +107,7 @@ def _ratio(
     """Ratio of two sweep averages; both use the same resampled settings and users."""
     if den[2] == 0:
         return None
-    return interval(num[2] / den[2], num[1] / den[1])
+    return stats.ratio(num[2], den[2], num[1], den[1])
 
 
 def _seed_mean(values: list[dict[str, float | None]], stat: str) -> float | None:
@@ -271,32 +266,23 @@ def summarize(
     }
 
 
+def _evaluate_run(
+    sid: int, info: dict[str, Any], metrics: FloatArray, boot: Bootstrap
+) -> SettingResult:
+    if info["kinds"] != list(KINDS):
+        raise SystemExit(f"setting {sid} ran other policies: {info['kinds']}")
+    return evaluate_setting(metrics, info["kinds"], boot)
+
+
 def run(root: Path) -> dict[str, Any]:
     frozen = template_design.load(root)
-    b = frozen["bootstrap"]
-    boot = Bootstrap(frozen["users"], b["samples"], b["seed"])
-    results: dict[int, SettingResult] = {}
-    infos: dict[int, dict[str, Any]] = {}
-    for sid, info, metrics in compare.load_runs(root, frozen, TEMPLATE_RUNS):
-        if info["kinds"] != list(KINDS):
-            raise SystemExit(f"setting {sid} ran other policies: {info['kinds']}")
-        results[sid] = evaluate_setting(metrics, info["kinds"], boot)
-        infos[sid] = info
-    out = {"commit": compare.run_commit(infos)} | summarize(results, frozen, infos)
-    out["settings_run"] = len(results)
-    out["settings_designed"] = len(frozen["settings"])
-    return out
+    return compare.run_comparison(
+        root, frozen, frozen["users"], TEMPLATE_RUNS, _evaluate_run, summarize
+    )
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Compare the template policies.")
-    parser.add_argument("--root", type=Path, default=Path.cwd(), help="repository root")
-    args = parser.parse_args(argv)
-    result = run(args.root)
-    out = args.root / paths.RESULTS / "templates.json"
-    write_json(out, result)
-    print(f"wrote {out}")
-    return 0
+    return compare.write_comparison(argv, "Compare the template policies.", run, "templates.json")
 
 
 if __name__ == "__main__":

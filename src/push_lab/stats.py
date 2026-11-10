@@ -38,6 +38,12 @@ def interval(point: float, boot: FloatArray) -> dict[str, float]:
     return {"value": rounded(point), "ci_low": rounded(low), "ci_high": rounded(high)}
 
 
+def ratio(num: float, den: float, num_boot: FloatArray, den_boot: FloatArray) -> dict[str, float]:
+    """A ratio of two values with the interval of the ratios of their resamples, which must
+    come from the same resampled units."""
+    return interval(num / den, num_boot / den_boot)
+
+
 def flips(x: FloatArray, points: FloatArray, boot: FloatArray) -> list[dict[str, Any]]:
     """Crossings of zero between adjacent grid points ``x`` (sorted), with ``boot``
     [sample, point]. A crossing is resolved only if both intervals exclude 0."""

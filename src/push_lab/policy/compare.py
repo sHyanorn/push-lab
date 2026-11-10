@@ -20,7 +20,7 @@ from push_lab.data import paths
 from push_lab.policy import design
 from push_lab.policy.runs import POLICY_METRICS, POLICY_RUNS, setting_paths
 from push_lab.runtime import rounded, write_json
-from push_lab.stats import flip_result, flips, holm, interval, p_value
+from push_lab.stats import flip_result, flips, holm, interval, p_value, ratio
 
 FloatArray = npt.NDArray[np.float64]
 
@@ -73,6 +73,16 @@ class Bootstrap:
             w = self.weights[start : start + CHUNK].astype(np.float64)
             out[start : start + CHUNK] = w @ values.T / self.users
         return out
+
+    def named_means(
+        self, rows: dict[str, FloatArray]
+    ) -> tuple[dict[str, Any], dict[str, FloatArray]]:
+        """Per named row of per-user values, its mean and its resampled means."""
+        keys = list(rows)
+        stacked = np.stack([rows[k] for k in keys])
+        point = dict(zip(keys, stacked.mean(axis=1), strict=True))
+        means = self.means(stacked)
+        return point, {k: means[:, i] for i, k in enumerate(keys)}
 
 
 def verdict(point: float, p: float, level: float = SETTING_LEVEL) -> str:
@@ -212,11 +222,7 @@ def evaluate_setting(metrics: FloatArray, names: list[str], boot: Bootstrap) -> 
         rows[f"diff.{key}"] = metrics[pos[first], active] - metrics[pos[second], active]
     for p in PER_PUSH:
         rows[f"gain.{p}"] = metrics[pos[p], active] - metrics[pos["N"], active]
-    keys = list(rows)
-    stacked = np.stack([rows[k] for k in keys]).astype(np.float64)
-    point = dict(zip(keys, stacked.mean(axis=1), strict=True))
-    means = boot.means(stacked)
-    b = {k: means[:, i] for i, k in enumerate(keys)}
+    point, b = boot.named_means({k: v.astype(np.float64) for k, v in rows.items()})
 
     policies = {
         p: {
@@ -239,7 +245,7 @@ def evaluate_setting(metrics: FloatArray, names: list[str], boot: Bootstrap) -> 
     for p in PER_PUSH:
         num, den = f"gain.{p}", f"{p}.delivered"
         if point[den] > 0:
-            per_push[p] = interval(point[num] / point[den], b[num] / b[den])
+            per_push[p] = ratio(point[num], point[den], b[num], b[den])
     lift_boot = b["diff.F-N"] / b["N.active_days"]
     lift = interval(point["diff.F-N"] / point["N.active_days"], lift_boot)
     lift_low, lift_high = np.percentile(lift_boot, [2.5, 97.5])
@@ -374,33 +380,57 @@ def summarize(
     }
 
 
-def run(root: Path) -> dict[str, Any]:
-    frozen = design.load(root)
-    boot = Bootstrap(
-        frozen["users"]["evaluation"],
-        frozen["bootstrap"]["samples"],
-        frozen["bootstrap"]["seed"],
-    )
+def run_comparison(
+    root: Path,
+    frozen: dict[str, Any],
+    users: int,
+    runs: Path,
+    evaluate: Callable[[int, dict[str, Any], FloatArray, Bootstrap], SettingResult],
+    combine: Callable[
+        [dict[int, SettingResult], dict[str, Any], dict[int, dict[str, Any]]], dict[str, Any]
+    ],
+) -> dict[str, Any]:
+    """Evaluate every finished setting of a frozen design on one set of user resamples and
+    combine them, with the commit they ran at."""
+    boot = Bootstrap(users, frozen["bootstrap"]["samples"], frozen["bootstrap"]["seed"])
     results: dict[int, SettingResult] = {}
     infos: dict[int, dict[str, Any]] = {}
-    for sid, info, metrics in load_runs(root, frozen, POLICY_RUNS):
-        results[sid] = evaluate_setting(metrics, info["policies"], boot)
+    for sid, info, metrics in load_runs(root, frozen, runs):
+        results[sid] = evaluate(sid, info, metrics, boot)
         infos[sid] = info
-    out = {"commit": run_commit(infos)} | summarize(results, frozen, infos)
+    out = {"commit": run_commit(infos)} | combine(results, frozen, infos)
     out["settings_run"] = len(results)
     out["settings_designed"] = len(frozen["settings"])
     return out
 
 
-def main(argv: Sequence[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Compare the policies of the sweep.")
+def write_comparison(
+    argv: Sequence[str] | None, description: str, run: Callable[[Path], dict[str, Any]], file: str
+) -> int:
+    """The command line of a comparison step: run it and write its results file."""
+    parser = argparse.ArgumentParser(description=description)
     parser.add_argument("--root", type=Path, default=Path.cwd(), help="repository root")
     args = parser.parse_args(argv)
-    result = run(args.root)
-    out = args.root / paths.RESULTS / "policy.json"
-    write_json(out, result)
+    out = args.root / paths.RESULTS / file
+    write_json(out, run(args.root))
     print(f"wrote {out}")
     return 0
+
+
+def run(root: Path) -> dict[str, Any]:
+    frozen = design.load(root)
+    return run_comparison(
+        root,
+        frozen,
+        frozen["users"]["evaluation"],
+        POLICY_RUNS,
+        lambda _, info, metrics, boot: evaluate_setting(metrics, info["policies"], boot),
+        summarize,
+    )
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    return write_comparison(argv, "Compare the policies of the sweep.", run, "policy.json")
 
 
 if __name__ == "__main__":
