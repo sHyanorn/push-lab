@@ -82,15 +82,8 @@ def settings() -> list[dict[str, Any]]:
                 {"sweep": sweep, "point": j, "values": values | override, "grid": []} | _seeds(j)
             )
     # One-at-a-time grid around the reference, seeds fixed along every grid
-    grid: dict[tuple[float, ...], dict[str, Any]] = {}
     reference = {n: float(REFERENCE[n]) for n in NAMES}
-    grid[tuple(reference.values())] = {"values": reference, "grid": []}
-    for name in NAMES:
-        for i, v in enumerate(np.linspace(*RANGES[name], GRID_POINTS)):
-            values = reference | {name: float(v)}
-            entry = grid.setdefault(tuple(values.values()), {"values": values, "grid": []})
-            entry["grid"].append([name, i])
-    for entry in grid.values():
+    for entry in world.one_at_a_time(reference, NAMES, RANGES, GRID_POINTS, reference_first=True):
         out.append({"sweep": "grid", "point": None} | entry | _seeds(GRID_OFFSET))
     for r in range(1, REFITS + 1):
         out.append(

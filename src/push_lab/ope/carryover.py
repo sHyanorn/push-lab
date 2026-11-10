@@ -24,7 +24,7 @@ from push_lab import stats
 from push_lab.data import paths
 from push_lab.ope import simulator as sim
 from push_lab.runtime import code_commit, one_thread_per_process, write_json
-from push_lab.sim.world import RANGES, Params
+from push_lab.sim.world import RANGES, Params, one_at_a_time
 
 FloatArray = npt.NDArray[np.float64]
 
@@ -42,14 +42,8 @@ SMOKE = Path("runs") / "smoke" / "ope_carryover"
 
 def settings() -> list[dict[str, Any]]:
     """Distinct grid points, each with the (name, index) pairs it stands for."""
-    reference = asdict(Params())
-    found: dict[tuple[float, ...], dict[str, Any]] = {}
-    for name in NAMES:
-        for i, value in enumerate(np.linspace(*RANGES[name], POINTS)):
-            values = reference | {name: float(value)}
-            entry = found.setdefault(tuple(values.values()), {"values": values, "grid": []})
-            entry["grid"].append([name, i])
-    return [entry | {"id": i} for i, entry in enumerate(found.values())]
+    grid = one_at_a_time(asdict(Params()), NAMES, RANGES, POINTS)
+    return [entry | {"id": i} for i, entry in enumerate(grid)]
 
 
 def truth_runs(ctx: sim.Context, params: Params, target: str) -> dict[str, list[float]]:

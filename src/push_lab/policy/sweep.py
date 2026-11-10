@@ -164,16 +164,10 @@ def run_setting(ctx: Context, s: dict[str, Any]) -> tuple[FloatArray, dict[str, 
         run = env.draws(n, r)
         for i, name in enumerate(names):
             policy: env.Policy
-            if name == "N":
-                policy = rules.Never(n, r)
-            elif name == "R":
-                policy = rules.RandomSlots(n, r)
-            elif name == "F":
-                policy = rules.Daily(np.full(n, fixed, dtype=np.int64), r)
-            elif name in ("T", "T_two_tower"):
-                policy = rules.Daily(best, r)
-            elif name == "T_half":
-                policy = rules.Daily(best, r, half=True)
+            if name in rules.SIMPLE:
+                policy = rules.simple(name, n, best, fixed, r)
+            elif name == "T_two_tower":
+                policy = rules.simple("T", n, best, fixed, r)
             else:
                 kind, _, variant = name.partition("_")
                 policy = rules.Scored(

@@ -12,7 +12,7 @@ import numpy.typing as npt
 from push_lab.policy import budget
 from push_lab.policy.features import History, Static
 from push_lab.policy.gate import Kind, Models
-from push_lab.sim.env import Action, Observation
+from push_lab.sim.env import Action, Observation, Policy
 from push_lab.sim.world import COIN_STREAM, HALF_STREAM, SLOTS, TEMPLATE_STREAM, TEMPLATES, stream
 
 IntArray = npt.NDArray[np.int64]
@@ -68,6 +68,26 @@ class Daily:
             rng = stream(HALF_STREAM, self.run_seed, obs.day)
             send &= rng.random(len(self.slot)) < 0.5
         return _action(send, self.run_seed, obs)
+
+
+# Policies that need no model
+SIMPLE = ("N", "R", "F", "T", "T_half")
+
+
+def simple(name: str, users: int, best: IntArray, fixed: int, run_seed: int) -> Policy:
+    """One of ``SIMPLE``: F sends at the one slot ``fixed``, T and T_half at each user's
+    ``best`` slot."""
+    if name == "N":
+        return Never(users, run_seed)
+    if name == "R":
+        return RandomSlots(users, run_seed)
+    if name == "F":
+        return Daily(np.full(users, fixed, dtype=np.int64), run_seed)
+    if name == "T":
+        return Daily(best, run_seed)
+    if name == "T_half":
+        return Daily(best, run_seed, half=True)
+    raise KeyError(name)
 
 
 @dataclass

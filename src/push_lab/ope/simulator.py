@@ -124,20 +124,9 @@ class TwoSlots:
 
 
 def target_policy(target: str, ctx: Context, seed: int) -> env.Policy:
-    n = ctx.users
-    if target == "T":
-        return rules.Daily(ctx.best, seed)
-    if target == "T_half":
-        return rules.Daily(ctx.best, seed, half=True)
-    if target == "R":
-        return rules.RandomSlots(n, seed)
-    if target == "N":
-        return rules.Never(n, seed)
-    if target == "F":
-        return rules.Daily(np.full(n, ctx.fixed, dtype=np.int64), seed)
     if target == "T2":
         return TwoSlots(ctx.best, ctx.second, seed)
-    raise KeyError(target)
+    return rules.simple(target, ctx.users, ctx.best, ctx.fixed, seed)
 
 
 def target_probability(target: str, ctx: Context, bits: BoolArray, user: IntArray) -> FloatArray:

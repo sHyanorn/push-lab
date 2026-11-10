@@ -1,6 +1,8 @@
 """Simulator parameters and the constants derived from them (METHODS Section 11)."""
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, fields
+from typing import Any
 
 import numpy as np
 import numpy.typing as npt
@@ -50,6 +52,27 @@ RANGES: dict[str, tuple[float, float]] = {
 OPT_OUT_STRESS = 0.005
 
 assert set(RANGES) == {f.name for f in fields(Params)}
+
+
+def one_at_a_time(
+    reference: dict[str, float],
+    names: Sequence[str],
+    ranges: Mapping[str, tuple[float, float]],
+    points: int,
+    reference_first: bool = False,
+) -> list[dict[str, Any]]:
+    """Distinct settings of the grids that move one of ``names`` at a time over its range and
+    keep the others at ``reference``, each with the (name, index) pairs it stands for, in the
+    order first met. ``reference_first`` puts the reference itself at the head."""
+    found: dict[tuple[float, ...], dict[str, Any]] = {}
+    if reference_first:
+        found[tuple(reference.values())] = {"values": reference, "grid": []}
+    for name in names:
+        for i, value in enumerate(np.linspace(*ranges[name], points)):
+            values = reference | {name: float(value)}
+            entry = found.setdefault(tuple(values.values()), {"values": values, "grid": []})
+            entry["grid"].append([name, i])
+    return list(found.values())
 
 
 def reference_volume(half_life: float) -> float:
