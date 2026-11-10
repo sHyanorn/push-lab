@@ -3,7 +3,8 @@
 ``python -m push_lab.ope.obd`` estimates the BTS policy's click rate from the uniform random
 logs of the Men's campaign and checks it against the click rate of the BTS logs. It uses the
 small sample, and the full campaign too when ``prepare --only obd_full`` has been run. Writes
-``results/ope_obd.json``. Every number here is Tier B only for an estimator that passes.
+``results/ope_obd.json``. Every number here is Tier B only for an estimator that passes. None
+passed on the full campaign, so the project has no Tier B result (D046).
 """
 
 import argparse

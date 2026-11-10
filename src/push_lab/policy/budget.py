@@ -1,4 +1,8 @@
-"""Budget allocation by marginal gain with a Lagrange multiplier (METHODS Section 12.4)."""
+"""Budget allocation by marginal gain with a Lagrange multiplier (METHODS Section 12.4).
+
+The policies call ``top_k`` only, the allocator with one multiplier per day (D028). ``allocate``
+is kept for the tests that check it against ``brute_force``.
+"""
 
 import itertools
 
