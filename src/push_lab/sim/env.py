@@ -7,7 +7,7 @@ import numpy as np
 import numpy.typing as npt
 
 from push_lab.sim import world
-from push_lab.sim.world import DAYS, SLOT_HOURS, SLOTS, Params
+from push_lab.sim.world import DAYS, SLOTS, Params, slot_index, slot_time
 
 FloatArray = npt.NDArray[np.float64]
 IntArray = npt.NDArray[np.int64]
@@ -171,8 +171,8 @@ def simulate(
             organic_prob[d] = organic
         opens_today = np.zeros(n, dtype=np.int64)
         past_opened, past_visited = _read_only(out_opened[:d]), _read_only(visited[:d])
-        for s, hour in enumerate(SLOT_HOURS):
-            t = d + hour / 24
+        for s in range(SLOTS):
+            t = slot_time(d, s)
             advance(t)
             action = policy.act(Observation(d, s, opted.copy(), past_opened, past_visited))
             out_send[d, s] = action.send
@@ -192,7 +192,7 @@ def simulate(
             hazard = p.opt_out * volume[idx] / (f_ref + 1.0)
             leaving = idx[run.opt_out[d, s, idx] < hazard]
             opted[leaving] = True
-            opted_out_at[leaving] = d * SLOTS + s
+            opted_out_at[leaving] = slot_index(d, s)
             last_seen[idx, k] = t
             pointer[idx] += 1
             opens_today[idx] += opened

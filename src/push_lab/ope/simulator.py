@@ -180,7 +180,7 @@ def user_days(out: env.Outcome, static: Static) -> UserDays:
     best = static.profile.argmax(axis=1)
     for d in range(DAYS):
         f = history.features(static)[:, 0, columns]
-        opted = (out.opted_out_at >= 0) & (out.opted_out_at < d * SLOTS)
+        opted = (out.opted_out_at >= 0) & (out.opted_out_at < world.slot_index(d, 0))
         xs.append(np.column_stack([f, static.profile, best, opted]))
         bits.append(out.send[d].T)
         visits.append(out.visited[d].astype(np.float64))

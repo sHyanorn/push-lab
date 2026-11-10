@@ -13,7 +13,7 @@ import numpy as np
 import numpy.typing as npt
 
 from push_lab.sim.env import Action, Observation
-from push_lab.sim.world import CHOICE_STREAM, SLOT_HOURS, stream
+from push_lab.sim.world import CHOICE_STREAM, slot_time, stream
 
 FloatArray = npt.NDArray[np.float64]
 IntArray = npt.NDArray[np.int64]
@@ -238,7 +238,7 @@ class Templated:
         propensity = np.ones(n)
         users = np.flatnonzero(send & ~obs.opted_out)
         if len(users):
-            now = obs.day + SLOT_HOURS[obs.slot] / 24
+            now = slot_time(obs.day, obs.slot)
             probs = self.probabilities(users, now)
             u = choice_uniforms(self.run_seed, obs.day, obs.slot, n)[users]
             chosen = inverse_cdf(probs, u)

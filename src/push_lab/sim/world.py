@@ -19,6 +19,17 @@ TEMPLATES = 60
 FAMILIES = 6
 
 
+def slot_time(day: int, slot: int) -> float:
+    """When a slot's push goes out, in days from the start of the run."""
+    return day + SLOT_HOURS[slot] / 24
+
+
+def slot_index(day: int, slot: int) -> int:
+    """Position of (day, slot) among the slots of a run. An opt-out is recorded as the index
+    of the slot it happened at, and -1 stands for a user who never opted out."""
+    return day * SLOTS + slot
+
+
 @dataclass(frozen=True)
 class Params:
     """One simulator setting; defaults are the reference setting of METHODS Section 11.5."""

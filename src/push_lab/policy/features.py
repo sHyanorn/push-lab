@@ -10,7 +10,7 @@ import numpy as np
 import numpy.typing as npt
 
 from push_lab.sim.env import Outcome
-from push_lab.sim.world import SLOT_HOURS, SLOTS
+from push_lab.sim.world import SLOTS, slot_index, slot_time
 
 FloatArray = npt.NDArray[np.float64]
 IntArray = npt.NDArray[np.int64]
@@ -65,8 +65,8 @@ class History:
     def end_day(self, delivered: BoolArray, opened: BoolArray, visited: BoolArray) -> None:
         """Add one day: ``delivered`` and ``opened`` are [slot, user], ``visited`` [user]."""
         d = self.days
-        for s, hour in enumerate(SLOT_HOURS):
-            t = d + hour / 24
+        for s in range(SLOTS):
+            t = slot_time(d, s)
             self.volume *= 0.5 ** ((t - self.volume_time) / VOLUME_HALF_LIFE)
             self.volume_time = t
             self.volume += delivered[s]
@@ -96,8 +96,8 @@ class History:
             "days_since_open": np.minimum(DAYS_CAP, d - self.last_open),
             "days_since_delivery": np.minimum(DAYS_CAP, d - self.last_delivery),
         }
-        for s, hour in enumerate(SLOT_HOURS):
-            t = d + hour / 24
+        for s in range(SLOTS):
+            t = slot_time(d, s)
             column = common | {
                 "slot": np.full(n, float(s)),
                 "share": static.profile[:, s],
@@ -125,7 +125,7 @@ class Rows:
 def eligible(out: Outcome, day: int, slot: int) -> BoolArray:
     """Users not opted out before this slot (a user who opts out at it was delivered to)."""
     at = out.opted_out_at
-    mask: BoolArray = (at < 0) | (at >= day * SLOTS + slot)
+    mask: BoolArray = (at < 0) | (at >= slot_index(day, slot))
     return mask
 
 

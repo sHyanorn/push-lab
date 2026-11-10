@@ -26,7 +26,7 @@ from push_lab.policy import design, profile, runs, template_compare, template_de
 from push_lab.policy import templates as tp
 from push_lab.runtime import code_commit, one_thread_per_process
 from push_lab.sim import env, inputs, world
-from push_lab.sim.world import DAYS, SLOT_HOURS, SLOTS, Params
+from push_lab.sim.world import DAYS, SLOTS, Params, slot_time
 
 FloatArray = npt.NDArray[np.float64]
 IntArray = npt.NDArray[np.int64]
@@ -54,7 +54,7 @@ def repeats(out: env.Outcome, templates: int, days: float = REPEAT_DAYS) -> Floa
         for s in range(SLOTS):
             users = np.flatnonzero(out.delivered[d, s])
             k = out.template[d, s, users].astype(np.int64)
-            t = d + SLOT_HOURS[s] / 24
+            t = slot_time(d, s)
             count[users] += t - last[users, k] <= days
             last[users, k] = t
     return count
