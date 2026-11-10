@@ -137,9 +137,13 @@ def _median(values: list[float | None]) -> float | None:
     return rounded(float(np.median(known))) if known else None
 
 
-def summarize(
-    results: dict[int, SettingResult], frozen: dict[str, Any], infos: dict[int, dict[str, Any]]
-) -> dict[str, Any]:
+SweepAverage = tuple[dict[str, float], FloatArray, float]
+
+
+def finished_by_sweep(
+    results: dict[int, SettingResult], frozen: dict[str, Any]
+) -> tuple[dict[int, dict[str, Any]], dict[str, list[int]], dict[str, bool]]:
+    """Settings by id, finished ids by sweep and whether each sweep is complete."""
     settings = {s["id"]: s for s in frozen["settings"]}
     by_sweep: dict[str, list[int]] = {}
     for sid in sorted(results):
@@ -149,27 +153,45 @@ def summarize(
         for sw in sorted({s["sweep"] for s in frozen["settings"]})
     }
     complete = {sw: len(by_sweep.get(sw, [])) == n for sw, n in designed.items()}
-    seed = frozen["bootstrap"]["settings_seed"]
+    return settings, by_sweep, complete
 
-    main_ids = sorted(by_sweep.get(LABELED_SWEEP, []), key=lambda i: settings[i]["point"])
-    labeled: dict[str, Any] = {}
-    p_all: dict[str, float] = {}
-    averages: dict[str, Any] = {}
-    swept: dict[str, tuple[dict[str, float], FloatArray, float]] = {}
+
+def sweep_averages(
+    results: dict[int, SettingResult], main_ids: list[int], seed: int
+) -> dict[str, SweepAverage]:
+    swept: dict[str, SweepAverage] = {}
     if main_ids:
         # Every sweep average once; each reseeds its own resampling
         swept = {k: _averaged(results, main_ids, k, seed) for k in results[main_ids[0]].boot}
+    return swept
+
+
+def label_primary(
+    results: dict[int, SettingResult],
+    settings: dict[int, dict[str, Any]],
+    main_ids: list[int],
+    swept: dict[str, SweepAverage],
+    complete: dict[str, bool],
+) -> tuple[dict[str, Any], dict[str, bool]]:
+    """Labeled entry of each primary comparison and the Holm decisions."""
+    labeled: dict[str, Any] = {}
+    p_all: dict[str, float] = {}
+    if main_ids:
         for key in PRIMARY:
             avg, resampled, _ = swept[key]
             p = p_value(resampled)
             labeled[key] = compare.labeled_entry(results, settings, main_ids, key, avg, p)
             p_all[key] = p
-        for key in SECONDARY:
-            averages[key] = swept[key][0]
     # Labels and Holm need every main setting; a partial run gets none
     rejected = holm(p_all) if complete.get(LABELED_SWEEP) else {}
     for key, entry in labeled.items():
         compare.add_label(entry, rejected.get(key))
+    return labeled, rejected
+
+
+def oracle_gain_share(
+    results: dict[int, SettingResult], main_ids: list[int], swept: dict[str, SweepAverage]
+) -> dict[str, Any]:
     shares = [results[i].summary["share_of_oracle_gain"] for i in main_ids]
     oracle_share: dict[str, Any] = {
         "median_over_settings": _median([s["value"] if s else None for s in shares]),
@@ -177,6 +199,14 @@ def summarize(
     }
     if main_ids:
         oracle_share["ratio_of_averages"] = _ratio(swept["B1"], swept["O-U"])
+    return oracle_share
+
+
+def secondary_averages(main_ids: list[int], swept: dict[str, SweepAverage]) -> dict[str, Any]:
+    averages: dict[str, Any] = {}
+    if main_ids:
+        for key in SECONDARY:
+            averages[key] = swept[key][0]
         averages["active_days"] = {k: swept[f"active.{k}"][0] for k in PAIRS}
         averages["relative_to_U"] = {
             k: _ratio(swept[k], swept["U.opens"]) for k in ("B1", "D0-U", "O-U")
@@ -184,18 +214,12 @@ def summarize(
         averages["repeat_rate"] = {
             kind: _ratio(swept[f"{kind}.repeats"], swept[f"{kind}.delivered"]) for kind in KINDS
         }
+    return averages
 
-    flips = compare.grid_flips(
-        results,
-        settings,
-        by_sweep.get("grid", []),
-        GRID_NAMES,
-        tuple(PRIMARY),
-        lambda r, key: r.summary["primary"][key],
-    )
 
+def seed_variability(results: dict[int, SettingResult], replicates: list[int]) -> dict[str, Any]:
+    """Spread of each primary comparison over the seed triples against its bootstrap error."""
     variability: dict[str, Any] = {}
-    replicates = by_sweep.get("replicate", [])
     if len(replicates) > 1:
         for key in PRIMARY:
             pts = np.array([results[i].points[key] for i in replicates])
@@ -214,7 +238,12 @@ def summarize(
                 },
                 "negative_triples": int((pts < 0).sum()),
             }
+    return variability
 
+
+def score_diagnostics_median(
+    by_sweep: dict[str, list[int]], infos: dict[int, dict[str, Any]], seed: int
+) -> dict[str, Any]:
     diagnostics: dict[str, Any] = {}
     for sw, ids in by_sweep.items():
         diagnostics[sw] = {
@@ -226,7 +255,15 @@ def summarize(
             }
             for kind in infos[ids[0]]["score_diagnostics"]
         }
+    return diagnostics
 
+
+def post_hoc_correlations(
+    results: dict[int, SettingResult],
+    settings: dict[int, dict[str, Any]],
+    main_ids: list[int],
+    seed: int,
+) -> dict[str, Any]:
     post_hoc: dict[str, Any] = {}
     if main_ids:
         spread = np.array([settings[i]["values"]["copy_spread"] for i in main_ids])
@@ -234,6 +271,50 @@ def summarize(
             [results[i].points["B1"] / results[i].points["U.opens"] for i in main_ids]
         )
         post_hoc["B1_relative_vs_copy_spread_correlation"] = _correlation(spread, relative, seed)
+    return post_hoc
+
+
+def setting_rows(
+    results: dict[int, SettingResult],
+    settings: dict[int, dict[str, Any]],
+    infos: dict[int, dict[str, Any]],
+) -> list[dict[str, Any]]:
+    return [
+        {
+            "id": i,
+            "sweep": settings[i]["sweep"],
+            "values": {k: rounded(v) for k, v in settings[i]["values"].items()},
+            "uniform_family_share": infos[i]["uniform_family_share"],
+            "timings_s": infos[i]["timings_s"],
+        }
+        | results[i].summary
+        for i in sorted(results)
+    ]
+
+
+def summarize(
+    results: dict[int, SettingResult], frozen: dict[str, Any], infos: dict[int, dict[str, Any]]
+) -> dict[str, Any]:
+    settings, by_sweep, complete = finished_by_sweep(results, frozen)
+    seed = frozen["bootstrap"]["settings_seed"]
+
+    main_ids = sorted(by_sweep.get(LABELED_SWEEP, []), key=lambda i: settings[i]["point"])
+    swept = sweep_averages(results, main_ids, seed)
+    labeled, rejected = label_primary(results, settings, main_ids, swept, complete)
+    oracle_share = oracle_gain_share(results, main_ids, swept)
+    averages = secondary_averages(main_ids, swept)
+
+    flips = compare.grid_flips(
+        results,
+        settings,
+        by_sweep.get("grid", []),
+        GRID_NAMES,
+        tuple(PRIMARY),
+        lambda r, key: r.summary["primary"][key],
+    )
+    variability = seed_variability(results, by_sweep.get("replicate", []))
+    diagnostics = score_diagnostics_median(by_sweep, infos, seed)
+    post_hoc = post_hoc_correlations(results, settings, main_ids, seed)
 
     samples = len(next(iter(results.values())).boot["B1"])
     return {
@@ -252,17 +333,7 @@ def summarize(
         "seed_variability": variability,
         "post_hoc": post_hoc,
         "score_diagnostics_median": diagnostics,
-        "settings": [
-            {
-                "id": i,
-                "sweep": settings[i]["sweep"],
-                "values": {k: rounded(v) for k, v in settings[i]["values"].items()},
-                "uniform_family_share": infos[i]["uniform_family_share"],
-                "timings_s": infos[i]["timings_s"],
-            }
-            | results[i].summary
-            for i in sorted(results)
-        ],
+        "settings": setting_rows(results, settings, infos),
     }
 
 
