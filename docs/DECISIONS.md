@@ -64,6 +64,7 @@ Entries are in the order they were made. Some entries up to D048 were corrected 
 | D058 | Measurements behind three METHODS corrections, post hoc | Active |
 | D059 | One integer seed shared by draws, folds and bootstrap in the off-policy checks | Active |
 | D060 | "Paired" in the OBD check, corrected | Active |
+| D061 | Crossing intervals are conditional on a crossing | Active |
 
 ## D001 Python only, static report
 - Date: 2026-11-08
@@ -567,7 +568,7 @@ Entries are in the order they were made. Some entries up to D048 were corrected 
 | B2 | 28 / 28 / 8, depends on the setting | 10 / 5 / 49 | unchanged |
 
 - Limits: the spread was measured at the reference setting only and may differ elsewhere; the policy refits vary the exploration seed, not the world or evaluation seeds. The sweep averages resample settings with their own seeds, so their intervals and the Holm decisions are unaffected; only the "in most sampled settings" part of three labels depends on this
-- Kept: the registered labels and every results file. The report shows the reading beside the label of B1, H1-af and H2-af (`SENSITIVITY` in `report/build.py`), and `check_readings` fails the build if one of those registered labels changes
+- Kept: the registered labels and every results file. The report shows the reading beside the label of B1, H1-af and H2-af (`SENSITIVITY` in `report/facts.py`), and `check_readings` fails the build if one of those registered labels changes
 
 ## D058 Measurements behind three METHODS corrections, post hoc
 - Date: 2026-11-09
@@ -578,10 +579,11 @@ Entries are in the order they were made. Some entries up to D048 were corrected 
 
 ## D059 One integer seed shared by draws, folds and bootstrap in the off-policy checks
 - Date: 2026-11-09
-- Breaks the rule of D032 that integer seeds used in one run stay distinct: `default_rng(s)` with the same `s` gives the same numbers. In the simulator check one log seed feeds the simulator's draws (`env.draws`, `ope/simulator.py:230`), the cross-fitting folds (`ope/simulator.py:211`) and the estimators' bootstrap (`ope/simulator.py:252` into `ope/estimators.py:71`); the carryover sweep passes its log seeds the same way (`ope/carryover.py:73`). On OBD the fold seed and the bootstrap seed are both 0 (`ope/obd.py:42-43`, used at 141 and 207). In the first bootstrap resample of log seed 1001, every second resampled user index equals the open draw of day 0, slot 0 for one user times 5,000, rounded down
+- Breaks the rule of D032 that integer seeds used in one run stay distinct: `default_rng(s)` with the same `s` gives the same numbers. In the simulator check one log seed feeds the simulator's draws (`env.draws` in `estimate_log`, `ope/simulator.py`), the cross-fitting folds (`outcome_models`) and the estimators' bootstrap (`est.evaluate` in `estimate_log`, into `bootstrap` in `ope/estimators.py`); the carryover sweep passes its log seeds the same way (`_work` in `ope/carryover.py`). On OBD the fold seed and the bootstrap seed are both 0 (`FOLD_SEED` and `BOOT_SEED` in `ope/obd.py`, used in `outcome_model` and `validate`). In the first bootstrap resample of log seed 1001, every second resampled user index equals the open draw of day 0, slot 0 for one user times 5,000, rounded down
 - Effect: a user's count in a resample is set by other users' draws and matches the user's own draw only with probability about 1/5,000, so the resamples carry no information about the user's own outcome and no bias follows. Measured post hoc on the control setting, log seeds 1,001 to 1,010, against folds and bootstrap from keyed streams on the same logs: IPS estimates are identical (they use neither); DR means differ by at most 0.00012 per target; mean interval widths differ by up to about 3% in either direction; of the 18 coverage counts (six targets, IPS, DR and DM) all agree except F with DR (10 against 9), R with DM (8 against 9) and N with DM (3 against 4)
 - Not rerun: the registered results are kept as frozen. The analysis and the measurement show no bias, and a rerun with new streams would move borderline verdicts by Monte Carlo noise only, which would be a change of method after seeing the results
 - Rule from now on: new code draws every random stream from `world.stream(purpose, *key)` with its own purpose, or from a seed sequence spawned for that use; an integer seed is passed to `default_rng` for one use in a run only. The uses listed here and the shared seed 0 of the evaluation sample and the policy bootstrap (`world.quick_sample`, `design.BOOTSTRAP_SEED`, D033) stay as they are
+- Addendum 2026-11-10: also outside the list above, and kept: `uplift/evaluate.py` passes `SEED = 0` to `default_rng` for the bootstrap weights, for the random-score baseline of each trial and, on Criteo, for the rows sampled for the causal forest, and uses it as the `random_state` of the train and test split. Its effect was not measured. The code pointers in this entry name functions since this date; they were line numbers
 
 ## D060 "Paired" in the OBD check, corrected
 - Date: 2026-11-10
@@ -590,3 +592,9 @@ Entries are in the order they were made. Some entries up to D048 were corrected 
 - Corrected: the docstring of `_ratio` ("the interval of the paired resamples") and METHODS 14.2 ("over 1,000 paired resamples of both logs"). D043 ("median relative error over paired resamples") and D044 ("its paired-resample interval") keep their text and point here
 - Still paired: in `empirical_target` the two targets share the seed, the impressions and the resamples of the random logs, so the difference of the two IPS estimates (the "paired change" of D046) is paired. The on-policy resamples in its denominator are independent, as above
 - Limitation of that post hoc check: the empirical (item, position) frequencies are computed once from the BTS logs and held fixed while those logs are resampled for the on-policy value, so its interval leaves out the sampling noise of the target itself
+
+## D061 Crossing intervals are conditional on a crossing
+- Date: 2026-11-10
+- A note on METHODS 12.7, which says a flip is located "with an interval from the same bootstrap" and leaves out which resamples enter. No code and no result file changed
+- The interval is the 2.5% to 97.5% range of the interpolated crossing over the resamples in which the two points have opposite signs; resamples without a sign change are left out, so it is conditional on a crossing, and the share of resamples kept is reported as `resamples_crossing`
+- Applies wherever the rule of 12.7 locates a flip (`flips` in `stats.py`): `results/policy.json`, `results/templates.json` and `results/ope_carryover.json`
