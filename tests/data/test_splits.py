@@ -1,8 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from push_lab.data import fixtures
-from push_lab.rank import splits
+from push_lab.data import fixtures, splits
 
 
 def test_window_excludes_cutoff_and_later() -> None:

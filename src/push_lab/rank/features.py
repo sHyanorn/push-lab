@@ -4,14 +4,16 @@ Every statistic comes from the standard-log window before the cutoff. Pair featu
 looked up with index arrays, so millions of (user, item) pairs can be built at once.
 """
 
+import time
 from dataclasses import dataclass
 
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
 
-from push_lab.rank import splits
-from push_lab.recall.two_tower import TwoTower
+from push_lab.data import splits
+from push_lab.recall.two_tower import Config, TwoTower
+from push_lab.runtime import rounded
 
 ALPHA = 20.0
 
@@ -153,3 +155,21 @@ class FeatureBuilder:
         iv = self.tower.item_vectors(uniq_i)
         scores: npt.NDArray[np.float32] = np.einsum("nd,nd->n", uv[inv_u], iv[inv_i])
         return scores
+
+
+def fit_cutoff(
+    standard: pd.DataFrame,
+    cutoff: int,
+    users: pd.DataFrame,
+    items: pd.DataFrame,
+    config: Config,
+    timings: dict[str, float],
+) -> tuple[pd.DataFrame, FeatureBuilder]:
+    """The standard-log window before ``cutoff``, and the features built on it with a two-tower
+    model fitted on it."""
+    window = splits.window(standard, cutoff)
+    start = time.perf_counter()
+    tower = TwoTower(users, items, window, config)
+    tower.fit()
+    timings[f"two_tower_fit_s_{cutoff}"] = rounded(time.perf_counter() - start)
+    return window, FeatureBuilder(window, cutoff, users, items, tower)

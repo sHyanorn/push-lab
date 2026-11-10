@@ -13,10 +13,9 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 
-from push_lab.data import kuairand, paths
-from push_lab.rank import cascade, fine, splits
-from push_lab.rank.evaluate import fit_cutoff
-from push_lab.rank.features import CATEGORICAL, FeatureBuilder
+from push_lab.data import kuairand, paths, splits
+from push_lab.rank import cascade, fine
+from push_lab.rank.features import CATEGORICAL, FeatureBuilder, fit_cutoff
 from push_lab.recall import popularity, two_tower
 from push_lab.recall.index import ItemIndex
 from push_lab.sim.world import DAYS, SLOTS, WINDOWS

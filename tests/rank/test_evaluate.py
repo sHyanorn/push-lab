@@ -6,8 +6,8 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from push_lab.data import fixtures, kuairand, paths
-from push_lab.rank import evaluate, splits
+from push_lab.data import fixtures, kuairand, paths, splits
+from push_lab.rank import evaluate
 from push_lab.recall import two_tower
 
 

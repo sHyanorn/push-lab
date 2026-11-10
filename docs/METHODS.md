@@ -33,7 +33,7 @@ The window expands rather than slides: activity in the Pure logs is concentrated
 
 **Undated user attributes.** The user table (`user_active_degree`, `is_lowactive_period`, `is_live_streamer`, `is_video_author`, follow, fan and friend counts, `register_days`, `register_days_range`, `onehot_feat*`) is a single snapshot with no date. It is constant within a user, but both models let it interact with item features (tree splits in the fine ranker, the inner product of the two towers), so it can change the order of items within a user and with it per-user AUC and NDCG as well as Recall@K. It is used as released, and this is a limitation of every ranking result. Refitting the fine ranker without these fields raises its fused GAUC (click) on the evaluation half, so in the fine ranker they do not inflate the reported number (D058).
 
-**Code.** `rank/splits.py`. **Tests.** No feature table built at cutoff $c$ contains a row with $\text{date} \ge c$; the two halves are disjoint, cover all random-exposure users and are identical across runs.
+**Code.** `data/splits.py`. **Tests.** No feature table built at cutoff $c$ contains a row with $\text{date} \ge c$; the two halves are disjoint, cover all random-exposure users and are identical across runs.
 
 ---
 

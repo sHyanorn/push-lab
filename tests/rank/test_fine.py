@@ -2,8 +2,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from push_lab.data import fixtures
-from push_lab.rank import fine, splits
+from push_lab.data import fixtures, splits
+from push_lab.rank import fine
 from push_lab.rank.features import FeatureBuilder, smoothed
 from push_lab.recall import two_tower
 

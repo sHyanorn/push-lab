@@ -6,9 +6,9 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from push_lab.data import fixtures, kuairand, paths
-from push_lab.rank import fine, splits
-from push_lab.rank.evaluate import fit_cutoff
+from push_lab.data import fixtures, kuairand, paths, splits
+from push_lab.rank import fine
+from push_lab.rank.features import fit_cutoff
 from push_lab.recall import popularity, two_tower
 from push_lab.sim import build, inputs
 from push_lab.sim.world import SLOTS

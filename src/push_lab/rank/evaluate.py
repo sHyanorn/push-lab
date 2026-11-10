@@ -17,9 +17,9 @@ import numpy.typing as npt
 import pandas as pd
 
 from push_lab import stats
-from push_lab.data import kuairand, paths
-from push_lab.rank import cascade, fine, metrics, splits, truncation
-from push_lab.rank.features import FeatureBuilder
+from push_lab.data import kuairand, paths, splits
+from push_lab.rank import cascade, fine, metrics, truncation
+from push_lab.rank.features import FeatureBuilder, fit_cutoff
 from push_lab.recall import popularity, two_tower
 from push_lab.recall.index import ItemIndex, overlap
 from push_lab.runtime import rounded, write_json
@@ -65,22 +65,6 @@ class Settings:
 
 def _est(e: metrics.Estimate) -> dict[str, float]:
     return {k: rounded(v) if isinstance(v, float) else v for k, v in e.as_dict().items()}
-
-
-def fit_cutoff(
-    standard: pd.DataFrame,
-    cutoff: int,
-    users: pd.DataFrame,
-    items: pd.DataFrame,
-    config: two_tower.Config,
-    timings: dict[str, float],
-) -> tuple[pd.DataFrame, FeatureBuilder]:
-    window = splits.window(standard, cutoff)
-    start = time.perf_counter()
-    tower = two_tower.TwoTower(users, items, window, config)
-    tower.fit()
-    timings[f"two_tower_fit_s_{cutoff}"] = rounded(time.perf_counter() - start)
-    return window, FeatureBuilder(window, cutoff, users, items, tower)
 
 
 def _scores_by_user(

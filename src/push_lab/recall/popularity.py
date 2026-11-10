@@ -4,7 +4,7 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 
-from push_lab.rank import splits
+from push_lab.data import splits
 
 TRENDING_DAYS = 3
 
