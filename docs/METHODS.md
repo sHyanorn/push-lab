@@ -611,6 +611,7 @@ $$
 - Validation measure: for each estimator, the relative error $|\hat V - V| / V$ over 1,000 paired resamples of both logs (its median and 95% range, and the RMSE), and whether the estimate's 95% interval contains $V$. The click rate of the BTS logs is resampled over impressions.
 - Limitation stated with every small-sample OBD number: the sample has 46 clicks in the random logs and 69 in the BTS logs, so the check has low power: it can show a gross failure, not a small bias.
 - Secondary, the full Men's campaign (SPEC optional item 6): the same check on all its random and BTS impressions, downloaded once locally and never in CI; the same rule applies with a larger sample (D042).
+- Post hoc (D043, D046): IPS with the BTS logs' own (item, position) frequencies as the target, as a ratio to $V$, and that ratio minus the IPS ratio under the fixed prior. Both use the same 1,000 resamples of the random logs, so the difference has a paired interval.
 - An estimator that passes is *validated on OBD* (14.4), and its OBD estimate of the BTS value is the project's Tier B result. (D046: no estimator passed on the full campaign, so the project has no Tier B result.)
 
 **Code.** `ope/obd.py` (`python -m push_lab.ope.obd`, writes `results/ope_obd.json`).
