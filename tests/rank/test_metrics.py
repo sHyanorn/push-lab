@@ -55,13 +55,6 @@ def test_impression_weighted_estimate() -> None:
     assert metrics.estimate(values, idx, weights).value == pytest.approx(0.75)
 
 
-def test_holm() -> None:
-    assert metrics.holm({"C1": 0.01, "C2": 0.04}) == {"C1": True, "C2": True}
-    assert metrics.holm({"C1": 0.03, "C2": 0.04}) == {"C1": False, "C2": False}
-    assert metrics.holm({"C1": 0.001, "C2": 0.03}) == {"C1": True, "C2": True}
-    assert metrics.holm({"C1": 0.001, "C2": 0.06}) == {"C1": True, "C2": False}
-
-
 def test_interval_brackets_the_estimate_and_pairing_narrows_it() -> None:
     rng = np.random.default_rng(1)
     b = rng.random(400)

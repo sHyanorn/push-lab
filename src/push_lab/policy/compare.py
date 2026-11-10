@@ -20,6 +20,7 @@ from push_lab.data import paths
 from push_lab.policy import design
 from push_lab.policy.sweep import METRICS, RUNS, setting_paths
 from push_lab.runtime import rounded, write_json
+from push_lab.stats import flip_result, flips, holm, interval, p_value
 
 FloatArray = npt.NDArray[np.float64]
 
@@ -35,7 +36,6 @@ SECONDARY = {
 }
 PER_PUSH = ("R", "F", "T", "S", "G", "G2")
 SETTING_LEVEL = 0.05 / len(PRIMARY)
-FAMILY_LEVEL = 0.05
 LABELED_SWEEPS = ("main", "annoyance_free")
 MOST, SPLIT = 48, 4
 BAND = (0.0007, 0.005)
@@ -75,30 +75,10 @@ class Bootstrap:
         return out
 
 
-def p_value(boot: FloatArray) -> float:
-    """Twice the smaller tail share at zero, capped at 1 (METHODS Conventions)."""
-    return float(min(1.0, 2 * min(np.mean(boot <= 0), np.mean(boot >= 0))))
-
-
-def interval(point: float, boot: FloatArray) -> dict[str, float]:
-    low, high = np.percentile(boot, [2.5, 97.5])
-    return {"value": rounded(point), "ci_low": rounded(low), "ci_high": rounded(high)}
-
-
 def verdict(point: float, p: float, level: float = SETTING_LEVEL) -> str:
     if p > level:
         return "neither"
     return "win" if point > 0 else "loss"
-
-
-def holm(p_values: dict[str, float], level: float = FAMILY_LEVEL) -> dict[str, bool]:
-    ordered = sorted(p_values.items(), key=lambda kv: kv[1])
-    out: dict[str, bool] = {}
-    still = True
-    for rank, (name, p) in enumerate(ordered):
-        still = still and p <= level / (len(ordered) - rank)
-        out[name] = still
-    return out
 
 
 def label(average: float, rejected: bool, wins: int, losses: int) -> str:
@@ -122,42 +102,6 @@ def band_class(low: float, high: float, band: tuple[float, float] = BAND) -> str
     if low >= band[0] and high <= band[1]:
         return "inside"
     return "straddling"
-
-
-def flips(x: FloatArray, points: FloatArray, boot: FloatArray) -> list[dict[str, Any]]:
-    """Crossings of zero between adjacent grid points ``x`` (sorted), with ``boot``
-    [sample, point]. A crossing is resolved only if both intervals exclude 0."""
-    low, high = np.percentile(boot, [2.5, 97.5], axis=0)
-    out: list[dict[str, Any]] = []
-    for i in range(len(x) - 1):
-        a, b = points[i], points[i + 1]
-        if np.sign(a) == np.sign(b):
-            continue
-        resolved = (low[i] > 0 and high[i + 1] < 0) or (high[i] < 0 and low[i + 1] > 0)
-        entry: dict[str, Any] = {
-            "between": [rounded(x[i]), rounded(x[i + 1])],
-            "resolved": bool(resolved),
-        }
-        if resolved:
-            at = x[i] + (x[i + 1] - x[i]) * a / (a - b)
-            ba, bb = boot[:, i], boot[:, i + 1]
-            crossing = np.sign(ba) != np.sign(bb)
-            xs = x[i] + (x[i + 1] - x[i]) * ba[crossing] / (ba[crossing] - bb[crossing])
-            lo, hi = np.percentile(xs, [2.5, 97.5])
-            entry |= {
-                "at": rounded(at),
-                "ci_low": rounded(lo),
-                "ci_high": rounded(hi),
-                "resamples_crossing": rounded(crossing.mean()),
-            }
-        out.append(entry)
-    return out
-
-
-def flip_result(crossings: list[dict[str, Any]]) -> str:
-    if not crossings:
-        return "no flip in range"
-    return "flip" if any(c["resolved"] for c in crossings) else "not resolved"
 
 
 @dataclass

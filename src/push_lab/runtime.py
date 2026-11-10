@@ -8,7 +8,8 @@ from typing import Any
 
 
 def rounded(x: float) -> float:
-    """Six decimals, the precision of the result files."""
+    """Six decimals, the precision of the result files that round; the off-policy files keep
+    most numbers at full precision."""
     return round(float(x), 6)
 
 

@@ -15,11 +15,12 @@ import numpy.typing as npt
 
 from push_lab.data import paths
 from push_lab.policy import compare, template_design
-from push_lab.policy.compare import Bootstrap, SettingResult, interval, p_value
+from push_lab.policy.compare import Bootstrap, SettingResult
 from push_lab.policy.template_design import GRID_NAMES, PRIMARY, SETTING_LEVEL
 from push_lab.policy.template_sweep import METRICS, RUNS
 from push_lab.policy.templates import KINDS
 from push_lab.runtime import rounded, write_json
+from push_lab.stats import holm, interval, p_value
 
 FloatArray = npt.NDArray[np.float64]
 
@@ -171,7 +172,7 @@ def summarize(
         for key in SECONDARY:
             averages[key] = swept[key][0]
     # Labels and Holm need every main setting; a partial run gets none
-    rejected = compare.holm(p_all) if complete.get(LABELED_SWEEP) else {}
+    rejected = holm(p_all) if complete.get(LABELED_SWEEP) else {}
     for key, entry in labeled.items():
         compare.add_label(entry, rejected.get(key))
     shares = [results[i].summary["share_of_oracle_gain"] for i in main_ids]

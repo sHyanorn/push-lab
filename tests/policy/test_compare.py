@@ -17,14 +17,10 @@ def test_bootstrap_means_equal_explicit_resamples() -> None:
     np.testing.assert_allclose(means.std(axis=0), se, rtol=0.1)
 
 
-def test_p_value_verdict_and_holm() -> None:
-    assert compare.p_value(np.array([1.0, 2.0, 3.0, -1.0])) == pytest.approx(0.5)
-    assert compare.p_value(np.ones(10)) == 0.0
+def test_verdict() -> None:
     assert compare.verdict(0.3, 0.01) == "win"
     assert compare.verdict(-0.3, 0.01) == "loss"
     assert compare.verdict(0.3, 0.013) == "neither"
-    assert compare.holm({"a": 0.01, "b": 0.02, "c": 0.04}) == {"a": True, "b": True, "c": True}
-    assert compare.holm({"a": 0.01, "b": 0.03, "c": 0.04}) == {"a": True, "b": False, "c": False}
 
 
 @pytest.mark.parametrize(
@@ -51,23 +47,6 @@ def test_band_classes() -> None:
     assert compare.band_class(0.001, 0.004) == "inside"
     assert compare.band_class(0.006, 0.01) == "above"
     assert compare.band_class(0.0005, 0.002) == "straddling"
-
-
-def test_flips_are_resolved_only_when_both_intervals_exclude_zero() -> None:
-    rng = np.random.default_rng(1)
-    x = np.array([0.0, 1.0, 2.0, 3.0])
-    points = np.array([1.0, 0.5, -0.5, -0.02])
-    boot = points + rng.normal(scale=0.1, size=(4_000, 4))
-    crossings = compare.flips(x, points, boot)
-    assert len(crossings) == 1
-    c = crossings[0]
-    assert c["resolved"] and c["at"] == pytest.approx(1.5)
-    assert c["ci_low"] < 1.5 < c["ci_high"]
-    weak = compare.flips(
-        x, np.array([0.05, -0.05, -0.05, -0.05]), boot - points + [0.05, -0.05, -0.05, -0.05]
-    )
-    assert len(weak) == 1 and not weak[0]["resolved"]
-    assert compare.flips(x, np.ones(4), boot - points + 1) == []
 
 
 def test_sweep_average_covers_a_known_mean() -> None:

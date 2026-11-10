@@ -18,11 +18,11 @@ from typing import Any
 
 import numpy as np
 import numpy.typing as npt
-from scipy import stats
+from scipy.stats import t as student_t
 
+from push_lab import stats
 from push_lab.data import paths
 from push_lab.ope import simulator as sim
-from push_lab.policy import compare
 from push_lab.runtime import code_commit, one_thread_per_process, write_json
 from push_lab.sim.world import RANGES, Params
 
@@ -123,13 +123,13 @@ def summarize(
                     [per_setting[sid]["targets"][target][estimator]["bias"]["value"] for sid in ids]
                 )
                 b = np.stack([boots[(sid, target, estimator)] for sid in ids], axis=1)
-                crossings = compare.flips(x, pts, b)
+                crossings = stats.flips(x, pts, b)
                 flips[name][f"{target}.{estimator}"] = {
-                    "bias": [compare.interval(p, b[:, j]) for j, p in enumerate(pts)],
+                    "bias": [stats.interval(p, b[:, j]) for j, p in enumerate(pts)],
                     "crossings": crossings,
                     # Paired change of the bias from the first to the last grid point
-                    "change": compare.interval(pts[-1] - pts[0], b[:, -1] - b[:, 0]),
-                    "result": compare.flip_result(crossings),
+                    "change": stats.interval(pts[-1] - pts[0], b[:, -1] - b[:, 0]),
+                    "result": stats.flip_result(crossings),
                 }
     return {"settings": [per_setting[s["id"]] for s in grid], "flips": flips}
 
@@ -170,7 +170,7 @@ def orderings(result: dict[str, Any], folder: Path) -> dict[str, Any]:
                             for x in logs
                         ]
                     )
-                    q = float(stats.t.ppf(0.975, len(d) - 1))
+                    q = float(student_t.ppf(0.975, len(d) - 1))
                     est = _interval(float(d.mean()), float(d.std(ddof=1) / np.sqrt(len(d))), q)
                     pair[e].append(est)
                     pair["reversed"][e].append(

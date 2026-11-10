@@ -17,6 +17,7 @@ import pandas as pd
 import pyarrow.parquet as pq
 from sklearn.model_selection import train_test_split
 
+from push_lab import stats
 from push_lab.data import paths, uplift_trials
 from push_lab.rank import metrics
 from push_lab.runtime import rounded, write_json
@@ -204,7 +205,7 @@ def _paired_qini(
         lambda c: np.array([curves.qini_coefficient(c[0]) - curves.qini_coefficient(c[1])]),
         samples,
     )[:, 0]
-    return _interval(point, boot) | {"p_value": rounded(metrics.p_value(boot))}
+    return _interval(point, boot) | {"p_value": rounded(stats.p_value(boot))}
 
 
 def _by_decile(t: IntArray, y: IntArray, score: FloatArray, samples: int) -> dict[str, Any]:
@@ -229,7 +230,7 @@ def _by_decile(t: IntArray, y: IntArray, score: FloatArray, samples: int) -> dic
 
 
 def _against_zero(est: dict[str, Any], boot: FloatArray) -> dict[str, Any]:
-    return est | {"p_value": rounded(metrics.p_value(boot))}
+    return est | {"p_value": rounded(stats.p_value(boot))}
 
 
 Effect = Callable[[FloatArray], FloatArray]
@@ -434,7 +435,7 @@ def run(root: Path, settings: Settings | None = None, criteo: bool = True) -> di
     timings["criteo"]["bootstrap"] = round(time.perf_counter() - start, 1)
     result["criteo"] = {"setup": crit_setup, **crit_metrics}
 
-    rejected = metrics.holm({name: entry["p_value"] for name, entry in primary.items()})
+    rejected = stats.holm({name: entry["p_value"] for name, entry in primary.items()})
     for name, entry in primary.items():
         entry["holm_rejected"] = rejected[name]
         entry["p_value_resolution"] = rounded(2 / s.bootstrap_samples)

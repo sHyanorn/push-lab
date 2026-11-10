@@ -11,6 +11,8 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 
+from push_lab.stats import p_value
+
 FloatArray = npt.NDArray[np.float64]
 IntArray = npt.NDArray[np.int64]
 
@@ -133,21 +135,3 @@ def compare(a: FloatArray, b: FloatArray, idx: IntArray) -> Comparison:
     diff = np.where(both, a - b, np.nan)
     est = estimate(diff, idx)
     return Comparison(est, p_value(_nanmean_rows(diff, idx)))
-
-
-def p_value(boot: FloatArray) -> float:
-    """Twice the smaller tail share at zero, capped at 1; NaN resamples are left out."""
-    boot = boot[~np.isnan(boot)]
-    return min(1.0, 2 * min(float(np.mean(boot <= 0)), float(np.mean(boot >= 0))))
-
-
-def holm(p_values: dict[str, float], level: float = 0.05) -> dict[str, bool]:
-    """Holm's step-down procedure; True where the hypothesis is rejected."""
-    ordered = sorted(p_values.items(), key=lambda kv: kv[1])
-    m = len(ordered)
-    rejected: dict[str, bool] = {}
-    still = True
-    for rank, (name, p) in enumerate(ordered):
-        still = still and p <= level / (m - rank)
-        rejected[name] = still
-    return rejected

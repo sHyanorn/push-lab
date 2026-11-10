@@ -16,6 +16,7 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 
+from push_lab import stats
 from push_lab.data import kuairand, paths
 from push_lab.rank import cascade, fine, metrics, splits, truncation
 from push_lab.rank.features import FeatureBuilder
@@ -239,7 +240,7 @@ def run(root: Path, settings: Settings | None = None) -> dict[str, Any]:
     # Primary comparisons
     c1 = metrics.compare(recall_values["two_tower"][200], recall_values["popularity"][200], idx)
     c2 = metrics.compare(ranking["fused"]["gauc_click"], ranking["two_tower"]["gauc_click"], idx)
-    rejected = metrics.holm({"C1": c1.p_value, "C2": c2.p_value})
+    rejected = stats.holm({"C1": c1.p_value, "C2": c2.p_value})
     # With B resamples the smallest nonzero p-value is 2/B; 0 means below it
     p_resolution = {"p_value_resolution": rounded(2 / s.bootstrap_samples)}
 
