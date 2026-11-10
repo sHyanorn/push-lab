@@ -8,11 +8,9 @@ alone: it uses one thread per process.
 
 import argparse
 import json
-import multiprocessing as mp
-import os
 import sys
 import time
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -22,10 +20,10 @@ import numpy.typing as npt
 from scipy.stats import spearmanr
 
 from push_lab.data import paths
-from push_lab.policy import design, profile, rules
+from push_lab.policy import compare, design, profile, rules, runs
 from push_lab.policy.features import Rows, Static, logged_rows
 from push_lab.policy.gate import KINDS, Models
-from push_lab.runtime import code_commit, one_thread_per_process, write_json
+from push_lab.runtime import code_commit, one_thread_per_process
 from push_lab.sim import env, inputs
 from push_lab.sim.explore import EpsilonGreedy
 from push_lab.sim.world import DAYS, SLOTS, Params
@@ -35,9 +33,7 @@ IntArray = npt.NDArray[np.int64]
 
 PRIMARY = ("N", "R", "F", "T", "T_half", "T_two_tower", "S", "G", "G2")
 SECONDARY = tuple(f"{k}_lambda" for k in KINDS)
-METRICS = ("active_days", "active_week4", "opens_week1", "opens", "delivered", "opted_out")
 SECONDARY_SWEEPS = ("main",)
-RUNS = Path("runs") / "policy"
 
 
 @dataclass(frozen=True)
@@ -59,7 +55,7 @@ def policies_for(sweep: str) -> tuple[str, ...]:
 
 
 def user_metrics(out: env.Outcome) -> FloatArray:
-    """Per user, in the order of ``METRICS``."""
+    """Per user, in the order of ``runs.POLICY_METRICS``."""
     return np.stack(
         [
             out.visited.sum(axis=0),
@@ -162,7 +158,7 @@ def run_setting(ctx: Context, s: dict[str, Any]) -> tuple[FloatArray, dict[str, 
     fixed = int(prof.mean(axis=0).argmax())
     best = ev_static.profile.argmax(axis=1)
     info["fixed_slot"] = fixed
-    total = np.zeros((len(names), len(METRICS), n))
+    total = np.zeros((len(names), len(runs.POLICY_METRICS), n))
     cap_days: dict[str, list[int]] = {}
     for r in s["eval_seeds"]:
         run = env.draws(n, r)
@@ -200,81 +196,6 @@ def run_setting(ctx: Context, s: dict[str, Any]) -> tuple[FloatArray, dict[str, 
     return total / len(s["eval_seeds"]), info
 
 
-def setting_paths(root: Path, setting_id: int, runs: Path = RUNS) -> tuple[Path, Path]:
-    base = root / paths.RESULTS / runs / f"setting_{setting_id:03d}"
-    return base.with_suffix(".npz"), base.with_suffix(".json")
-
-
-_CONTEXT: Context | None = None
-_ROOT: Path | None = None
-_COMMIT = ""
-
-
-def _init(root: Path, commit: str) -> None:
-    global _CONTEXT, _ROOT, _COMMIT
-    _ROOT, _COMMIT = root, commit
-    _CONTEXT = load_context(root)
-
-
-def _work(s: dict[str, Any]) -> tuple[int, float]:
-    assert _CONTEXT is not None and _ROOT is not None
-    start = time.perf_counter()
-    values, info = run_setting(_CONTEXT, s)
-    write_setting(_ROOT, s["id"], values, info | {"commit": _COMMIT})
-    return s["id"], time.perf_counter() - start
-
-
-def write_setting(
-    root: Path, setting_id: int, values: FloatArray, info: dict[str, Any], runs: Path = RUNS
-) -> None:
-    npz, meta = setting_paths(root, setting_id, runs)
-    write_json(meta, info)
-    # The archive marks a finished setting, so it is written last and moved into place whole
-    partial = npz.with_name(npz.stem + ".partial.npz")
-    np.savez_compressed(partial, metrics=values.astype(np.float32))
-    os.replace(partial, npz)
-
-
-def finished(root: Path, setting_id: int, commit: str, runs: Path = RUNS) -> bool:
-    """A setting is done when both files exist; done under another commit is an error."""
-    npz, meta = setting_paths(root, setting_id, runs)
-    if not (npz.exists() and meta.exists()):
-        return False
-    ran = json.loads(meta.read_text("utf-8")).get("commit")
-    if ran != commit:
-        raise SystemExit(f"setting {setting_id} ran with commit {ran}, not {commit}")
-    return True
-
-
-def run_pending(
-    root: Path,
-    frozen: dict[str, Any],
-    commit: str,
-    ids: list[int] | None,
-    processes: int,
-    init: Callable[[Path, str], None],
-    work: Callable[[dict[str, Any]], tuple[int, float]],
-    runs: Path = RUNS,
-    first: Callable[[dict[str, Any]], Any] | None = None,
-) -> None:
-    """Run the selected settings not on disk yet, ``first`` ordering them, in worker processes.
-    Every setting already on disk must come from ``commit``, selected or not."""
-    done = {s["id"] for s in frozen["settings"] if finished(root, s["id"], commit, runs)}
-    todo = [
-        s for s in frozen["settings"] if (ids is None or s["id"] in ids) and s["id"] not in done
-    ]
-    if first is not None:
-        todo.sort(key=first)
-    print(f"{len(todo)} settings to run at {commit}", flush=True)
-    start = time.perf_counter()
-    with mp.get_context("spawn").Pool(processes, init, (root, commit)) as pool:
-        for count, (sid, seconds) in enumerate(pool.imap_unordered(work, todo), 1):
-            elapsed = time.perf_counter() - start
-            print(
-                f"{count}/{len(todo)} setting {sid}: {seconds:.0f} s, {elapsed:.0f} s", flush=True
-            )
-
-
 def load_context(root: Path) -> Context:
     inp = inputs.Inputs.load(paths.processed_dir(root, "sim") / inputs.CACHE)
     chosen = design.users(len(inp.user_ids))
@@ -308,19 +229,18 @@ def main(argv: Sequence[str] | None = None) -> int:
     check_design(frozen, len(ctx.inputs.user_ids))
     del ctx
     # Settings with secondary policies take longest; start them first
-    run_pending(
+    runs.run_pending(
         args.root,
         frozen,
         commit,
         args.ids,
         args.processes,
-        _init,
-        _work,
+        runs.POLICY_RUNS,
+        load_context,
+        run_setting,
         first=lambda s: (s["sweep"] not in SECONDARY_SWEEPS, s["id"]),
     )
     if not args.no_compare and args.ids is None:
-        from push_lab.policy import compare
-
         compare.main(["--root", str(args.root)])
     return 0
 

@@ -22,7 +22,7 @@ from scipy.stats import spearmanr
 from push_lab.creative import generate
 from push_lab.creative.families import FAMILIES
 from push_lab.data import paths
-from push_lab.policy import design, profile, sweep, template_design
+from push_lab.policy import design, profile, runs, template_compare, template_design
 from push_lab.policy import templates as tp
 from push_lab.runtime import code_commit, one_thread_per_process
 from push_lab.sim import env, inputs, world
@@ -31,8 +31,6 @@ from push_lab.sim.world import DAYS, SLOT_HOURS, SLOTS, Params
 FloatArray = npt.NDArray[np.float64]
 IntArray = npt.NDArray[np.int64]
 
-METRICS = ("opens", "active_days", "opens_week1", "delivered", "repeats")
-RUNS = Path("runs") / "templates"
 REPEAT_DAYS = 15.0
 TOP = 10
 
@@ -63,7 +61,7 @@ def repeats(out: env.Outcome, templates: int, days: float = REPEAT_DAYS) -> Floa
 
 
 def user_metrics(out: env.Outcome, templates: int) -> FloatArray:
-    """Per user, in the order of ``METRICS``."""
+    """Per user, in the order of ``runs.TEMPLATE_METRICS``."""
     return np.stack(
         [
             out.opened.sum(axis=(0, 1)),
@@ -102,7 +100,7 @@ def run_setting(ctx: Context, s: dict[str, Any]) -> tuple[FloatArray, dict[str, 
     copy = world.copy_effects(params.copy_spread, s["world_seed"], k, len(FAMILIES))
     pop = ctx.population()
     n = pop.users
-    total = np.zeros((len(tp.KINDS), len(METRICS), n))
+    total = np.zeros((len(tp.KINDS), len(runs.TEMPLATE_METRICS), n))
     diagnostics: dict[str, list[dict[str, float | None]]] = {kind: [] for kind in tp.LEARNED}
     family_share = np.zeros(len(FAMILIES))
     for r in s["eval_seeds"]:
@@ -146,25 +144,6 @@ def load_context(root: Path) -> Context:
     return Context(inp, family)
 
 
-_CONTEXT: Context | None = None
-_ROOT: Path | None = None
-_COMMIT = ""
-
-
-def _init(root: Path, commit: str) -> None:
-    global _CONTEXT, _ROOT, _COMMIT
-    _ROOT, _COMMIT = root, commit
-    _CONTEXT = load_context(root)
-
-
-def _work(s: dict[str, Any]) -> tuple[int, float]:
-    assert _CONTEXT is not None and _ROOT is not None
-    start = time.perf_counter()
-    values, info = run_setting(_CONTEXT, s)
-    sweep.write_setting(_ROOT, s["id"], values, info | {"commit": _COMMIT}, RUNS)
-    return s["id"], time.perf_counter() - start
-
-
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Run the template sweep and compare.")
     parser.add_argument("--root", type=Path, default=Path.cwd(), help="repository root")
@@ -180,10 +159,17 @@ def main(argv: Sequence[str] | None = None) -> int:
     if json.loads(json.dumps(current)) != frozen or len(ctx.family) != frozen["templates"]:
         raise SystemExit("the design in results/ differs from the code or the catalog")
     del ctx
-    sweep.run_pending(args.root, frozen, commit, args.ids, args.processes, _init, _work, RUNS)
+    runs.run_pending(
+        args.root,
+        frozen,
+        commit,
+        args.ids,
+        args.processes,
+        runs.TEMPLATE_RUNS,
+        load_context,
+        run_setting,
+    )
     if not args.no_compare and args.ids is None:
-        from push_lab.policy import template_compare
-
         template_compare.main(["--root", str(args.root)])
     return 0
 

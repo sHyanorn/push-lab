@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 
 from push_lab.data import paths
-from push_lab.policy import design, sweep, template_compare, template_design, template_sweep
+from push_lab.policy import design, runs, template_compare, template_design, template_sweep
 from push_lab.policy.templates import KINDS
 from push_lab.sim import env, inputs
 from push_lab.sim.world import DAYS, SLOTS
@@ -103,11 +103,11 @@ def test_run_setting_outputs(ran: Any) -> None:
     chosen, out = ran
     for s in chosen:
         metrics, info = out[s["id"]]
-        assert metrics.shape == (len(KINDS), len(template_sweep.METRICS), USERS)
-        delivered = metrics[:, template_sweep.METRICS.index("delivered")]
+        assert metrics.shape == (len(KINDS), len(runs.TEMPLATE_METRICS), USERS)
+        delivered = metrics[:, runs.TEMPLATE_METRICS.index("delivered")]
         for row in delivered[1:]:
             np.testing.assert_array_equal(row, delivered[0])
-        repeats = metrics[:, template_sweep.METRICS.index("repeats")]
+        repeats = metrics[:, runs.TEMPLATE_METRICS.index("repeats")]
         assert (repeats <= delivered).all()
         assert info["kinds"] == list(KINDS)
         assert sum(info["uniform_family_share"]) == pytest.approx(1, abs=1e-5)
@@ -133,7 +133,7 @@ def _fake_root(tmp_path: Path, effect: float, ids: list[int] | None = None) -> P
     for s in frozen["settings"]:
         if ids is not None and s["id"] not in ids:
             continue
-        m = np.zeros((len(KINDS), len(template_sweep.METRICS), 200))
+        m = np.zeros((len(KINDS), len(runs.TEMPLATE_METRICS), 200))
         m[:, 0] = rng.poisson(1.0, 200)
         m[:, 3] = 28
         m[KINDS.index("RD"), 0] += effect + 0.05 * rng.standard_normal(200)
@@ -147,7 +147,7 @@ def _fake_root(tmp_path: Path, effect: float, ids: list[int] | None = None) -> P
                 k: [{"spearman": 0.5, "top_overlap": 0.3}] for k in ("RD", "D0", "RAW")
             },
         }
-        sweep.write_setting(tmp_path, s["id"], m, info, template_sweep.RUNS)
+        runs.write_setting(tmp_path, s["id"], m, info, runs.TEMPLATE_RUNS)
     return tmp_path
 
 

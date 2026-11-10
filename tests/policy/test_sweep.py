@@ -5,7 +5,7 @@ from typing import Any
 import numpy as np
 import pytest
 
-from push_lab.policy import compare, design, sweep
+from push_lab.policy import compare, design, runs, sweep
 from push_lab.sim import env, inputs
 from push_lab.sim.world import DAYS
 
@@ -54,8 +54,8 @@ def test_run_setting_outputs(
     metrics, info = out[0]
     names = info["policies"]
     assert names == list(sweep.PRIMARY + sweep.SECONDARY)
-    assert metrics.shape == (len(names), len(sweep.METRICS), 200)
-    col = {m: i for i, m in enumerate(sweep.METRICS)}
+    assert metrics.shape == (len(names), len(runs.POLICY_METRICS), 200)
+    col = {m: i for i, m in enumerate(runs.POLICY_METRICS)}
     delivered = {n: metrics[i, col["delivered"]] for i, n in enumerate(names)}
     assert delivered["N"].sum() == 0
     assert (delivered["T"] <= DAYS).all() and (delivered["F"] <= DAYS).all()
@@ -115,15 +115,15 @@ def test_a_partial_run_gets_no_labels(ran: Ran) -> None:
 
 
 def test_resume_refuses_settings_from_another_commit(tmp_path: Path) -> None:
-    npz, meta = sweep.setting_paths(tmp_path, 3)
+    npz, meta = runs.setting_paths(tmp_path, 3, runs.POLICY_RUNS)
     npz.parent.mkdir(parents=True)
-    assert not sweep.finished(tmp_path, 3, "abc")
+    assert not runs.finished(tmp_path, 3, "abc", runs.POLICY_RUNS)
     np.savez(npz, metrics=np.zeros(1))
-    assert not sweep.finished(tmp_path, 3, "abc")
+    assert not runs.finished(tmp_path, 3, "abc", runs.POLICY_RUNS)
     meta.write_text(json.dumps({"commit": "abc"}))
-    assert sweep.finished(tmp_path, 3, "abc")
+    assert runs.finished(tmp_path, 3, "abc", runs.POLICY_RUNS)
     with pytest.raises(SystemExit, match="commit"):
-        sweep.finished(tmp_path, 3, "def")
+        runs.finished(tmp_path, 3, "def", runs.POLICY_RUNS)
 
 
 def test_policies_run_on_the_evaluation_users(monkeypatch: pytest.MonkeyPatch) -> None:

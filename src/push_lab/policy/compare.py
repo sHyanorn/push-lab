@@ -18,7 +18,7 @@ import numpy.typing as npt
 
 from push_lab.data import paths
 from push_lab.policy import design
-from push_lab.policy.sweep import METRICS, RUNS, setting_paths
+from push_lab.policy.runs import POLICY_METRICS, POLICY_RUNS, setting_paths
 from push_lab.runtime import rounded, write_json
 from push_lab.stats import flip_result, flips, holm, interval, p_value
 
@@ -201,12 +201,12 @@ def run_commit(infos: dict[int, dict[str, Any]]) -> str:
 
 def evaluate_setting(metrics: FloatArray, names: list[str], boot: Bootstrap) -> SettingResult:
     """Levels, differences and ratios of one setting with intervals; ``metrics`` is
-    [policy, metric, user] in the order of ``METRICS``."""
+    [policy, metric, user] in the order of ``POLICY_METRICS``."""
     pos = {n: i for i, n in enumerate(names)}
-    active = METRICS.index("active_days")
+    active = POLICY_METRICS.index("active_days")
     rows: dict[str, FloatArray] = {}
     for p in names:
-        for m, metric in enumerate(METRICS):
+        for m, metric in enumerate(POLICY_METRICS):
             rows[f"{p}.{metric}"] = metrics[pos[p], m]
     for key, (first, second) in (PRIMARY | SECONDARY).items():
         rows[f"diff.{key}"] = metrics[pos[first], active] - metrics[pos[second], active]
@@ -219,7 +219,10 @@ def evaluate_setting(metrics: FloatArray, names: list[str], boot: Bootstrap) -> 
     b = {k: means[:, i] for i, k in enumerate(keys)}
 
     policies = {
-        p: {metric: interval(point[f"{p}.{metric}"], b[f"{p}.{metric}"]) for metric in METRICS}
+        p: {
+            metric: interval(point[f"{p}.{metric}"], b[f"{p}.{metric}"])
+            for metric in POLICY_METRICS
+        }
         for p in names
     }
     comparisons: dict[str, Any] = {}
@@ -380,7 +383,7 @@ def run(root: Path) -> dict[str, Any]:
     )
     results: dict[int, SettingResult] = {}
     infos: dict[int, dict[str, Any]] = {}
-    for sid, info, metrics in load_runs(root, frozen, RUNS):
+    for sid, info, metrics in load_runs(root, frozen, POLICY_RUNS):
         results[sid] = evaluate_setting(metrics, info["policies"], boot)
         infos[sid] = info
     out = {"commit": run_commit(infos)} | summarize(results, frozen, infos)

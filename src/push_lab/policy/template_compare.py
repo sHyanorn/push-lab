@@ -16,8 +16,8 @@ import numpy.typing as npt
 from push_lab.data import paths
 from push_lab.policy import compare, template_design
 from push_lab.policy.compare import Bootstrap, SettingResult
+from push_lab.policy.runs import TEMPLATE_METRICS, TEMPLATE_RUNS
 from push_lab.policy.template_design import GRID_NAMES, PRIMARY, SETTING_LEVEL
-from push_lab.policy.template_sweep import METRICS, RUNS
 from push_lab.policy.templates import KINDS
 from push_lab.runtime import rounded, write_json
 from push_lab.stats import holm, interval, p_value
@@ -36,12 +36,12 @@ NOTE = (
 
 
 def evaluate_setting(metrics: FloatArray, kinds: list[str], boot: Bootstrap) -> SettingResult:
-    """``metrics`` is [kind, metric, user] in the order of ``METRICS``."""
+    """``metrics`` is [kind, metric, user] in the order of ``TEMPLATE_METRICS``."""
     pos = {k: i for i, k in enumerate(kinds)}
-    opens, active = METRICS.index("opens"), METRICS.index("active_days")
+    opens, active = TEMPLATE_METRICS.index("opens"), TEMPLATE_METRICS.index("active_days")
     rows: dict[str, FloatArray] = {}
     for kind in kinds:
-        for m, metric in enumerate(METRICS):
+        for m, metric in enumerate(TEMPLATE_METRICS):
             rows[f"{kind}.{metric}"] = metrics[pos[kind], m]
     for key, (a, b) in PAIRS.items():
         rows[f"opens.{key}"] = metrics[pos[a], opens] - metrics[pos[b], opens]
@@ -72,7 +72,7 @@ def evaluate_setting(metrics: FloatArray, kinds: list[str], boot: Bootstrap) -> 
         ratio("opens.B1", "opens.O-U") if oracle["ci_low"] > 0 or oracle["ci_high"] < 0 else None
     )
     summary = {
-        "kinds": {k: {m: iv(f"{k}.{m}") for m in METRICS} for k in kinds},
+        "kinds": {k: {m: iv(f"{k}.{m}") for m in TEMPLATE_METRICS} for k in kinds},
         "primary": primary,
         "secondary_opens": {k: iv(f"opens.{k}") for k in SECONDARY},
         "active_days": {k: iv(f"active.{k}") for k in PAIRS},
@@ -277,7 +277,7 @@ def run(root: Path) -> dict[str, Any]:
     boot = Bootstrap(frozen["users"], b["samples"], b["seed"])
     results: dict[int, SettingResult] = {}
     infos: dict[int, dict[str, Any]] = {}
-    for sid, info, metrics in compare.load_runs(root, frozen, RUNS):
+    for sid, info, metrics in compare.load_runs(root, frozen, TEMPLATE_RUNS):
         if info["kinds"] != list(KINDS):
             raise SystemExit(f"setting {sid} ran other policies: {info['kinds']}")
         results[sid] = evaluate_setting(metrics, info["kinds"], boot)
