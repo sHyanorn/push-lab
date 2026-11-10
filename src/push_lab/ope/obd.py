@@ -198,6 +198,28 @@ def on_policy(log: pd.DataFrame, samples: int, seed: int) -> tuple[float, FloatA
     return float(clicks.mean()), boot
 
 
+def verdicts(
+    report: dict[str, Any], boot: FloatArray, truth: float, truth_boot: FloatArray
+) -> dict[str, Any]:
+    """The check of each estimator against the on-policy value ``truth``: ``report`` is its
+    ``est.summarize`` and ``boot`` and ``truth_boot`` are resamples matched by index."""
+    out: dict[str, Any] = {}
+    for i, name in enumerate(est.ESTIMATORS):
+        e = report["estimates"][name]
+        relative = np.abs(boot[:, i] - truth_boot) / truth_boot
+        contains = e["ci_low"] <= truth <= e["ci_high"]
+        median_error = float(np.median(relative))
+        out[name] = {
+            "ratio_to_on_policy": _ratio(e["value"], truth, boot[:, i], truth_boot),
+            "relative_error_median": median_error,
+            "relative_error_interval": np.percentile(relative, [2.5, 97.5]).tolist(),
+            "rmse": float(np.sqrt(np.mean((boot[:, i] - truth_boot) ** 2))),
+            "interval_contains_on_policy": bool(contains),
+            "validated": bool(contains and median_error < MAX_RELATIVE_ERROR),
+        }
+    return out
+
+
 def validate(
     random_log: pd.DataFrame,
     bts_log: pd.DataFrame,
@@ -212,20 +234,6 @@ def validate(
     # The BTS logs are resampled on their own, with another seed and their own impressions
     truth, truth_boot = on_policy(bts_log, samples, seed + 1)
     low, high = np.percentile(truth_boot, [2.5, 97.5])
-    verdicts: dict[str, Any] = {}
-    for i, name in enumerate(est.ESTIMATORS):
-        e = report["estimates"][name]
-        relative = np.abs(boot[:, i] - truth_boot) / truth_boot
-        contains = e["ci_low"] <= truth <= e["ci_high"]
-        median_error = float(np.median(relative))
-        verdicts[name] = {
-            "ratio_to_on_policy": _ratio(e["value"], truth, boot[:, i], truth_boot),
-            "relative_error_median": median_error,
-            "relative_error_interval": np.percentile(relative, [2.5, 97.5]).tolist(),
-            "rmse": float(np.sqrt(np.mean((boot[:, i] - truth_boot) ** 2))),
-            "interval_contains_on_policy": bool(contains),
-            "validated": bool(contains and median_error < MAX_RELATIVE_ERROR),
-        }
     return {
         "on_policy": {"value": truth, "ci_low": float(low), "ci_high": float(high)},
         "random_rows": len(random_log),
@@ -235,7 +243,7 @@ def validate(
         "bts_rows": len(bts_log),
         "bts_clicks": int(bts_log["click"].sum()),
         **report,
-        "validation": verdicts,
+        "validation": verdicts(report, boot, truth, truth_boot),
     }
 
 
