@@ -12,9 +12,8 @@ def md_table(head: Sequence[str], rows: Sequence[Sequence[str]]) -> str:
     return "\n".join(lines)
 
 
-def blocks(results: dict[str, Any]) -> dict[str, str]:
+def blocks(results: dict[str, Any], values: dict[str, str]) -> dict[str, str]:
     """The content of each generated block, by marker name."""
-    values = facts.facts(results)
     tiers = md_table(facts.TIER_HEAD, facts.tier_rows(results)[:3])
     findings = []
     for k, (title, scope, body, shows, limits, extra) in enumerate(

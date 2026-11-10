@@ -165,7 +165,6 @@ def facts(results: dict[str, Any]) -> dict[str, str]:
     rating = copy["rating"]
     seeds = results["templates"]["seed_variability"]
     n_main = sum(s["sweep"] == "main" for s in policy["settings"])
-    check_readings(results)
     reference = reference_setting(results)
     ref = reference["policies"]
     return {

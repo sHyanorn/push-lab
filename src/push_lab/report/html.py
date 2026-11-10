@@ -228,8 +228,7 @@ font-weight:600}}
 """
 
 
-def page(results: dict[str, Any]) -> str:
-    values = facts.facts(results)
+def page(results: dict[str, Any], values: dict[str, str]) -> str:
     nav = "".join(
         f'<a href="#{a}">{escape(t)}</a>'
         for a, t in (

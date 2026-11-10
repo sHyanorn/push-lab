@@ -22,9 +22,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--check", action="store_true", help="fail if the README is stale")
     args = parser.parse_args(argv)
     results = facts.load(args.root)
+    facts.check_readings(results)
+    values = facts.facts(results)
     readme_path = args.root / "README.md"
     current = readme_path.read_text("utf-8")
-    updated = readme.render(current, readme.blocks(results))
+    updated = readme.render(current, readme.blocks(results, values))
     if args.check:
         if updated != current:
             print("README.md is out of date with results/; run python -m push_lab.report.build")
@@ -34,7 +36,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     readme_path.write_text(updated, encoding="utf-8", newline="\n")
     site = args.root / SITE
     site.mkdir(exist_ok=True)
-    (site / "index.html").write_text(html.page(results), encoding="utf-8", newline="\n")
+    (site / "index.html").write_text(html.page(results, values), encoding="utf-8", newline="\n")
     print(f"wrote {site / 'index.html'} and README.md")
     return 0
 

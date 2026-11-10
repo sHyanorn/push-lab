@@ -1,6 +1,7 @@
 import ast
 import copy
 import itertools
+import json
 import re
 import shutil
 from html import unescape
@@ -79,6 +80,19 @@ def test_build_writes_the_report_and_refreshes_a_stale_readme(tmp_path: Path) ->
     assert "<script" not in page
 
 
+def test_a_changed_reading_fails_the_build_and_the_check(tmp_path: Path) -> None:
+    shutil.copytree(ROOT / "results", tmp_path / "results", ignore=shutil.ignore_patterns("runs"))
+    shutil.copy(ROOT / "README.md", tmp_path)
+    matrix_path = tmp_path / "results" / "evidence.json"
+    matrix = json.loads(matrix_path.read_text("utf-8"))
+    next(c for c in matrix["claims"] if c["id"] == "H2-af")["label"] = "other"
+    matrix_path.write_text(json.dumps(matrix), encoding="utf-8")
+    for mode in ([], ["--check"]):
+        with pytest.raises(ValueError, match="H2-af"):
+            build.main(["--root", str(tmp_path), *mode])
+    assert not (tmp_path / "site").exists()
+
+
 def test_render_readme_needs_every_block() -> None:
     with pytest.raises(ValueError, match="results:story"):
         readme.render(
@@ -91,7 +105,8 @@ def test_render_readme_needs_every_block() -> None:
 
 
 def test_only_short_cells_are_kept_on_one_line() -> None:
-    page = html.page(facts.load(ROOT))
+    results = facts.load(ROOT)
+    page = html.page(results, facts.facts(results))
     cells = [unescape(c) for c in re.findall(r'<td class="nw">(.*?)</td>', page)]
     assert cells
     assert max(len(c) for c in cells) <= 32
