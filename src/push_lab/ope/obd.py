@@ -236,25 +236,34 @@ def validate(
 
 
 def empirical_target(
-    random_log: pd.DataFrame, bts_log: pd.DataFrame, samples: int = SAMPLES, seed: int = BOOT_SEED
+    random_log: pd.DataFrame,
+    bts_log: pd.DataFrame,
+    prior: FloatArray,
+    samples: int = SAMPLES,
+    seed: int = BOOT_SEED,
 ) -> dict[str, Any]:
     """Post hoc: IPS with the BTS logs' own (item, position) frequencies as the target, as a
-    ratio to the on-policy value, both resampled by impression as in ``validate``."""
+    ratio to the on-policy value, and that ratio minus the one with the target ``prior``. Both
+    are resampled by impression as in ``validate``, with the same resamples for the two."""
     dist = np.zeros((len(ALPHA), POSITIONS))
     position = bts_log["position"].to_numpy(dtype=np.int64) - 1
     np.add.at(dist, (bts_log["item_id"].to_numpy(dtype=np.int64), position), 1)
     dist /= dist.sum(axis=0, keepdims=True)
-    weight = _weights(random_log, dist)
     clicks = random_log["click"].to_numpy(dtype=np.float64)
-    zeros = np.zeros(len(clicks))
-    data = est.Logged(clicks, weight, zeros, zeros, impressions(random_log))
+    zeros, group = np.zeros(len(clicks)), impressions(random_log)
     ips = est.ESTIMATORS.index("IPS")
-    value = est.point(data)["IPS"]
-    boot = est.bootstrap(data, samples, seed)[:, ips]
+    value, boot = [], []
+    for target in (dist, prior):
+        data = est.Logged(clicks, _weights(random_log, target), zeros, zeros, group)
+        value.append(est.point(data)["IPS"])
+        boot.append(est.bootstrap(data, samples, seed)[:, ips])
     truth, truth_boot = on_policy(bts_log, samples, seed + 1)
     return {
         "note": "Post hoc: IPS against the BTS logs' empirical (item, position) frequencies",
-        "ratio_to_on_policy": _ratio(value, truth, boot, truth_boot),
+        "ratio_to_on_policy": _ratio(value[0], truth, boot[0], truth_boot),
+        "difference_from_fixed_prior": _ratio(
+            value[0] - value[1], truth, boot[0] - boot[1], truth_boot
+        ),
     }
 
 
@@ -291,7 +300,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         result = json.loads(target.read_text("utf-8"))
         folder = paths.processed_dir(args.root, "obd_full")
         logs = obd.load(folder, "random"), obd.load(folder, "bts")
-        result["full"]["post_hoc"] = {"commit": code_commit(args.root)} | empirical_target(*logs)
+        result["full"]["post_hoc"] = {"commit": code_commit(args.root)} | empirical_target(
+            *logs, bts_distribution()
+        )
     else:
         result = {"commit": code_commit(args.root)} | run(args.root)
     write_json(target, result)

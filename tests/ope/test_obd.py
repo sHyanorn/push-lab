@@ -101,9 +101,16 @@ def test_impressions_split_a_user_at_one_second() -> None:
 
 
 def test_empirical_target_recovers_the_bts_value() -> None:
-    random_log, bts_log, _, _ = _logs(20_000, 4)
-    ratio = obd.empirical_target(random_log, bts_log, samples=200)["ratio_to_on_policy"]
+    random_log, bts_log, _, dist = _logs(20_000, 4)
+    out = obd.empirical_target(random_log, bts_log, dist, samples=200)
+    ratio, change = out["ratio_to_on_policy"], out["difference_from_fixed_prior"]
     assert ratio["ci_low"] <= 1 <= ratio["ci_high"]
+    # The BTS logs are drawn from ``dist``, so the two targets nearly coincide and their paired
+    # difference is far tighter than the ratio itself
+    clicks = random_log["click"].to_numpy()
+    fixed = np.mean(obd._weights(random_log, dist) * clicks) / bts_log["click"].mean()
+    assert change["value"] == pytest.approx(ratio["value"] - fixed)
+    assert change["ci_high"] - change["ci_low"] < (ratio["ci_high"] - ratio["ci_low"]) / 2
 
 
 def test_weights_use_the_position_of_each_row() -> None:
