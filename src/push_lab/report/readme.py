@@ -12,53 +12,67 @@ def md_table(head: Sequence[str], rows: Sequence[Sequence[str]]) -> str:
     return "\n".join(lines)
 
 
+def main_sweep_table(results: dict[str, Any]) -> str:
+    """The delivery comparisons on the main sweep, without the columns the page explains in
+    notes."""
+    c = facts.claims(results)
+    rows = [
+        [i, facts.shown_label(c[i]), facts.sweep_average(c[i]), facts.verdict_counts(c[i])]
+        for i in facts.MAIN_SWEEP_ROWS
+    ]
+    return md_table(("Id (main sweep)", "Label", "Sweep average", "Wins / losses / neither"), rows)
+
+
+def finding(
+    title: str,
+    scope: str,
+    body: str,
+    shows: str,
+    limits: str,
+    values: dict[str, str],
+    table: str = "",
+) -> str:
+    """A finding under its title; ``scope``, ``body``, ``shows`` and ``limits`` are templates."""
+    scope, body, shows, limits = (t.format(**values) for t in (scope, body, shows, limits))
+    reading = f"- **{text.SHOWS}:** {shows}\n- **{text.LIMITS}:** {limits}"
+    return "\n\n".join(part for part in (title, f"*{scope}*", body, table, reading) if part)
+
+
 def blocks(results: dict[str, Any], values: dict[str, str]) -> dict[str, str]:
     """The content of each generated block, by marker name."""
     tiers = md_table(facts.TIER_HEAD, facts.tier_rows(results)[:3])
-    findings = []
-    for k, (title, scope, body, shows, limits, extra) in enumerate(
-        (
-            (
-                text.F1_TITLE,
-                text.F1_SCOPE,
-                text.F1_BODY,
-                text.F1_SHOWS,
-                text.F1_LIMITS,
-                f"*{text.POST_HOC.capitalize()}:* " + text.F1_POST_HOC.format(**values),
-            ),
-            (
-                text.F2_TITLE,
-                text.F2_SCOPE,
-                text.F2_BODY,
-                text.F2_SHOWS,
-                text.F2_LIMITS,
-                text.F2_GATES.format(**values),
-            ),
-            (
-                text.F3_TITLE,
-                text.F3_SCOPE,
-                text.F3_BODY,
-                text.F3_SHOWS,
-                text.F3_LIMITS,
-                text.F3_OBD_MISMATCH.format(**values),
-            ),
+    post_hoc = f"*{text.POST_HOC.capitalize()}:* {text.F1_POST_HOC}"
+    findings = (
+        finding(
+            text.F1_TITLE,
+            text.F1_SCOPE,
+            f"{text.F1_BODY} {post_hoc}",
+            text.F1_SHOWS,
+            text.F1_LIMITS,
+            values,
         ),
-        start=1,
-    ):
-        table_md = ""
-        if k == 2:
-            rows = facts.sweep_rows(results, facts.POLICY_ROWS[:4])
-            compact = [[r[0], r[2], r[3], r[4]] for r in rows]
-            head = ("Id (main sweep)", "Label", "Sweep average", "Wins / losses / neither")
-            table_md = md_table(head, compact) + "\n\n"
-        findings.append(
-            f"### {k}. {title}\n\n*{scope.format(**values)}*\n\n{body.format(**values)} {extra}"
-            f"\n\n{table_md}- **{text.SHOWS}:** {shows.format(**values)}\n"
-            f"- **{text.LIMITS}:** {limits.format(**values)}"
-        )
+        finding(
+            text.F2_TITLE,
+            text.F2_SCOPE,
+            f"{text.F2_BODY} {text.F2_GATES}",
+            text.F2_SHOWS,
+            text.F2_LIMITS,
+            values,
+            main_sweep_table(results),
+        ),
+        finding(
+            text.F3_TITLE,
+            text.F3_SCOPE,
+            f"{text.F3_BODY} {text.F3_OBD_MISMATCH}",
+            text.F3_SHOWS,
+            text.F3_LIMITS,
+            values,
+        ),
+    )
+    numbered = (f"### {number}. {section}" for number, section in enumerate(findings, start=1))
     return {
         "evidence": f"{tiers}\n\n{text.NO_TIER_B.format(**values)}",
-        "findings": "\n\n".join(findings),
+        "findings": "\n\n".join(numbered),
         "story": md_table(text.STORY_HEAD, facts.story_rows(values)),
     }
 

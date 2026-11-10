@@ -231,9 +231,14 @@ def facts(results: dict[str, Any]) -> dict[str, str]:
 
 # Tables ---------------------------------------------------------------------------------
 
-POLICY_ROWS = ("H1", "H2", "H3", "H4", "H1-af", "H2-af", "H3-af", "H4-af")
+MAIN_SWEEP_ROWS = ("H1", "H2", "H3", "H4")
+POLICY_ROWS = (*MAIN_SWEEP_ROWS, "H1-af", "H2-af", "H3-af", "H4-af")
 TIER_A_ROWS = ("C1", "C2", "R1", "U1", "U2", "U3", "U4", "OBD-ratio-IPS", "OBD-ratio-DR")
 TEMPLATE_ROWS = ("B1", "B2")
+
+
+def sweep_average(claim: ClaimEntry) -> str:
+    return interval(claim, 3, signed=True)
 
 
 def verdict_counts(claim: ClaimEntry) -> str:
@@ -259,7 +264,7 @@ def sweep_rows(results: dict[str, Any], ids: Sequence[str]) -> list[list[str]]:
             i,
             c[i]["statement"],
             shown_label(c[i]),
-            interval(c[i], 3, signed=True),
+            sweep_average(c[i]),
             verdict_counts(c[i]),
             spread(c[i]),
             holm(c[i]),

@@ -123,7 +123,7 @@ def finding_two(results: dict[str, Any], values: dict[str, str]) -> str:
         + paragraph(text.F2_GATES, values)
         + table(facts.SWEEP_HEAD, rows, nowrap=(0, 4))
         + f'<p class="scope">{escape(text.SPREAD_NOTE)}</p>'
-        + losing(results["policy"]["primary"]["main"], ("H1", "H2", "H3", "H4"))
+        + losing(results["policy"]["primary"]["main"], facts.MAIN_SWEEP_ROWS)
         + shows_limits(text.F2_SHOWS, text.F2_LIMITS, values)
         + "</section>"
     )
