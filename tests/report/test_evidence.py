@@ -25,8 +25,12 @@ def test_numbers_are_copied_from_the_results() -> None:
     templates = json.loads((ROOT / "results" / "templates.json").read_text("utf-8"))
     assert out["B1"]["value"] == templates["primary"]["B1"]["sweep_average"]["value"]
     assert out["B1"]["label"] == templates["primary"]["B1"]["label"]
+    triples = templates["seed_variability"]["B1"]["triples"]
+    assert out["B1"]["spread_source"].startswith(f"{triples} seed triples")
     policy = json.loads((ROOT / "results" / "policy.json").read_text("utf-8"))
     assert out["F-N"]["value"] == policy["flips"]["annoyance"]["F-N"]["crossings"][0]["at"]
+    refits = policy["fit_variability"]["H1"]["refits"]
+    assert out["H1-af"]["spread_source"].startswith(f"{refits} model refits")
 
 
 def test_missing_results_are_pending(tmp_path: Path) -> None:
@@ -45,6 +49,11 @@ def test_simulator_ope_entries_carry_the_sweep() -> None:
     order = out["OPE-order-N-T-DR"]
     assert order["truth"]["value"] > 0 > order["ci_high"]
     assert order["reversed_settings"] == "23 of 24"
+    design = json.loads((ROOT / "results" / "policy_design.json").read_text("utf-8"))
+    grid = sweep["post_hoc"]["orderings"]["annoyance"]
+    at = int(order["source"]["path"][-1])
+    assert grid["values"][at] == design["reference"]["annoyance"]
+    assert order["truth"] == grid["N-T"]["truth"][at]
 
 
 def test_history_entries_carry_no_numbers() -> None:

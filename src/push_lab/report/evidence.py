@@ -318,14 +318,14 @@ def _spread(data: Any, claim: Claim) -> ClaimEntry:
         seeds = data["seed_variability"][key]
         return {
             "spread_over_bootstrap_se": seeds["ratio"],
-            "spread_source": "10 seed triples at the reference setting",
+            "spread_source": f"{seeds['triples']} seed triples at the reference setting",
         }
     fits = data.get("fit_variability", {}).get(key) if claim.file == "policy.json" else None
     if fits and fits["sd_over_refits"] > 0:
         ratio = fits["sd_over_refits"] / fits["mean_bootstrap_se"]
         return {
             "spread_over_bootstrap_se": round(ratio, 2),
-            "spread_source": "10 model refits at the reference setting",
+            "spread_source": f"{fits['refits']} model refits at the reference setting",
         }
     return {}
 
@@ -371,27 +371,29 @@ def ope_entries(root: Path) -> list[ClaimEntry]:
                         | _interval(check["bias"])
                         | _sweep_share(carryover, setting, target, name)
                     )
-    out += _ordering_entries(carryover)
+    out += _ordering_entries(root, carryover)
     return out
 
 
 def _sweep_share(data: Any, setting: str, target: str, name: str) -> ClaimEntry:
-    """For the reference setting, the share of the 24 sweep settings where the same estimator
-    and target are validated."""
+    """For the reference setting, the share of the sweep settings where the same estimator and
+    target are validated."""
     if setting != "reference" or data is None:
         return {}
     verdicts = [s["targets"][target][name]["verdict"] for s in data["settings"]]
     return {"sweep_validated": f"{verdicts.count('validated')} of {len(verdicts)} settings"}
 
 
-def _ordering_entries(data: Any) -> list[ClaimEntry]:
-    """Post hoc: at the reference, the per-day DR estimate of a difference between targets
-    against its truth, and how many sweep settings reverse the ordering."""
+def _ordering_entries(root: Path, data: Any) -> list[ClaimEntry]:
+    """Post hoc: at the reference annoyance of the policy design, the per-day DR estimate of a
+    difference between targets against its truth, and how many sweep settings reverse the
+    ordering."""
     if data is None or "post_hoc" not in data:
         return []
     out: list[ClaimEntry] = []
     orderings = data["post_hoc"]["orderings"]
-    reference = orderings["annoyance"]["values"].index(0.05)
+    design = json.loads((root / paths.RESULTS / "policy_design.json").read_text("utf-8"))
+    reference = orderings["annoyance"]["values"].index(design["reference"]["annoyance"])
     for pair, text in (("N-T", "no pushes minus one a day"), ("T2-T", "two a day minus one")):
         found = orderings["annoyance"][pair]
         reversals = [
