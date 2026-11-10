@@ -1,5 +1,5 @@
 {
- "commit": "846d5130a5f620a015e27d6ef0ef9e14c7a53a12",
+ "commit": "1d52988263e1a1ac15a97f463d144664535c9255",
  "note": "Post hoc: results/ope_obd.json with ten-minute blocks as resampling units",
  "registered": "results/ope_obd.json holds the registered result and verdicts, unchanged",
  "resampling": {
@@ -113,6 +113,31 @@
     "value": 0.026003380345579474,
     "ci_low": -0.021108683888765675,
     "ci_high": 0.07368324911600119
+   }
+  },
+  "other_streams": {
+   "note": "The check under the streams seeded 20261111 to 20261210 in place of the registered one: for each estimator, the number of streams under which it passes and the range of its interval's upper end",
+   "streams": 100,
+   "on_policy": 0.006742727014339116,
+   "DM": {
+    "passes": 0,
+    "ci_high_min": 0.005988059237988972,
+    "ci_high_max": 0.005991497466867691
+   },
+   "IPS": {
+    "passes": 67,
+    "ci_high_min": 0.006716298599694894,
+    "ci_high_max": 0.006782219591868861
+   },
+   "SNIPS": {
+    "passes": 100,
+    "ci_high_min": 0.006839922459711148,
+    "ci_high_max": 0.0069065709572077374
+   },
+   "DR": {
+    "passes": 98,
+    "ci_high_min": 0.006739013997457389,
+    "ci_high_max": 0.0068000989131518546
    }
   }
  }
