@@ -110,11 +110,20 @@ F3_OBD_MISMATCH = (
     "hoc, re-weighting to the BTS logs' own frequencies moves IPS to {obd_ips_post_hoc}, a "
     "paired change of {obd_ips_change} whose interval includes zero."
 )
+F3_OBD_BLOCKS = (
+    "These intervals resample impressions, which are not independent in these logs. Post hoc, "
+    "with ten-minute blocks as resampling units the interval of IPS is {obd_ips_blocks} and "
+    "that of DR {obd_dr_blocks}; the registered rule would pass both, IPS in {obd_ips_streams} "
+    "of {obd_streams} other random streams and DR in {obd_dr_streams}. The registered verdict "
+    "stands, and no estimator is treated as validated (D063)."
+)
 F3_SHOWS = (
     "A ranker fitted on logged impressions can rank random candidates worse than its retrieval "
     "score; where uplift grows with baseline response, a response threshold is a strong "
-    "baseline; standard estimators fell short of a known policy value on real logs, and these "
-    "data do not show where the shortfall comes from."
+    "baseline; standard estimators came out about {obd_shortfall} below a known policy value on "
+    "real logs; that value lies outside their registered intervals over impressions and, DM "
+    "apart, inside their post hoc intervals over ten-minute blocks (D063); these data do not "
+    "show where the gap comes from."
 )
 F3_LIMITS = (
     "Anything about push: the data are video feed, e-mail, ads and e-commerce recommendations. "
@@ -206,7 +215,8 @@ STORY = (
         "Every number carries an evidence tier",
         "Holds for the results in the evidence matrix, each Tier A or C with an interval or a "
         "verdict, and "
-        "there is no Tier B result (D046). Counts of the generated copy and its rating are "
+        "there is no Tier B result (D046; D063 for the post hoc block intervals). Counts of the "
+        "generated copy and its rating are "
         "descriptive; registered verdicts later overturned are kept as history.",
     ),
 )

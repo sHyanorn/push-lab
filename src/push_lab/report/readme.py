@@ -63,7 +63,7 @@ def blocks(results: dict[str, Any], values: dict[str, str]) -> dict[str, str]:
         finding(
             text.F3_TITLE,
             text.F3_SCOPE,
-            f"{text.F3_BODY} {text.F3_OBD_MISMATCH}",
+            f"{text.F3_BODY} {text.F3_OBD_MISMATCH} {text.F3_OBD_BLOCKS}",
             text.F3_SHOWS,
             text.F3_LIMITS,
             values,

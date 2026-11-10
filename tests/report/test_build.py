@@ -179,3 +179,21 @@ def test_prose_on_the_obd_post_hoc_change_fails_once_it_excludes_zero() -> None:
     claim["post_hoc_difference"]["ci_low"] = 0.001
     with pytest.raises(ValueError, match="post hoc"):
         facts.check_readings(changed)
+
+
+def test_prose_on_the_obd_block_intervals_follows_the_block_results() -> None:
+    results = facts.load(ROOT)
+    values = facts.facts(results)
+    full = results["ope_obd_blocks"]["full"]
+    ips = full["validation"]["IPS"]["ratio_to_on_policy"]
+    assert values["obd_ips_blocks"] == f"{ips['ci_low']:.3f} to {ips['ci_high']:.3f}"
+    assert values["obd_ips_streams"] == str(full["other_streams"]["IPS"]["passes"])
+    assert values["obd_shortfall"] == "10%"
+    changed = copy.deepcopy(results)
+    changed["ope_obd_blocks"]["full"]["validation"]["IPS"]["validated"] = False
+    with pytest.raises(ValueError, match="with blocks"):
+        facts.check_readings(changed)
+    changed = copy.deepcopy(results)
+    changed["ope_obd_blocks"]["full"]["validation"]["DM"]["ratio_to_on_policy"]["value"] = 0.8
+    with pytest.raises(ValueError, match="one value"):
+        facts.facts(changed)

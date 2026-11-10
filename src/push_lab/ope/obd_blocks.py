@@ -1,4 +1,4 @@
-"""Post hoc: the OBD check of METHODS 14.2 with ten-minute blocks as resampling units.
+"""Post hoc (D063): the OBD check of METHODS 14.2 with ten-minute blocks as resampling units.
 
 ``python -m push_lab.ope.obd_blocks`` recomputes every interval of the full Men's campaign in
 ``results/ope_obd.json`` and writes ``results/ope_obd_blocks.json``. Served lists are reused

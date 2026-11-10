@@ -4,7 +4,8 @@
 logs of the Men's campaign and checks it against the click rate of the BTS logs. It uses the
 small sample, and the full campaign too when ``prepare --only obd_full`` has been run. Writes
 ``results/ope_obd.json``. Every number here is Tier B only for an estimator that passes. None
-passed on the full campaign, so the project has no Tier B result (D046).
+passed on the full campaign, so the project has no Tier B result (D046). ``obd_blocks``
+recomputes the intervals post hoc (D063).
 """
 
 import argparse

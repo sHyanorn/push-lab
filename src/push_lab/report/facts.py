@@ -15,7 +15,11 @@ from push_lab.report import svg, text
 from push_lab.report.evidence import ClaimEntry
 from push_lab.report.svg import MINUS, num
 
-FILES = ("evidence", "policy", "policy_design", "templates", "ope_carryover", "copy")
+FILES = (
+    *("evidence", "policy", "policy_design", "templates", "ope_carryover", "copy"),
+    "ope_obd_blocks",
+)
+OBD_ESTIMATORS = ("DM", "IPS", "SNIPS", "DR")
 
 
 # Loading and formatting ---------------------------------------------------------------
@@ -36,6 +40,11 @@ def interval(entry: Mapping[str, Any], decimals: int, signed: bool = False) -> s
     v = num(entry["value"], decimals, signed)
     lo, hi = num(entry["ci_low"], decimals), num(entry["ci_high"], decimals)
     return f"{v} ({lo} to {hi})"
+
+
+def ends(entry: Mapping[str, Any], decimals: int) -> str:
+    """The two ends of an interval, without its estimate."""
+    return f"{num(entry['ci_low'], decimals)} to {num(entry['ci_high'], decimals)}"
 
 
 def pct_interval(entry: Mapping[str, Any], decimals: int) -> str:
@@ -117,6 +126,11 @@ def check_readings(results: dict[str, Any]) -> None:
     change = c["OBD-ratio-IPS"]["post_hoc_difference"]
     if not change["ci_low"] < 0 < change["ci_high"]:
         raise ValueError("the OBD post hoc change no longer includes 0")
+    blocks = results["ope_obd_blocks"]["full"]["validation"]
+    for check in ("interval_contains_on_policy", "validated"):
+        holds = {e for e in OBD_ESTIMATORS if blocks[e][check]}
+        if holds != {"IPS", "SNIPS", "DR"}:
+            raise ValueError(f"with blocks, {check} now holds for {sorted(holds)} on OBD")
     reference_b1 = results["templates"]["seed_variability"]["B1"]["mean_over_triples"]
     if not reference_b1["ci_low"] < 0 < reference_b1["ci_high"]:
         raise ValueError("B1 at the reference is no longer undetectable")
@@ -163,6 +177,9 @@ def facts(results: dict[str, Any]) -> dict[str, str]:
     truth = orderings["truth"]
     band = policy["band_F_over_N"]
     rating = copy["rating"]
+    blocks = results["ope_obd_blocks"]["full"]
+    ratios = {e: blocks["validation"][e]["ratio_to_on_policy"] for e in OBD_ESTIMATORS}
+    streams = blocks["other_streams"]
     seeds = results["templates"]["seed_variability"]
     n_main = sum(s["sweep"] == "main" for s in policy["settings"])
     reference = reference_setting(results)
@@ -212,6 +229,13 @@ def facts(results: dict[str, Any]) -> dict[str, str]:
         "obd_dr": interval(c["OBD-ratio-DR"], 3),
         "obd_ips_post_hoc": interval(c["OBD-ratio-IPS"]["post_hoc_empirical_target"], 3),
         "obd_ips_change": interval(c["OBD-ratio-IPS"]["post_hoc_difference"], 3, signed=True),
+        # One figure for all four estimators, or the prose no longer holds
+        "obd_shortfall": same(f"{round(1 - r['value'], 1):.0%}" for r in ratios.values()),
+        "obd_ips_blocks": ends(ratios["IPS"], 3),
+        "obd_dr_blocks": ends(ratios["DR"], 3),
+        "obd_streams": str(streams["streams"]),
+        "obd_ips_streams": str(streams["IPS"]["passes"]),
+        "obd_dr_streams": str(streams["DR"]["passes"]),
         "b1_spread": num(c["B1"]["spread_over_bootstrap_se"], 1),
         "b2_spread": num(c["B2"]["spread_over_bootstrap_se"], 1),
         "b1_reference": interval(seeds["B1"]["mean_over_triples"], 4, signed=True),

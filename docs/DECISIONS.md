@@ -49,7 +49,7 @@ Entries are in the order they were made. Some entries up to D048 were corrected 
 | D043 | Off-policy checks: cost and results | Superseded in part by D046, D048; wording corrected by D060 |
 | D044 | Amended simulator check, pre-registered | Results in D045; wording corrected by D060 |
 | D045 | Amended simulator check: results | Superseded in part by D046, D048 |
-| D046 | Corrections after the M7 results | Superseded in part by D048 |
+| D046 | Corrections after the M7 results | Superseded in part by D048; post hoc block intervals in D063 |
 | D047 | Carryover sweep of the simulator check, pre-registered | Results in D048 |
 | D048 | Carryover sweep: results | Active |
 | D049 | Report and README are generated from the results | Active |
@@ -66,6 +66,7 @@ Entries are in the order they were made. Some entries up to D048 were corrected 
 | D060 | "Paired" in the OBD check, corrected | Active |
 | D061 | Crossing intervals are conditional on a crossing | Active |
 | D062 | Outputs of the two-tower fit vary between runs | Active |
+| D063 | OBD check with ten-minute blocks as resampling units, post hoc | Active |
 
 ## D001 Python only, static report
 - Date: 2026-11-08
@@ -458,7 +459,7 @@ Entries are in the order they were made. Some entries up to D048 were corrected 
 - Estimates whose intervals do not overlap are now flagged inconclusive (SPEC Section 5); no OBD estimate is
 - Tiers on OBD, replacing the readings of D043: the full-campaign ratios (IPS 0.891, DR 0.897 of the on-policy value) use randomized real data to measure the estimators themselves, so they are Tier A results about the estimators, not policy values. The target is BTS with its fixed production prior, and the deployed BTS was not that, so a shortfall may come from the estimator or from this mismatch. Post hoc, re-weighting to the BTS logs' own frequencies moves IPS to 0.92 (0.85 to 0.99; `full.post_hoc` in `results/ope_obd.json`), a paired change of +0.026 (−0.004 to 0.059) over the same resamples. Its interval includes 0, so these data do not show where the shortfall comes from. No estimator passed on the full campaign, so the small-sample passes are kept only as the record of a registered verdict, and the project has no Tier B result
 - Corrected, 2026-11-10: the impression-level runs before this date (commit 3f26e5d, and 5b2e5de for the post hoc check) joined rows of a user up to 1,000 seconds apart, because they divided timestamps already in microseconds by 1,000. They had 136,474 units in the full random logs and gave IPS 0.891 (0.810 to 0.969), DR 0.896 (0.816 to 0.968) and the post hoc IPS 0.92 (0.84 to 0.98), the interval D043 also quoted. The numbers above are those of the rerun with the one-second gap; no verdict changed on either sample
-- Status: Superseded in part by D048: in the sweep, annoyance alone sets the direction of the bias, and the evidence matrix reports the simulator OPE results with the sweep
+- Status: Superseded in part by D048: in the sweep, annoyance alone sets the direction of the bias, and the evidence matrix reports the simulator OPE results with the sweep; post hoc block intervals in D063
 
 ## D047 Carryover sweep of the simulator check, pre-registered
 - Date: 2026-11-08
@@ -610,3 +611,15 @@ Entries are in the order they were made. Some entries up to D048 were corrected 
 - Scope: the ten quantiles are diagnostics that no comparison, verdict or reported number reads. The two-tower list feeds only T on that list and the secondary comparison L1. Anything computed from the tower could move in such a run; apart from the above, nothing did. The committed results come from one run of each step on the real data and may hold either outcome; the size of the difference on the real data was not measured
 - Kept as is: one torch thread, or a warm-up call before the first fit, would remove the variation and would change how the registered outputs are produced
 - D053 said the container of D015 reproduces the results exactly; that holds apart from this
+
+## D063 OBD check with ten-minute blocks as resampling units, post hoc
+- Date: 2026-11-10
+- Post hoc, and it changes no registered result. `results/ope_obd.json` and `results/evidence.json` are unchanged to the byte, the verdicts of D046 stand (with impressions as resampling units no estimator passed on the full Men's campaign) and the project has no Tier B result. New code `ope/obd_blocks.py` writes `results/ope_obd_blocks.json`; the rule of METHODS 14.4 moved unchanged into `obd.verdicts`, which both runs call
+- Why: resampling impressions treats them as independent, and in these logs they are not, so the intervals of D046 are too narrow. In the Men's campaign 37% of the complete impressions of the random logs and 31% of those of the BTS logs show the same three items in the same order as the impression before them, and the click rate differs between adjacent ten-minute blocks with 2.4 times (random logs) and 2.1 times (BTS logs) the variance that independent impressions would give, a ratio that does not separate clustering from drift. Source: github.com/sHyanorn/ope-checks at b80bd36, Section 3 of `obd/PREREGISTRATION.md` and, post hoc there, `obd/posthoc/results/units.json`, which gives these figures and in which the standard deviation of the IPS ratio over block resamples is 1.44 times the one over impression resamples
+- Method (Section 5 of that registration): a resample draws 1,008 ten-minute UTC blocks with replacement, and a block carries the rows of both logs that fall in it; 10,000 resamples from the random stream registered there. Target, $\hat q$ and point estimates are those of D046, so only the intervals change. Only the full campaign is recomputed: the reading of D046 rests on it, and the small-sample verdicts stay as registered
+- Estimates as a ratio to the on-policy value with their block intervals, and the intervals of D046 in square brackets: DM 0.881 (0.862 to 0.902) [0.868 to 0.895], IPS 0.891 (0.789 to 1.004) [0.815 to 0.966], SNIPS 0.908 (0.804 to 1.022) [0.830 to 0.985], DR 0.897 (0.796 to 1.006) [0.824 to 0.975]. The on-policy click rate is 0.00674 (0.00660 to 0.00689) [0.00665 to 0.00683]
+- The registered rule applied to these intervals: those of IPS, SNIPS and DR contain the on-policy value and that of DM does not, and every median relative error (0.12, 0.11, 0.09, 0.10) is below 0.5. With blocks, then, IPS, SNIPS and DR would pass and DM would fail
+- The pass of IPS is marginal and depends on the random stream. The upper end of its interval is 0.006753 against an on-policy value of 0.006743, 0.15% above it (DR 0.43%, SNIPS 2.0%). Under 100 other streams (seeds 20261111 to 20261210 in place of 20261110; `full.other_streams`) IPS passes in 67, DR in 98, SNIPS in all 100 and DM in none; the upper end of IPS ranges from 0.006716 to 0.006782 and that of DR from 0.006739 to 0.006800
+- What a pass means here: with these intervals the check cannot tell the estimate from the on-policy value. The estimates did not move. IPS is still 0.891 of the on-policy value, and its interval reaches down to 0.789, so a shortfall of about 21% is not excluded either. The rule also compares each interval with the on-policy point value, whose own uncertainty does not enter it
+- Post hoc target of D046, the BTS logs' own frequencies, here recomputed in every resample together with the on-policy value (D060 noted that they were held fixed): 0.917 (0.822 to 1.017) [0.848 to 0.989] of the on-policy value, a change of +0.026 (−0.021 to 0.074) [−0.004 to 0.059] from the fixed prior. The interval of the change still includes 0
+- Tier: unchanged. The rule was registered together with its resampling unit, the unit was changed after the results were known, and the outcome for IPS turns on the random stream. No estimator is called validated on OBD, and no number that depends on one is reported

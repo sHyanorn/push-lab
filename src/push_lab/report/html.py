@@ -135,6 +135,7 @@ def finding_three(results: dict[str, Any], values: dict[str, str]) -> str:
         + paragraph(text.F3_SCOPE, values, "scope")
         + paragraph(text.F3_BODY, values)
         + paragraph(text.F3_OBD_MISMATCH, values)
+        + paragraph(text.F3_OBD_BLOCKS, values)
         + table(facts.TIER_A_HEAD, facts.tier_a_rows(results), nowrap=(0, 2))
         + shows_limits(text.F3_SHOWS, text.F3_LIMITS, values)
         + "</section>"
