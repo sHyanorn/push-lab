@@ -54,3 +54,7 @@ def test_history_entries_carry_no_numbers() -> None:
     ips = next(c for c in claims if c["id"] == "OBD-ratio-IPS")
     target = ips["post_hoc_empirical_target"]
     assert target["ci_low"] <= target["value"] <= target["ci_high"]
+    # A statement names only the fields its claim carries
+    dr = next(c for c in claims if c["id"] == "OBD-ratio-DR")
+    assert "post_hoc_difference" in ips and "post_hoc_difference" in ips["statement"]
+    assert "post_hoc" not in dr["statement"] and not [k for k in dr if "post_hoc" in k]

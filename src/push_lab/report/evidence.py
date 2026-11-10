@@ -343,6 +343,12 @@ def _obd_entries(data: dict[str, Any]) -> list[dict[str, Any]]:
             ratio = full["validation"][name].get("ratio_to_on_policy")
             if ratio is None:
                 continue
+            post_hoc = _empirical_target(full, name)
+            note = (
+                " (post_hoc_empirical_target re-weights to the BTS logs' own frequencies; "
+                "post_hoc_difference is its paired change from this ratio, with an interval "
+                "that includes 0)"
+            )
             out.append(
                 {
                     "id": f"OBD-ratio-{name}",
@@ -353,15 +359,13 @@ def _obd_entries(data: dict[str, Any]) -> list[dict[str, Any]]:
                     "on-policy value. The target is BTS "
                     "with its fixed prior, which the deployed BTS was not, so the shortfall may "
                     "come from the estimator or from that mismatch, and these data do not "
-                    "separate the two (post_hoc_empirical_target re-weights to the BTS logs' own "
-                    "frequencies; post_hoc_difference is its paired change from this ratio, with "
-                    "an interval that includes 0). Post hoc reading: the small sample has too "
-                    "little power to show the shortfall",
+                    f"separate the two{note if post_hoc else ''}. Post hoc reading: the small "
+                    "sample has too little power to show the shortfall",
                     "source": {"file": source, "path": ["full", "validation", name]},
                     "status": "reported",
                 }
                 | ratio
-                | _empirical_target(full, name)
+                | post_hoc
             )
     if isinstance(small, dict):
         for name, check in small["validation"].items():

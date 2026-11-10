@@ -482,7 +482,7 @@
   {
    "id": "OBD-ratio-DR",
    "tier": "A",
-   "statement": "The estimator DR, on real randomized logs (full Men's campaign of OBD), estimates the BTS click rate at this fraction of its on-policy value. The target is BTS with its fixed prior, which the deployed BTS was not, so the shortfall may come from the estimator or from that mismatch, and these data do not separate the two (post_hoc_empirical_target re-weights to the BTS logs' own frequencies; post_hoc_difference is its paired change from this ratio, with an interval that includes 0). Post hoc reading: the small sample has too little power to show the shortfall",
+   "statement": "The estimator DR, on real randomized logs (full Men's campaign of OBD), estimates the BTS click rate at this fraction of its on-policy value. The target is BTS with its fixed prior, which the deployed BTS was not, so the shortfall may come from the estimator or from that mismatch, and these data do not separate the two. Post hoc reading: the small sample has too little power to show the shortfall",
    "source": {
     "file": "results/ope_obd.json",
     "path": [
