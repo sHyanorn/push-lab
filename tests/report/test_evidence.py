@@ -68,3 +68,11 @@ def test_history_entries_carry_no_numbers() -> None:
     dr = next(c for c in claims if c["id"] == "OBD-ratio-DR")
     assert "post_hoc_difference" in ips and "post_hoc_difference" in ips["statement"]
     assert "post_hoc" not in dr["statement"] and not [k for k in dr if "post_hoc" in k]
+
+
+def test_h2_rows_carry_the_note_of_their_results() -> None:
+    out = {c["id"]: c for c in evidence.build(ROOT)["claims"]}
+    policy = json.loads((ROOT / "results" / "policy.json").read_text("utf-8"))
+    assert out["H2"]["note"] == policy["primary"]["main"]["H2"]["note"]
+    assert out["H2-af"]["note"] == policy["primary"]["annoyance_free"]["H2"]["note"]
+    assert "note" not in out["H1"]

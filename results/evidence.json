@@ -191,6 +191,7 @@
    "wins": 64,
    "losses": 0,
    "neither": 0,
+   "note": "G2 assumes an open and an organic visit are independent given the features; this holds in the simulator by construction, so part of any H2 win comes from the simulator's structure.",
    "spread_over_bootstrap_se": 1.22,
    "spread_source": "10 model refits at the reference setting"
   },
@@ -285,6 +286,7 @@
    "wins": 58,
    "losses": 0,
    "neither": 6,
+   "note": "G2 assumes an open and an organic visit are independent given the features; this holds in the simulator by construction, so part of any H2 win comes from the simulator's structure.",
    "spread_over_bootstrap_se": 1.22,
    "spread_source": "10 model refits at the reference setting"
   },

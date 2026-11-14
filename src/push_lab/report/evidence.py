@@ -82,6 +82,7 @@ class ClaimEntry(TypedDict, total=False):
     neither: int
     spread_over_bootstrap_se: float
     spread_source: str
+    note: str
     # Generated copy
     returned: int
     passed: int
@@ -112,6 +113,7 @@ def _sweep(found: Any) -> ClaimEntry:
         "wins": found["wins"],
         "losses": found["losses"],
         "neither": found["neither"],
+        **({"note": found["note"]} if "note" in found else {}),
     }
 
 
