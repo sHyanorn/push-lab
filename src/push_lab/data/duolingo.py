@@ -183,18 +183,20 @@ def combine(counts: list[dict[str, Any]]) -> dict[str, Any]:
 
 def convert_member(source: Path, target: Path) -> dict[str, Any]:
     """A Parquet member, row group by row group, after checking its schema and row count."""
-    file = pq.ParquetFile(source)
-    if not file.schema_arrow.equals(SCHEMA, check_metadata=False):
-        raise ConversionError(f"unexpected schema:\n{file.schema_arrow}")
-    counts = []
-    with pq.ParquetWriter(target, OUTPUT) as writer:
-        for i in range(file.num_row_groups):
-            table, c = convert_table(file.read_row_group(i))
-            writer.write_table(table, row_group_size=max(1, table.num_rows))
-            counts.append(c)
-    out = combine(counts) | {"row_groups": file.num_row_groups}
-    if out.get("rows", 0) != file.metadata.num_rows:
-        raise ConversionError(f"{source.name}: read {out.get('rows')} of {file.metadata.num_rows}")
+    # Closed before the caller deletes the member, which Windows refuses for an open file
+    with pq.ParquetFile(source) as file:
+        if not file.schema_arrow.equals(SCHEMA, check_metadata=False):
+            raise ConversionError(f"unexpected schema:\n{file.schema_arrow}")
+        counts = []
+        with pq.ParquetWriter(target, OUTPUT) as writer:
+            for i in range(file.num_row_groups):
+                table, c = convert_table(file.read_row_group(i))
+                writer.write_table(table, row_group_size=max(1, table.num_rows))
+                counts.append(c)
+        rows = file.metadata.num_rows
+        out = combine(counts) | {"row_groups": file.num_row_groups}
+    if out.get("rows", 0) != rows:
+        raise ConversionError(f"{source.name}: read {out.get('rows')} of {rows}")
     return out
 
 
