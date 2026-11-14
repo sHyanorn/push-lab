@@ -17,12 +17,25 @@ def test_bts_distribution() -> None:
     dist = obd.bts_distribution(draws=20_000)
     np.testing.assert_allclose(dist.sum(axis=0), 1)
     assert (dist.sum(axis=1) <= 1 + 1e-12).all()
-    finer = obd.bts_distribution(draws=200_000, seed=1)
-    assert np.abs(dist - finer).max() < 0.02
     # A prior that almost surely ranks item 0 first and item 1 second
     sure = obd.bts_distribution((1000, 500, 1, 1), (1, 500, 1000, 1000), draws=2_000)
     assert sure[0, 0] == 1 and sure[1, 1] > 0.99
     np.testing.assert_allclose(sure[2:, 2].sum(), 1)
+
+
+def test_bts_distribution_matches_a_direct_monte_carlo_of_the_prior() -> None:
+    # Beta draws as gamma ratios, each draw ranked on its own
+    n = 50_000
+    rng = np.random.default_rng(1)
+    x = rng.gamma(obd.ALPHA, size=(n, OBD_MEN_ACTIONS))
+    y = rng.gamma(obd.BETA, size=(n, OBD_MEN_ACTIONS))
+    counts = np.zeros((OBD_MEN_ACTIONS, obd.POSITIONS))
+    for draw in (x / (x + y)).tolist():
+        top = sorted(range(OBD_MEN_ACTIONS), key=draw.__getitem__, reverse=True)
+        for position, item in enumerate(top[: obd.POSITIONS]):
+            counts[item, position] += 1
+    # 0.01 is about 4.3 standard errors of the difference in the widest cell
+    assert np.abs(obd.bts_distribution(draws=200_000) - counts / n).max() < 0.01
 
 
 def _logs(n: int, seed: int) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, np.ndarray]:
