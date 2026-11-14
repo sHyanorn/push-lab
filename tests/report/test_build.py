@@ -62,6 +62,24 @@ def test_reference_facts_come_from_the_registered_grid_point() -> None:
     assert facts.facts(results)["opens_w1_g"] == shown
 
 
+def test_story_rows_count_the_sweep_settings() -> None:
+    results = facts.load(ROOT)
+    values = facts.facts(results)
+    assert (values["w1_t_above_g"], values["main_settings"]) == ("64", "64")
+    week_four_counts = (values["w4_n_above_f"], values["w4_n_above_f_af"], values["af_settings"])
+    assert week_four_counts == ("45", "none", "64")
+    week_one, week_four = (outcome for _, outcome in facts.story_rows(values)[:2])
+    assert "in 64 of 64 main settings" in week_one
+    assert "in 45 of 64 main settings and in none of the 64" in week_four
+    changed = copy.deepcopy(results)
+    setting = next(s for s in changed["policy"]["settings"] if s["sweep"] == "main")
+    t, g = setting["policies"]["T"], setting["policies"]["G"]
+    t["opens_week1"], g["opens_week1"] = g["opens_week1"], t["opens_week1"]
+    assert facts.facts(changed)["w1_t_above_g"] == "63"
+    with pytest.raises(ValueError, match="week-one"):
+        facts.check_readings(changed)
+
+
 def test_committed_readme_matches_the_results() -> None:
     assert build.main(["--root", str(ROOT), "--check"]) == 0
 

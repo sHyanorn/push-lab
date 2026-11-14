@@ -181,13 +181,17 @@ STORY_TITLE = "Core story, as registered"
 STORY = (
     (
         "Sending the top item to every user every day wins on clicks in week one",
-        "Holds at the reference, as a registered secondary result without a test (METHODS "
-        "12.7): week-one opens per user are {opens_w1_t} for a daily push at the best slot and "
-        "{opens_w1_g} for the half-volume gate, in one model fit.",
+        "Holds in the simulator, as a registered secondary result without a test (METHODS "
+        "12.7): a daily push at the best slot has more week-one opens per user than the "
+        "half-volume gate, by point estimate, in {w1_t_above_g} of {main_settings} main "
+        "settings. At the reference they are {opens_w1_t} and {opens_w1_g}, in one model fit.",
     ),
     (
         "It loses users to fatigue and opt-outs by week four",
-        "Partly, in the simulator (F-N, D034). At the reference, a daily push leaves "
+        "Partly, in the simulator (F-N, D034). Week-four active days are higher without "
+        "pushes than under a daily push, by point estimate, in {w4_n_above_f} of "
+        "{main_settings} main settings and in {w4_n_above_f_af} of the {af_settings} without "
+        "annoyance. At the reference, a daily push leaves "
         "{active_w4_f} active days in week four against {active_w4_n} without pushes, and "
         "changes the daily active share by {ref_lift_fn}. On the one-at-a-time grid the sign "
         "turns on annoyance (a gain below {fn_flip}) and the base rate (a gain above "

@@ -101,6 +101,15 @@ def shown_label(claim: ClaimEntry) -> str:
     return label
 
 
+def above(results: dict[str, Any], sweep: str, metric: str, high: str, low: str) -> int:
+    """Settings of a sweep where policy ``high`` has the higher point estimate of ``metric``."""
+    return sum(
+        s["policies"][high][metric]["value"] > s["policies"][low][metric]["value"]
+        for s in results["policy"]["settings"]
+        if s["sweep"] == sweep
+    )
+
+
 def check_readings(results: dict[str, Any]) -> None:
     """Readings the prose states in words; a rerun that changes one fails the build."""
     c = claims(results)
@@ -152,6 +161,9 @@ def check_readings(results: dict[str, Any]) -> None:
     }
     if resolved != {("annoyance", "H3")}:
         raise ValueError(f"resolved crossings of H1 to H4 are now {sorted(resolved)}")
+    main = sum(s["sweep"] == "main" for s in policy["settings"])
+    if above(results, "main", "opens_week1", "T", "G") != main:
+        raise ValueError("a daily push no longer has more week-one opens in every main setting")
     band = policy["band_F_over_N"]["main_sweep_counts"]
     if band["below"] * 2 <= sum(band.values()):
         raise ValueError("most settings are no longer below the band")
@@ -189,6 +201,7 @@ def facts(results: dict[str, Any]) -> dict[str, str]:
     streams = blocks["other_streams"]
     seeds = results["templates"]["seed_variability"]
     n_main = sum(s["sweep"] == "main" for s in policy["settings"])
+    n_above_af = above(results, "annoyance_free", "active_week4", "N", "F")
     reference = reference_setting(results)
     ref = reference["policies"]
     return {
@@ -200,6 +213,10 @@ def facts(results: dict[str, Any]) -> dict[str, str]:
         "opens_w1_g": interval(ref["G"]["opens_week1"], 3),
         "active_w4_f": interval(ref["F"]["active_week4"], 2),
         "active_w4_n": interval(ref["N"]["active_week4"], 2),
+        "w1_t_above_g": str(above(results, "main", "opens_week1", "T", "G")),
+        "w4_n_above_f": str(above(results, "main", "active_week4", "N", "F")),
+        "w4_n_above_f_af": "none" if n_above_af == 0 else str(n_above_af),
+        "af_settings": str(sum(s["sweep"] == "annoyance_free" for s in policy["settings"])),
         "h3_losses": str(c["H3"]["losses"]),
         "h4_half": num(policy["primary"]["main"]["H4"]["median_half_width"], 3),
         "ope_range": f"{short(grid[0])} to {short(grid[-1])}",
