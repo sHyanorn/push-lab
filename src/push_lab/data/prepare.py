@@ -5,7 +5,7 @@ import sys
 from collections.abc import Callable, Sequence
 from pathlib import Path
 
-from push_lab.data import kuairand, obd, paths, uplift_trials
+from push_lab.data import duolingo, kuairand, obd, paths, uplift_trials
 from push_lab.data.sources import CRITEO_UPLIFT, HILLSTROM, KUAIRAND_PURE, OBD_FULL
 
 
@@ -37,6 +37,10 @@ def _obd_full(root: Path) -> list[Path]:
     return obd.convert_full(archive, paths.processed_dir(root, "obd_full"))
 
 
+def _duolingo(root: Path) -> list[Path]:
+    return duolingo.convert(paths.raw_dir(root, "duolingo"), paths.processed_dir(root, "duolingo"))
+
+
 PREPARERS: dict[str, Callable[[Path], list[Path]]] = {
     "kuairand": _kuairand,
     "hillstrom": _hillstrom,
@@ -44,7 +48,10 @@ PREPARERS: dict[str, Callable[[Path], list[Path]]] = {
     "obd": _obd,
 }
 # Run only when named with --only
-OPTIONAL: dict[str, Callable[[Path], list[Path]]] = {"obd_full": _obd_full}
+OPTIONAL: dict[str, Callable[[Path], list[Path]]] = {
+    "obd_full": _obd_full,
+    "duolingo": _duolingo,
+}
 
 
 def main(argv: Sequence[str] | None = None) -> int:

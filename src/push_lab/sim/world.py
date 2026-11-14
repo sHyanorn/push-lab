@@ -148,6 +148,8 @@ CHOICE_STREAM = 6
 # Long-horizon OPE (METHODS 14.7, D066): arms of the logging designs, user resamples and
 # refits, folds of per-day DR
 ARM_STREAM, RESAMPLE_STREAM, FOLD_STREAM = 7, 8, 9
+# Duolingo (METHODS 15, D067): samples for the outcome model, DM and DR; synthetic logs
+DUOLINGO_STREAM, DUOLINGO_FIXTURE_STREAM = 10, 11
 
 
 def stream(purpose: int, *key: int) -> np.random.Generator:

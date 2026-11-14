@@ -4,6 +4,8 @@ CI never downloads data. Tests and later milestones write this tree with
 ``write_processed`` and read it with the same loaders as the real data.
 """
 
+import io
+import tarfile
 from pathlib import Path
 from typing import Any
 
@@ -13,7 +15,8 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from push_lab.data import kuairand, paths, schemas
+from push_lab.data import duolingo, kuairand, paths, schemas
+from push_lab.sim.world import DUOLINGO_FIXTURE_STREAM, stream
 
 Columns = dict[str, list[Any] | npt.NDArray[Any]]
 
@@ -177,3 +180,86 @@ def write_processed(root: Path, seed: int = 0, n: int = 500) -> None:
         out.mkdir(parents=True, exist_ok=True)
         table = pa.Table.from_pandas(df, schema=schemas.to_arrow(SCHEMAS[dataset, name]))
         pq.write_table(table, out / f"{name}.parquet")
+
+
+def duolingo_table(rng: np.random.Generator, rows: int, days: tuple[float, float]) -> pa.Table:
+    """Synthetic Duolingo rows in the archives' schema: uniform choices among random eligible
+    sets, histories of up to 8 entries, some earlier on the same day."""
+    k = len(duolingo.TEMPLATES)
+    when = rng.uniform(*days, rows)
+    eligible = rng.random((rows, k)) < 0.4
+    eligible[np.arange(rows), rng.integers(0, k, rows)] = True
+    rank = np.floor(rng.random(rows) * eligible.sum(axis=1)).astype(np.int64)
+    selected = (np.cumsum(eligible, axis=1) <= rank[:, None]).sum(axis=1)
+    length = rng.integers(0, 9, rows)
+    owner = np.repeat(np.arange(rows), length)
+    same_day = rng.random(len(owner)) < 0.3
+    n_days = np.where(
+        same_day,
+        rng.random(len(owner)) * (when - np.floor(when))[owner],
+        rng.uniform(0, 30, len(owner)),
+    ).astype(np.float32)
+    letters = np.array(list(duolingo.TEMPLATES))
+    entries = pa.StructArray.from_arrays(
+        [pa.array(letters[rng.integers(0, k, len(owner))]), pa.array(n_days)],
+        fields=list(duolingo.HISTORY_ENTRY),
+    )
+    rows_of = np.nonzero(eligible)
+    columns: dict[str, Any] = {
+        "datetime": when,
+        "ui_language": np.array(["en", "es", "fr", "pt", "de"])[rng.integers(0, 5, rows)],
+        "eligible_templates": pa.ListArray.from_arrays(
+            pa.array(np.concatenate([[0], np.cumsum(eligible.sum(axis=1))]), pa.int32()),
+            pa.array(letters[rows_of[1]]),
+        ),
+        "history": pa.ListArray.from_arrays(
+            pa.array(np.concatenate([[0], np.cumsum(length)]), pa.int32()), entries
+        ),
+        "selected_template": letters[selected],
+        "session_end_completed": rng.random(rows) < 0.15,
+    }
+    return pa.table(columns, schema=duolingo.SCHEMA)
+
+
+def duolingo_archive(
+    path: Path,
+    tables: list[pa.Table],
+    row_group: int = 1_000,
+    extra: tuple[tarfile.TarInfo, bytes] | None = None,
+) -> Path:
+    """A tar.gz shaped like the Dataverse archives: a folder, macOS and checksum side files and
+    one Parquet member per table, with ``extra`` as a further member."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with tarfile.open(path, "w:gz") as tar:
+
+        def add(name: str, data: bytes) -> None:
+            info = tarfile.TarInfo(name)
+            info.size = len(data)
+            tar.addfile(info, io.BytesIO(data))
+
+        folder = tarfile.TarInfo("logs")
+        folder.type = tarfile.DIRTYPE
+        tar.addfile(folder)
+        add("logs/._.DS_Store", b"x")
+        add("logs/.DS_Store", b"x")
+        for i, table in enumerate(tables):
+            buffer = io.BytesIO()
+            pq.write_table(table, buffer, row_group_size=row_group)
+            add(f"logs/.part-{i:05d}.snappy.parquet.crc", b"crc")
+            add(f"logs/part-{i:05d}.snappy.parquet", buffer.getvalue())
+        if extra is not None:
+            info, data = extra
+            tar.addfile(info, io.BytesIO(data) if info.isfile() else None)
+    return path
+
+
+def duolingo_raw(raw_dir: Path, rows: int, seed: int = 0, row_group: int = 1_000) -> dict[str, int]:
+    """One synthetic archive per split with two Parquet members each, training on days 0 to 2
+    and test on days 3 to 5; returns the rows per split."""
+    out: dict[str, int] = {}
+    for split, days in (("train", (0.0, 3.0)), ("test", (3.0, 6.0))):
+        rng = stream(DUOLINGO_FIXTURE_STREAM, seed, len(out))
+        tables = [duolingo_table(rng, rows, days) for _ in range(2)]
+        duolingo_archive(raw_dir / f"{split}-part-1.tar.gz", tables, row_group)
+        out[split] = 2 * rows
+    return out

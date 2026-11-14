@@ -97,6 +97,26 @@ OBD_FULL = Source(
     checksum="e8ec18196582a5937381a1776382ca940689b90a18d2dcd1fb635be6df614d78",
 )
 
+# Duolingo notification logs (METHODS 15, D067): Harvard Dataverse doi:10.7910/DVN/23ZWVI,
+# version 1.0, with the sizes and MD5 checksums Dataverse publishes; optional, never in CI
+_DATAVERSE = "https://dataverse.harvard.edu/api/access/datafile"
+
+
+def _duolingo(filename: str, file_id: int, size: int, md5: str) -> Source:
+    return Source("duolingo", f"{_DATAVERSE}/{file_id}", filename, size, "md5", md5)
+
+
+DUOLINGO = (
+    _duolingo("train-part-1.tar.gz", 3869914, 1_451_216_512, "2caf882c2ab597eaa78aa41175107b4d"),
+    _duolingo("train-part-2.tar.gz", 3869916, 1_443_417_763, "1076d32152e4e7a9e04fa2a1a7a6c781"),
+    _duolingo("train-part-3.tar.gz", 3869920, 1_136_152_293, "0d090c0f66a7c1e4f5b506ea38ac81f3"),
+    _duolingo("test-part-1.tar.gz", 3869919, 1_813_336_059, "3a7f557ebe04f07ec1c851d90ec6acc1"),
+    _duolingo("test-part-2.tar.gz", 3869918, 1_729_355_452, "63ea098c327404f52781ea46659babbc"),
+    _duolingo("test-part-3.tar.gz", 3869915, 1_775_437_213, "26cb1808ed94c358f3224a4fb3566cc8"),
+    # The dataset's readme, with the column descriptions (D070)
+    _duolingo("readme.md", 3869925, 3_322, "5bbb0eccd2afe0fe148fb1beb9b7027b"),
+)
+
 SOURCES: dict[str, tuple[Source, ...]] = {
     "kuairand": (KUAIRAND_PURE,),
     "hillstrom": (HILLSTROM,),
@@ -104,4 +124,4 @@ SOURCES: dict[str, tuple[Source, ...]] = {
     "obd": OBD_MEN,
 }
 # Fetched only when named with --only
-OPTIONAL: dict[str, tuple[Source, ...]] = {"obd_full": (OBD_FULL,)}
+OPTIONAL: dict[str, tuple[Source, ...]] = {"obd_full": (OBD_FULL,), "duolingo": DUOLINGO}
