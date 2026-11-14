@@ -82,6 +82,7 @@ Hour estimates are for planning; the required core is about 85 hours. If behind,
 - [x] Tidy up DECISIONS.md
 
 ## Optional
+- [ ] Long-horizon OPE in the simulator: PDIS, SMIS, FQE and a surrogate index on three logging designs, with misspecified-state controls (METHODS 14.7, D066)
 - [ ] Duolingo: sample one training part locally, check propensities, replicate the recovering bandit off-policy
 - [ ] LLM judge score as a bandit prior, with its correlation to the simulated copy effect swept from zero
 - [ ] DR with optimistic shrinkage; DR-learner; ALS baseline; recent-favorite-author source
