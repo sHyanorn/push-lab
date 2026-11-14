@@ -195,8 +195,11 @@ def user_days(out: env.Outcome, static: Static) -> UserDays:
     )
 
 
-def outcome_models(rows: UserDays, reward: str, seed: int) -> tuple[FloatArray, FloatArray]:
-    """Cross-fitted q(x, a) at the logged vector [row] and at every vector [row, vector]."""
+def outcome_models(
+    rows: UserDays, reward: str, seed: int | np.random.Generator
+) -> tuple[FloatArray, FloatArray]:
+    """Cross-fitted q(x, a) at the logged vector [row] and at every vector [row, vector]. The
+    folds come from ``default_rng(seed)``, which returns a generator passed as ``seed`` as is."""
     fold = np.random.default_rng(seed).permutation(int(rows.user.max()) + 1)[rows.user] % FOLDS
     y = rows.reward[reward]
     logged = np.empty(len(y))

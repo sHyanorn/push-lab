@@ -145,6 +145,9 @@ def copy_effects(
 EXPLORE_STREAM, TEMPLATE_STREAM, COIN_STREAM, HALF_STREAM, PERTURB_STREAM = 1, 2, 3, 4, 5
 # Uniforms shared by the template policies of M6 (METHODS 13.4)
 CHOICE_STREAM = 6
+# Long-horizon OPE (METHODS 14.7, D066): arms of the logging designs, user resamples and
+# refits, folds of per-day DR
+ARM_STREAM, RESAMPLE_STREAM, FOLD_STREAM = 7, 8, 9
 
 
 def stream(purpose: int, *key: int) -> np.random.Generator:
