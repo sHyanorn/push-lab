@@ -135,6 +135,33 @@ def test_render_readme_needs_every_block() -> None:
         )
 
 
+def test_readme_blocks_keep_their_form() -> None:
+    results = facts.load(ROOT)
+    generated = readme.blocks(results, facts.facts(results))
+    findings = generated["findings"].splitlines()
+    assert findings[:2] == ["| # | Finding | Evidence |", "|---|---|---|"]
+    rows = findings[2 : 2 + len(text.README_FINDINGS)]
+    assert [row.split(" | ")[0] for row in rows] == [f"| {n}" for n in range(1, len(rows) + 1)]
+    assert all(row.count(" | ") == 2 and row.endswith(" |") for row in rows)
+    assert [row.split(" | ")[2][:6] for row in rows] == ["Tier C", "Tier C", "Tier A"]
+    assert findings[2 + len(rows) :] == ["", text.README_FINDINGS_NOTE]
+    story = generated["story"].splitlines()
+    assert story[:2] == ["| Item | Outcome |", "|---|---|"]
+    assert [row.split(" | ")[0][2:] for row in story[2:-2]] == [item for item, _ in text.STORY]
+    assert all(row.count(" | ") == 1 and row.endswith(" |") for row in story[2:-2])
+    assert story[-2:] == ["", text.README_STORY_NOTE]
+    assert not any("{" in line for line in findings + story)
+
+
+def test_a_block_in_another_form_fails_the_check(tmp_path: Path) -> None:
+    shutil.copytree(ROOT / "results", tmp_path / "results", ignore=shutil.ignore_patterns("runs"))
+    committed = (ROOT / "README.md").read_text("utf-8")
+    reformatted = committed.replace("| # | Finding | Evidence |", "| Finding | Evidence |", 1)
+    assert reformatted != committed
+    (tmp_path / "README.md").write_text(reformatted, encoding="utf-8")
+    assert build.main(["--root", str(tmp_path), "--check"]) == 1
+
+
 def test_only_short_cells_are_kept_on_one_line() -> None:
     results = facts.load(ROOT)
     page = html.page(results, facts.facts(results))

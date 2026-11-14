@@ -232,3 +232,51 @@ STORY = (
     ),
 )
 STORY_HEAD = ("Item", "Outcome")
+
+# README blocks: one line per finding and per story item; the report page keeps the full text
+REPORT_URL = "https://shyanorn.github.io/push-lab/"
+README_FINDINGS_HEAD = ("#", "Finding", "Evidence")
+# (finding, evidence) per finding of the report, in its order
+README_FINDINGS = (
+    (
+        "In the simulator, per-day doubly robust (DR) estimates favor more pushes when sending "
+        "annoys users: their bias for half the volume changes sign at an annoyance of "
+        "{flip_thalf}.",
+        "Tier C: the registered reference run and a sweep of {ope_settings} settings on "
+        "{ope_grids} one-at-a-time grids, of which the annoyance grid runs from {ope_range} with "
+        "the other parameters at the reference",
+    ),
+    (
+        "In the simulator, on the one-at-a-time grid, whether a daily push pays turns on two "
+        "parameters only, annoyance and the base rate; at the reference setting it changes the "
+        "daily active share by {ref_lift_fn} against no pushes.",
+        "Tier C: {main_settings} Latin hypercube settings, the same settings without annoyance, "
+        "and a one-at-a-time grid",
+    ),
+    (
+        "On randomized real data, the fused fine ranker ranks random exposures worse than the "
+        "two-tower score it refines (C2), the T-learner targets Criteo visits worse than a plain "
+        "response model (U4), and on the full Men's campaign of the Open Bandit Dataset IPS "
+        "estimates the BTS click rate at {obd_ips} of its on-policy value and DR at {obd_dr}, so "
+        "no estimator passed.",
+        "Tier A: KuaiRand random exposures, Hillstrom, Criteo and the Open Bandit Dataset",
+    ),
+)
+README_FINDINGS_NOTE = (
+    "The [report](" + REPORT_URL + ") gives each finding in full: its sweep, its post hoc "
+    "analyses, and what it shows and does not show."
+)
+# The outcome of each STORY item, in its order
+README_STORY = (
+    "Holds in the simulator, as a registered secondary result without a test: by point estimate "
+    "in {w1_t_above_g} of {main_settings} main settings",
+    "Partly, in the simulator: by point estimate in {w4_n_above_f} of {main_settings} main "
+    "settings and in {w4_n_above_f_af} of the {af_settings} without annoyance",
+    "Not as stated, in the simulator: at half volume the gate beats a daily push in {h3_wins} of "
+    "{main_settings} main settings and loses in {h3_losses}",
+    "Partly, in the simulator: flips are located for F-N and H3; every other crossing of H1 to H4 "
+    "is unresolved",
+    "Holds for the results in the evidence matrix, each Tier A or C; counts of the generated copy "
+    "and its rating are descriptive, and registered verdicts later overturned are kept as history",
+)
+README_STORY_NOTE = "The [report](" + REPORT_URL + ") gives each outcome with its numbers."
