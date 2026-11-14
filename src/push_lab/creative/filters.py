@@ -69,8 +69,10 @@ BANNED = URGENCY + INDUCEMENT + CLICKBAIT + GUILT
 
 
 def _phrase(words: str) -> re.Pattern[str]:
-    # Whole words, plurals included ("rewards" as well as "reward")
-    return re.compile(rf"(?<![a-z]){re.escape(words)}s?(?![a-z])", re.IGNORECASE)
+    # Whole words, plurals included ("rewards", "bonuses"); -es only where English takes it,
+    # so "win" does not catch "wines"
+    plural = "(?:es)?" if words.endswith(("s", "sh", "ch", "x", "z")) else "s?"
+    return re.compile(rf"(?<![a-z]){re.escape(words)}{plural}(?![a-z])", re.IGNORECASE)
 
 
 _BANNED = {w: _phrase(w) for w in BANNED}
@@ -99,9 +101,9 @@ def charset(v: Variant) -> bool:
 
 
 def placeholders(v: Variant, family: Family) -> bool:
-    text = v.title + v.body
-    names = PLACEHOLDER.findall(text)
-    rest = PLACEHOLDER.sub("", text)
+    """Each field on its own, so braces cannot open in the title and close in the body."""
+    names = PLACEHOLDER.findall(v.title) + PLACEHOLDER.findall(v.body)
+    rest = PLACEHOLDER.sub("", v.title) + PLACEHOLDER.sub("", v.body)
     if "{" in rest or "}" in rest:
         return False
     if family.placeholder is None:
@@ -125,8 +127,7 @@ def length(v: Variant, family: Family) -> bool:
 
 def banned(v: Variant, family: Family) -> str | None:
     """The first banned pattern found, or None."""
-    text = f"{v.title}\n{v.body}"
-    bare = PLACEHOLDER.sub(" ", text)
+    bare = "\n".join(PLACEHOLDER.sub(" ", field) for field in (v.title, v.body))
     if re.search(r"\d", bare):
         return "digit"
     if "#" in bare:
@@ -230,9 +231,11 @@ VIOLATIONS: tuple[tuple[int, Any, str], ...] = (
         {"title": "No placeholder here", "body": "The family needs its duration slot."},
         "placeholders",
     ),
+    (3, {"title": "A clip of {dura", "body": "tion} to watch on the way."}, "placeholders"),
     (2, {"title": "A pick for you", "body": "Too short"}, "length"),
     (2, {"title": "Hurry, last chance", "body": "This video is gone in a moment."}, "banned"),
     (2, {"title": "Win a prize today", "body": "Open the app to claim your reward."}, "banned"),
+    (2, {"title": "Bonuses are waiting", "body": "Open the app to see what is inside."}, "banned"),
     (2, {"title": "Watch 3 videos", "body": "Numbers may only come from placeholders."}, "banned"),
     (
         0,

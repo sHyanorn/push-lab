@@ -87,6 +87,8 @@ def test_placeholders() -> None:
     assert not filters.placeholders(Variant("{top_n}", "A clip."), LENGTH)
     assert not filters.placeholders(Variant("{duration} }", "A clip."), LENGTH)
     assert not filters.placeholders(Variant("{duration", "A clip."), LENGTH)
+    # A placeholder opened in the title and closed in the body
+    assert not filters.placeholders(Variant("Watch {dura", "tion} of fun."), LENGTH)
     assert filters.placeholders(Variant("A pick", "For you."), PICK)
     assert not filters.placeholders(Variant("A pick {time_of_day}", "For you."), PICK)
 
@@ -111,6 +113,10 @@ def test_length_uses_the_longest_value() -> None:
         ("A free pick", "Fine body text here.", PICK, "free"),
         ("Claim your rewards", "Fine body text here.", PICK, "reward"),
         ("Prizes inside", "Fine body text here.", PICK, "prize"),
+        ("Bonuses inside", "Fine body text here.", PICK, "bonus"),
+        ("A pick", "Cashes are waiting inside.", PICK, "cash"),
+        # Braces across title and body hide nothing
+        ("A pick {free", "time} for you.", PICK, "free"),
         ("A pick", "You won't believe this video.", PICK, "you won't believe"),
         ("We miss you", "Fine body text here.", PICK, "miss you"),
         ("A new one", "From a creator you watched {creator_videos} of.", CREATOR, "new"),
@@ -128,6 +134,7 @@ def test_banned(title: str, body: str, family: fam.Family, word: str) -> None:
     ("title", "body", "family"),
     [
         ("Winter is here", "A wintry clip with freestyle skiing.", PICK),
+        ("Fine wines", "A clip about wines and winning ways.", PICK),
         ("A new one", "Picked for you with care.", PICK),
         ("Popular today", "One of the {time_of_day} picks.", TIME),
         ("Watch it {duration}", "A good one, TV style!", LENGTH),

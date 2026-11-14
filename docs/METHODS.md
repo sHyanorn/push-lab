@@ -507,9 +507,9 @@ Fixed before generation and applied in this order; a variant is dropped at its f
 
 1. *Schema*: the response parses against the schema; `title` and `body` are non-empty strings.
 2. *Charset*: printable ASCII only, no line breaks, no emoji.
-3. *Placeholders*: braces only as `{name}` with a name of the family; the family's placeholder appears exactly once in title and body together; Personal pick has none.
+3. *Placeholders*: in title and body separately, braces only as `{name}` with a name of the family; the family's placeholder appears exactly once in title and body together; Personal pick has none.
 4. *Length*: with every placeholder replaced by its longest value, title 10 to 50 characters and body 20 to 100.
-5. *Banned claims* (case-insensitive, whole words):
+5. *Banned claims* (case-insensitive, whole words and their plurals):
    - any digit outside a placeholder (no invented numbers);
    - false urgency: hurry, last chance, don't miss, do not miss, before it's gone, ending soon, ends soon, expires, limited, act now, right now, urgent, only today, countdown;
    - inducement: free, win, winner, prize, reward, bonus, coins, gift, cash, guaranteed, unlock;

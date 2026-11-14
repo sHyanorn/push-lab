@@ -86,8 +86,8 @@
   "output_tokens": 12898
  },
  "filter_self_check": {
-  "cases": 8,
-  "rejected_as_expected": 8
+  "cases": 10,
+  "rejected_as_expected": 10
  },
  "note": "Descriptive counts of one generation run; no simulator result reads the text. The counts are recomputed from the committed responses, and the filters reject every hand-made violation in filter_self_check. The prompt listed the limits and banned phrasings, so a run where every variant passes is possible; then the agreement between the rater and the filters cannot be estimated.",
  "rating": {
