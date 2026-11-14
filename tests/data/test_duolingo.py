@@ -174,9 +174,20 @@ def test_stops_on_a_letter_outside_a_to_l(tmp_path: Path) -> None:
 def test_stops_on_a_row_count_other_than_the_readme(tmp_path: Path) -> None:
     raw, out = tmp_path / "raw", tmp_path / "out"
     rows = fixtures.duolingo_raw(raw, 300)
+    _convert(raw, out, rows)
+    # A failed rerun leaves no report from the earlier run
     with pytest.raises(duolingo.ConversionError, match="the readme gives"):
         _convert(raw, out, rows | {"test": rows["test"] + 1})
     assert not (out / duolingo.REPORT).exists()
+
+
+def test_skips_other_regular_files(tmp_path: Path) -> None:
+    info = tarfile.TarInfo("logs/_SUCCESS")
+    info.size = 0
+    raw = _archive(tmp_path, _table(), extra=(info, b""))
+    _convert(raw, tmp_path / "out", {"train": 100, "test": 50})
+    report = json.loads((tmp_path / "out" / duolingo.REPORT).read_text("utf-8"))
+    assert "logs/_SUCCESS" in report["train"]["archives"][0]["skipped"]
 
 
 def test_stops_before_a_member_that_would_fill_the_disk(
