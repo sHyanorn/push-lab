@@ -1,5 +1,7 @@
 # push-lab
 
+[![CI](https://github.com/sHyanorn/push-lab/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/sHyanorn/push-lab/actions/workflows/ci.yml?query=branch%3Amain)
+
 An offline lab for push notification recommendation: recall, ranking, uplift gating, send volume, timing and copy selection built on public data, with every result labeled by how far it can be trusted without live traffic.
 
 [![Report](docs/report.png)](https://shyanorn.github.io/push-lab/)
