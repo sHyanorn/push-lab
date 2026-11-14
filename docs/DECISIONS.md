@@ -75,6 +75,7 @@ Entries are in the order they were made. Some entries up to D048 were corrected 
 | D069 | Long-horizon OPE: readings and implementation | Active |
 | D070 | Duolingo study: download, conversion and implementation | Active |
 | D071 | Projected run times of the long-horizon and Duolingo studies | Active |
+| D072 | Conversion time of training part 1 and the revised projection | Active |
 
 ## D001 Python only, static report
 - Date: 2026-11-08
@@ -705,3 +706,13 @@ Entries are in the order they were made. Some entries up to D048 were corrected 
 - Duolingo study: two synthetic archives of two Parquet members each, 8,000,000 rows in total in row groups of 2,000,000 like the real ones, 234 MB compressed. Conversion took 11.5 s; the analysis on 4 processes 270 s: the training pass 13.5 s, the outcome model 0.9 s, the test pass 60 s and DL2 with its grid 196 s on 1,195,883 completed rounds. Scaled to the dataset readme's 87.7 million training rows and 114.5 million test rows and about 26 million completed rounds (a completion rate near the paper's 0.13), the analysis takes about 6,300 s; the conversion, scaled by compressed bytes (9.35 GB against 234 MB), about 460 s. The projection is about 113 minutes, and the stop line 169 minutes. On the synthetic archives each pass had two jobs for the four workers, so the scaled passes may be overstated. DL2 takes most of it, and its number of iterations on the real data is not known. Peak memory was 2.0 GB in the main process and 1.4 GB per worker; the main process holds the completed rounds at 84 bytes each, about 2.2 GB on the real data and twice that while they are joined
 - D067 also asks for a timing on the first archive before the run. It needs the downloaded data, so it is recorded in an entry of its own after the download
 - Commands: one-off scripts that call the committed modules, not committed
+
+## D072 Conversion time of training part 1 and the revised projection
+- Date: 2026-11-14
+- D067 asks for a timing on the first part before the run. With the code of 9f1a87c, `duolingo.convert_archive` converted `train-part-1.tar.gz` as `prepare --only duolingo` does, in one process with no thread limit set, in a container of 4 vCPU and 15 GB RAM, as in D015. Only times, counts, sizes and the names of the skipped members were taken from it; the analysis did not run on the real data, and no test archive was opened
+- The archive holds one Parquet member of 1,719,459,145 bytes: 25,613,243 rows in 13 row groups, with 308,370,355 history entries. A folder, `.DS_Store`, `._.DS_Store` and a `.crc` file were skipped. The conversion took 75.8 s, of which 60.9 s converted the member and the other 14.9 s went mainly to writing it from the archive to the temporary file. The output takes 1,128,785,584 bytes; peak memory was 2.7 GB
+- Per compressed byte the conversion runs at about the rate measured on the synthetic archives of D071 (52 ns against 49), but a row of part 1 takes 57 compressed bytes against 29, so it takes about twice as long. Scaled by compressed bytes (9.35 GB against 1.45 GB) the six archives take 488 s, scaled by rows (202,151,998 against 25,613,243) 598 s; the projection takes the larger, against 460 s in D071
+- The analysis keeps the projection of D071, 6,300 s scaled from synthetic data, since no part of it runs on the real data before the run. The number of DL2 iterations on the real data is not known; the stop line of D067 at 1.5 times the projection bounds that risk. The projection is about 6,900 s, 115 minutes, and the stop line 172 minutes (D071: 113 and 169)
+- Disk: scaled by rows, the converted data take 8.9 GB. In the container of the timing, the run starts from an empty `data/processed/duolingo/` with 20.4 GB free, so about 11.5 GB stay free once all six are converted; a member of the largest archive, about 2.15 GB at the ratio of part 1, needs 9.3 GB free under the rule of D067
+- The converted part 1 was deleted after the timing, so the run converts all six archives
+- Command: a one-off script that calls the committed modules, not committed
