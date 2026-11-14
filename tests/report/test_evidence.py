@@ -29,6 +29,7 @@ def test_numbers_are_copied_from_the_results() -> None:
     assert out["B1"]["spread_source"].startswith(f"{triples} seed triples")
     policy = json.loads((ROOT / "results" / "policy.json").read_text("utf-8"))
     assert out["F-N"]["value"] == policy["flips"]["annoyance"]["F-N"]["crossings"][0]["at"]
+    assert out["F-N-base"]["value"] == policy["flips"]["base_rate"]["F-N"]["crossings"][0]["at"]
     refits = policy["fit_variability"]["H1"]["refits"]
     assert out["H1-af"]["spread_source"].startswith(f"{refits} model refits")
 

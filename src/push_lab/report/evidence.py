@@ -219,13 +219,23 @@ CLAIMS = (
             ("H4", "Each user's best slot against one fixed slot"),
         )
     ),
+    # One row per grid along which F-N flips; check_readings ties the rows to the flips
     Claim(
         "F-N",
         "C",
-        "One push a day gains active days over no pushes only below this annoyance elasticity "
-        "(one-at-a-time grid)",
+        "With the other parameters at the reference, one push a day gains active days over no "
+        "pushes only below this annoyance elasticity (one-at-a-time grid)",
         "policy.json",
         ("flips", "annoyance", "F-N", "crossings", "0"),
+        _crossing,
+    ),
+    Claim(
+        "F-N-base",
+        "C",
+        "With the other parameters at the reference, annoyance included, one push a day gains "
+        "active days over no pushes only above this base-rate factor (one-at-a-time grid)",
+        "policy.json",
+        ("flips", "base_rate", "F-N", "crossings", "0"),
         _crossing,
     ),
     *(

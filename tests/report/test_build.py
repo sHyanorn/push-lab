@@ -168,6 +168,21 @@ def test_post_hoc_readings_sit_beside_the_labels_they_were_written_for() -> None
         facts.check_readings(changed)
 
 
+def test_every_grid_where_a_daily_push_flips_has_a_row_on_the_gaining_side() -> None:
+    results = facts.load(ROOT)
+    facts.check_readings(results)
+    missing = copy.deepcopy(results)
+    claims = missing["evidence"]["claims"]
+    missing["evidence"]["claims"] = [x for x in claims if x["id"] != "F-N-base"]
+    with pytest.raises(ValueError, match="F-N"):
+        facts.check_readings(missing)
+    wrong = copy.deepcopy(results)
+    row = next(x for x in wrong["evidence"]["claims"] if x["id"] == "F-N-base")
+    row["statement"] = row["statement"].replace("above", "below")
+    with pytest.raises(ValueError, match="F-N"):
+        facts.check_readings(wrong)
+
+
 def test_prose_on_the_obd_post_hoc_change_fails_once_it_excludes_zero() -> None:
     results = facts.load(ROOT)
     ips = next(x for x in results["evidence"]["claims"] if x["id"] == "OBD-ratio-IPS")

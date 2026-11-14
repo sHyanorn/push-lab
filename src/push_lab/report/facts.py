@@ -134,9 +134,16 @@ def check_readings(results: dict[str, Any]) -> None:
     reference_b1 = results["templates"]["seed_variability"]["B1"]["mean_over_triples"]
     if not reference_b1["ci_low"] < 0 < reference_b1["ci_high"]:
         raise ValueError("B1 at the reference is no longer undetectable")
-    fn_flips = {n for n, f in policy["flips"].items() if f["F-N"]["result"] == "flip"}
-    if fn_flips != {"annoyance", "base_rate"}:
-        raise ValueError(f"F-N now flips along {sorted(fn_flips)}")
+    # Every grid along which F-N flips has an evidence row that names the side of the crossing
+    # where a daily push gains, and no other grid has one
+    rows = {x["source"]["path"][1]: x["statement"] for k, x in c.items() if k.startswith("F-N")}
+    fn_flips = {n: f["F-N"] for n, f in policy["flips"].items() if f["F-N"]["result"] == "flip"}
+    if set(rows) != set(fn_flips):
+        raise ValueError(f"F-N flips along {sorted(fn_flips)}; its rows name {sorted(rows)}")
+    for name, flip in fn_flips.items():
+        side = "below" if flip["estimates"][0]["value"] > 0 else "above"
+        if f"only {side} this" not in rows[name]:
+            raise ValueError(f"the F-N row of {name} does not say it gains {side} the crossing")
     resolved = {
         (n, h)
         for n, f in policy["flips"].items()
