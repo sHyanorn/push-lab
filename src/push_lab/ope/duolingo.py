@@ -24,6 +24,8 @@ from typing import Any
 import lightgbm as lgb
 import numpy as np
 import numpy.typing as npt
+import pyarrow as pa
+import pyarrow.compute as pc
 import pyarrow.parquet as pq
 from scipy.optimize import minimize
 from scipy.stats import norm
@@ -71,6 +73,9 @@ H_BOUNDS = (0.25, 365.0)
 RESULTS_FILE = "duolingo.json"
 SMOKE = Path("runs") / "smoke" / "duolingo"
 SMOKE_ROWS = 20_000
+# Rows per slice of a row group in the workers, and per chunk of the DL2 fits
+SLICE = 250_000
+CHUNK = 500_000
 
 
 # ---------------------------------------------------------------------------------------------
@@ -144,6 +149,7 @@ class DayMoments:
             "independent": float(np.sqrt(np.sum((w * se) ** 2))),
             "days": len(w),
             "j_mean_max": float(max(j_means)),
+            "single_row_days": sum(e[0] == 1 for e in self.days.values()),
         }
 
     def estimate(self, f: Callable[[FloatArray], float]) -> dict[str, Any]:
@@ -160,7 +166,10 @@ class DayMoments:
 
 
 def interval(value: float, se: dict[str, Any]) -> dict[str, Any]:
+    """The value with both 95% intervals, the number of days, the largest mean j_t of a day
+    and the number of days with a single row, whose standard error counts as 0."""
     out: dict[str, Any] = {"value": value}
+    out |= {k: se[k] for k in ("days", "j_mean_max", "single_row_days") if k in se}
     for kind in ("conservative", "independent"):
         out[kind] = {
             "se": se[kind],
@@ -195,21 +204,24 @@ class Rounds:
     def __len__(self) -> int:
         return len(self.day)
 
-    def take(self, rows: IntArray | BoolArray) -> Rounds:
+    def take(self, rows: IntArray | BoolArray | slice) -> Rounds:
         return Rounds(*(getattr(self, f)[rows] for f in self.__dataclass_fields__))
 
 
 def read_rounds(path: Path, group: int, languages: Sequence[str]) -> Rounds:
     table = pq.ParquetFile(path).read_row_group(group)
     when = table["datetime"].to_numpy()
-    code = {lang: i for i, lang in enumerate(languages)}
-    names = table["ui_language"].to_pylist()
+    # A null language is the value "None", as the conversion report counts it
+    names: Any = pc.cast(table["ui_language"], pa.string())
+    language = pc.index_in(pc.fill_null(names, "None"), value_set=pa.array(list(languages)))
+    if language.null_count:
+        raise ValueError("a language missing from the conversion report")
     mask = table["eligible"].to_numpy().astype(np.int64)
     eligible = ((mask[:, None] >> np.arange(K)) & 1).astype(bool)
     return Rounds(
         day=np.floor(when).astype(np.int64),
         time=when - np.floor(when),
-        language=np.array([code[str(n)] for n in names], dtype=np.int64),
+        language=np.asarray(language.to_numpy(zero_copy_only=False), dtype=np.int64),
         eligible=eligible,
         size=eligible.sum(axis=1),
         selected=table["selected"].to_numpy().astype(np.int64),
@@ -305,10 +317,12 @@ def shrunk_scores(sums: FloatArray, rounds: float, rewards: float) -> tuple[Floa
     stats = ArmStats(sums.shape[1])
     stats.plus, stats.minus, stats.eligible = sums[0:3], sums[3:6], sums[6:8]
     stats.rounds, stats.rewards = rounds, rewards
-    mu_plus, n_plus = stats._mean_and_size(stats.plus)
+    # The prior strength as ArmStats.scores computes it, for the report
     with np.errstate(divide="ignore", invalid="ignore"):
+        mu_plus = np.where(sums[0] > 0, sums[1] / sums[0], 0.0)
+        n_plus = np.where(sums[2] > 0, sums[0] ** 2 / sums[2], 0.0)
         center = np.where(sums[6] > 0, sums[7] / sums[6], 0.0)
-    m = stats.prior_strength(mu_plus, n_plus, center, rewards / rounds)
+    m = ArmStats.prior_strength(mu_plus, n_plus, center, rewards / rounds)
     return stats.scores(), float(m)
 
 
@@ -473,9 +487,6 @@ class Completed:
             yield Completed(
                 *(getattr(self, f)[start : start + CHUNK] for f in self.__dataclass_fields__)
             )
-
-
-CHUNK = 500_000
 
 
 class Model:
@@ -686,14 +697,15 @@ def dl2(c: Completed) -> dict[str, Any]:
         "gamma_reading": read_gamma(paper["parameters"]["gamma"]),
         "half_life": read_half_life(paper),
     }
-    rec = np.where(c.eligible, c.recency, np.inf)
-    outside = int(np.sum(np.isfinite(rec) & ((rec < 0) | (rec > EDGES[-1]))))
+    outside, per_bin = 0, np.zeros(len(EDGES) + 1, dtype=np.int64)
+    for part in c.chunks():
+        rec = part.recency[part.eligible].astype(np.float64)
+        outside += int(np.sum(np.isfinite(rec) & ((rec < 0) | (rec > EDGES[-1]))))
+        per_bin += np.bincount(recency_bin(rec), minlength=len(EDGES) + 1)
     if outside:
         out["curve"] = {"stopped": f"{outside} eligible recencies outside [0, 30] days"}
         return out
-    k = recency_bin(rec.astype(np.float64))
-    present = sorted(int(b) for b in np.unique(k[c.eligible]) if b < len(EDGES))
-    curve = Curve(present)
+    curve = Curve([b for b in range(len(EDGES)) if per_bin[b]])
     fitted = fit(curve, c)
     for name in curve.names:
         if name.startswith("beta"):
@@ -708,9 +720,7 @@ def dl2(c: Completed) -> dict[str, Any]:
                     for kind in ("conservative", "independent")
                 },
             }
-    out["curve"] = fitted | {
-        "eligible_per_bin": np.bincount(k[c.eligible], minlength=len(EDGES) + 1).tolist()
-    }
+    out["curve"] = fitted | {"eligible_per_bin": per_bin.tolist()}
     return out
 
 
@@ -738,22 +748,38 @@ def _sample(r: Rounds, kind: int, file: int, group: int, share: float) -> BoolAr
     return out
 
 
+def _slices(n: int) -> list[slice]:
+    """Slices of a row group, so that memory does not grow with its size."""
+    return [slice(start, min(n, start + SLICE)) for start in range(0, n, SLICE)]
+
+
 def train_job(job: Job) -> dict[str, Any]:
     """Logging check, arm sums, the outcome-model sample and the DL2 rounds of one training
     row group."""
     file, path, group, languages = job
-    r = read_rounds(path, group, languages)
-    cols = np.broadcast_to(np.arange(K), r.eligible.shape)
-    keep = _sample(r, 0, file, group, TRAIN_SHARE)
-    return {
-        "logging": logging_moments(r),
-        "template": arm_sums(r, cols, K),
-        "ui": arm_sums(r, r.language[:, None] * K + cols, len(languages) * K),
-        "rounds": len(r),
-        "rewards": float(r.reward.sum()),
-        "x": features(r.take(keep), r.selected[keep]),
-        "y": r.reward[keep],
-        "completed": Completed.of(r),
+    whole = read_rounds(path, group, languages)
+    sample = _sample(whole, 0, file, group, TRAIN_SHARE)
+    out: dict[str, Any] = {
+        "logging": {},
+        "template": np.zeros((8, K)),
+        "ui": np.zeros((8, len(languages) * K)),
+        "rounds": len(whole),
+        "rewards": float(whole.reward.sum()),
+    }
+    xs, ys, completed = [], [], []
+    for part in _slices(len(whole)):
+        r, keep = whole.take(part), sample[part]
+        cols = np.broadcast_to(np.arange(K), r.eligible.shape)
+        out["logging"] = _merge_moments([out["logging"], logging_moments(r)])
+        out["template"] += arm_sums(r, cols, K)
+        out["ui"] += arm_sums(r, r.language[:, None] * K + cols, len(languages) * K)
+        xs.append(features(r.take(keep), r.selected[keep]))
+        ys.append(r.reward[keep])
+        completed.append(Completed.of(r))
+    return out | {
+        "x": np.concatenate(xs),
+        "y": np.concatenate(ys),
+        "completed": Completed.concat(completed),
     }
 
 
@@ -798,14 +824,25 @@ def policy_moments(
 def test_job(job: tuple[Job, Scores, str]) -> dict[str, Any]:
     """Logging check, policy moments and the DL2 rounds of one test row group."""
     (file, path, group, languages), scores, model_text = job
-    r = read_rounds(path, group, languages)
-    sample = _sample(r, 1, file, group, TEST_SHARE)
-    m, found = policy_moments(r, scores, lgb.Booster(model_str=model_text), sample)
+    whole = read_rounds(path, group, languages)
+    sample = _sample(whole, 1, file, group, TEST_SHARE)
+    model = lgb.Booster(model_str=model_text)
+    logging: dict[str, DayMoments] = {}
+    moments: dict[str, DayMoments] = {}
+    found: dict[str, DayMoments] = {}
+    completed = []
+    for part in _slices(len(whole)):
+        r = whole.take(part)
+        m, f = policy_moments(r, scores, model, sample[part])
+        logging = _merge_moments([logging, logging_moments(r)])
+        moments = _merge_moments([moments, m])
+        found = _merge_moments([found, f])
+        completed.append(Completed.of(r))
     return {
-        "logging": logging_moments(r),
-        "moments": m,
+        "logging": logging,
+        "moments": moments,
         "sample": found,
-        "completed": Completed.of(r),
+        "completed": Completed.concat(completed),
     }
 
 
@@ -861,8 +898,8 @@ def dl1(moments: dict[str, DayMoments], sample: dict[str, DayMoments]) -> dict[s
 
 def _test(diff: dict[str, Any]) -> dict[str, Any]:
     """Two-sided normal test at level 0.025 on the conservative standard error."""
-    se = diff["conservative"]["se"]
-    p = float(2 * norm.sf(abs(diff["value"]) / se)) if se > 0 else 0.0
+    se, value = diff["conservative"]["se"], diff["value"]
+    p = float(2 * norm.sf(abs(value) / se)) if se > 0 else float(value == 0)
     if p <= 0.025:
         label = "RD better" if diff["value"] > 0 else "RD worse"
     else:
@@ -914,7 +951,8 @@ def run(processed: Path, processes: int) -> dict[str, Any]:
         ]
 
     timings: dict[str, float] = {}
-    with mp.get_context("spawn").Pool(processes, one_thread_per_process) as pool:
+    # Workers inherit the thread limits set before they start (main)
+    with mp.get_context("spawn").Pool(processes) as pool:
         trained = pool.map(train_job, jobs("train"))
         timings["train_pass_s"] = round(time.perf_counter() - start, 1)
         x = np.concatenate([t["x"] for t in trained])
@@ -930,10 +968,12 @@ def run(processed: Path, processes: int) -> dict[str, Any]:
         text = model.model_to_string()
         tested = pool.map(test_job, [(job, scores, text) for job in jobs("test")])
         timings["test_pass_s"] = round(time.perf_counter() - start, 1)
-    check = logging_check(_merge_moments([t["logging"] for t in trained + tested]))
     moments = _merge_moments([t["moments"] for t in tested])
     sample = _merge_moments([t["sample"] for t in tested])
-    completed = Completed.concat([t["completed"] for t in trained + tested])
+    completed = Completed.concat([t.pop("completed") for t in trained + tested])
+    logging = _merge_moments([t["logging"] for t in trained + tested])
+    check = logging_check(logging)
+    every_row = logging["A|all"]
     out: dict[str, Any] = {
         "tier": "A",
         "note": "Value of one notification under a template policy given the logged "
@@ -956,6 +996,9 @@ def run(processed: Path, processes: int) -> dict[str, Any]:
             for split in ("train", "test")
         },
         "logging_check": check,
+        # Mean j_t per day over all rows: the within-day factor of every interval is
+        # 1 + 2 times the mean over the rows it uses
+        "j_mean_by_day": {str(d): e[3] / e[0] for d, e in sorted(every_row.days.items())},
         "interpreted": check["uniform"],
         "outcome_model_rows": len(y),
         "scores": {
@@ -978,6 +1021,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--smoke", action="store_true", help="synthetic archives; writes under results/runs/smoke"
     )
     args = parser.parse_args(argv)
+    one_thread_per_process()
     commit = code_commit(args.root)
     if args.smoke:
         with tempfile.TemporaryDirectory() as folder:

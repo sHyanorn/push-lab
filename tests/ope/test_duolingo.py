@@ -227,6 +227,24 @@ def test_curve_stops_on_a_recency_outside_its_bins() -> None:
     assert "stopped" in out["curve"] and "gamma_reading" in out
 
 
+def test_slices_of_a_row_group_give_the_same_results(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    raw, processed = tmp_path / "raw", tmp_path / "processed"
+    rows = fixtures.duolingo_raw(raw, 3_000, row_group=3_000)
+    conversion.convert(raw, processed, rows, {s: (f"{s}-part-1",) for s in rows})
+    path = conversion.files(processed, "train")[0]
+    languages = ["de", "en", "es", "fr", "pt"]
+    whole = dl.train_job((0, path, 0, languages))
+    monkeypatch.setattr(dl, "SLICE", 700)
+    sliced = dl.train_job((0, path, 0, languages))
+    np.testing.assert_allclose(sliced["template"], whole["template"])
+    np.testing.assert_array_equal(sliced["x"], whole["x"])
+    np.testing.assert_array_equal(sliced["completed"].recency, whole["completed"].recency)
+    for key, m in whole["logging"].items():
+        np.testing.assert_allclose(sliced["logging"][key].mean(), m.mean(), err_msg=key)
+
+
 def test_the_analysis_runs_on_a_converted_synthetic_archive(tmp_path: Path) -> None:
     raw, processed = tmp_path / "raw", tmp_path / "processed"
     rows = fixtures.duolingo_raw(raw, 6_000, row_group=3_000)
