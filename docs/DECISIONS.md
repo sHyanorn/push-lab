@@ -71,6 +71,10 @@ Entries are in the order they were made. Some entries up to D048 were corrected 
 | D065 | Confirmatory OBD results of ope-checks, cited | Active |
 | D066 | Long-horizon OPE in the simulator, pre-registered | Active |
 | D067 | Duolingo study, pre-registered | Active |
+| D068 | Download requests carry a fixed User-Agent | Active |
+| D069 | Long-horizon OPE: readings and implementation | Active |
+| D070 | Duolingo study: download, conversion and implementation | Active |
+| D071 | Projected run times of the long-horizon and Duolingo studies | Active |
 
 ## D001 Python only, static report
 - Date: 2026-11-08
@@ -662,3 +666,42 @@ Entries are in the order they were made. Some entries up to D048 were corrected 
 - Random streams (D059): purpose 10 for the training sample of $\hat q$ and the test sample of DM and DR
 - Also changed in the same commit: SPEC Section 4 (optional item 1 uses all parts), Section 5 (the Tier A row) and Section 9 (the Duolingo row); D010's status points here
 - Budget: about 3 to 4 hours on 4 processes for conversion and analysis. Before the run, the committed code is timed on the synthetic fixture and on the first part, and the projection is recorded in a new entry; a run that takes more than 1.5 times the projection stops and is reported. Measured times are recorded with the results
+
+## D068 Download requests carry a fixed User-Agent
+- Date: 2026-11-14
+- Dataverse refuses requests that carry urllib's default User-Agent (`Python-urllib/3.14`), so the Duolingo files could not be fetched. `data/download.py` now sends `User-Agent: dataset-downloader/1.0` with every request: a generic download client, with nothing about the project or a person. Dataverse answers each file request with a 303 to a signed storage URL; urllib keeps the header across the redirect, as it keeps Range, and a test checks both
+- The requests to every other source change the same way (Zenodo, minethatdata.com, Hugging Face, GitHub, research.zozo.com). A file is still accepted only when its size and checksum match, so no stored file and no result changes
+
+## D069 Long-horizon OPE: readings and implementation
+- Date: 2026-11-14
+- `ope/horizon.py` implements METHODS 14.7 as registered in D066, with the readings and the one change below, all fixed before any run
+- Readings:
+  - The validation verdict reads coverage only with 50 logs, as the "Validated" rule of 14.7 gives for the reference; with 10 logs it reads the bias interval alone. This covers the state controls at the reference, which run on the first 10 log seeds
+  - The state reading at the reference compares S0 with the controls on the same first 10 logs; the primary labels of S0 use all 50
+  - At the reference the FQE-week interval from 50 refits applies to the four control states as well as to S0
+- Change to the implementation check: its 12 bias intervals use Student t quantiles at level 1 − 0.05/12, with the Welch degrees of freedom of the bias (9 in the control, where the truth is exact). 14.7 states that a correct implementation fails the check with probability at most 0.05; with normal quantiles and 10 logs in the control it fails about 13% of unbiased simulated runs of the summary code, and about 4.9% with t quantiles (tests/ope/test_horizon.py). The validation verdicts keep the normal quantile of 14.3 and 14.6, under which an unbiased estimator with 10 logs is labelled biased about 8% of the time rather than 5%
+- Diagnostics: the Kish effective size of the last round's ρ, the largest ρ over all rounds, the SMIS mass and the effective size and largest weight of per-day DR are summarized per setting, design, estimator and target as their mean, minimum and maximum over the logs
+- Random streams (D059): arms from `stream(7, log seed, week)` on E2 and `stream(7, log seed)` on E3, in the order N, T½, T, T2; user resamples from `stream(8, log seed, 0)`, one set per log shared by every estimator, state and target, so the two targets of each difference are resampled together; refit r of FQE-week from `stream(8, log seed, 1, r)`; folds of per-day DR from `stream(9, log seed)`. Otherwise, log and truth seeds go only to the simulator's draws and to the keyed streams the policies already use. `outcome_models` accepts a generator for its folds; with an integer seed it does what it did before
+- SMIS divides each state's sum of c by the number of logged users in that state at the next round: the marginalized estimator of Xie et al. (2019) with the empirical transitions of the logs, which reduces to the formula of 14.7
+- S-oracle accumulates the decayed volume slot by slot and the return stock day by day as the simulator does; a test checks that the two reproduce the simulator's organic visit probability exactly
+
+## D070 Duolingo study: download, conversion and implementation
+- Date: 2026-11-14
+- `download --only duolingo` fetches the six archives and the dataset's readme (3,322 bytes, MD5 5bbb0eccd2afe0fe148fb1beb9b7027b), seven files where D067 names six
+- Conversion (`data/duolingo.py`): besides the stops of D067, a null in `datetime`, `eligible_templates`, `selected_template`, `session_end_completed` or a history entry, a repeated letter or an empty eligible set, and an archive member that is a link or another special file stop it. Every regular file whose name starts with `._` or does not end in `.parquet` is skipped and listed (D067 named `.DS_Store`, `._` and `.crc` files; Spark may also leave `_SUCCESS`), and the row counts of D067 would catch data left in one. A null history counts as empty and a null language as a value of its own; the report counts both, and gives the range of days-before in the histories and the number of entries outside [0, 30]. A report from an earlier run is removed when a conversion starts
+- Logging check: ratios per eligible-set size are computed on the rows of that size
+- DL2: if any eligible template's recency lies outside [0, 30] days, the curve is not fitted and the count is reported; the paper's form is fitted regardless. A fit stops at a bound when log ĥ lies within 10⁻⁶ of log 0.25 or log 365
+- DL2 standard errors, a change to METHODS 15: in the paper's form, the standard error of each parameter other than log h is the larger of the one from the full Hessian and the one with log h held at its estimate; log h and the parameters of the curve keep the one from the full Hessian. With gamma near 0, h is not identified; at a point where the score of h is not 0, such as a bound, the full Hessian then shrinks the standard error of gamma toward 0 (by a factor above 10 in a test). At an interior maximum the two agree as gamma tends to 0, and taking the larger never narrows an interval; both are reported. The optimizer runs with ftol 10⁻¹⁵ and gtol 10⁻¹⁰, since the mean log-likelihood is flat in gamma and h
+- Outcome model: an absent recency and the absence of a previous notification are missing values
+- Within-day factor: j_t counts every earlier entry of the day, so on the 10% sample of DM and DR, on the completed rounds of DL2 and on the per-size logging ratios the factor 1 + 2 j̄_d is larger than those rows need, and their intervals are wider than the within-day bound requires. With 4 perfectly correlated rows per user and a 10% sample, the factor gives a standard error 1.75 times the true one. Every interval reports its number of days and its largest j̄_d, and the results give j̄_d of every day over all rows
+- Random streams (D059): the outcome-model sample from `stream(10, 0, file, row group)` and the DM and DR sample from `stream(10, 1, file, row group)`, keyed by converted file and row group; synthetic Duolingo data from purpose 11
+- The inconclusive flag of 14.1 compares the conservative intervals of IPS and SNIPS on all test rounds with those of DM and DR on the 10% sample
+- DL3 scores and the prior strength m come from the template policies' own code (`ArmStats`, 13.4), fed with the sums of the training rounds
+
+## D071 Projected run times of the long-horizon and Duolingo studies
+- Date: 2026-11-14
+- Measured with the committed code on synthetic inputs in the 4-vCPU container of D015, one thread per worker process; the main process, which fits the Duolingo outcome model on four threads and runs DL2, is not limited to one. A run that takes more than 1.5 times its projection stops and is reported (D066, D067)
+- Long-horizon study: one job of each kind, alone on the machine, on a synthetic population of 5,000 users with 112-item lists. An E1 log takes 55.5 s with S0 and 169 s with S0 and the four controls; an E2 log at the reference, with 50 FQE-week refits, 78.8 s with S0 and 398 s with all five states; an E2 log elsewhere 3.4 s with S0 and 15.1 s with all five; an E3 log 0.6 s; the four truth runs of one seed 0.25 s. The design has 120 E1 logs (30 with the controls), 50 E2 logs at the reference (10 with the controls), 70 elsewhere (20 with the controls), 120 E3 logs and 1,400 truth seeds: 18,100 CPU s. Four jobs at once took 61 s each against 55.5 s alone, so the projection is 18,100 × 1.1 / 4 ≈ 5,000 s, about 83 minutes, and the stop line 125 minutes. Peak memory 0.7 GB per process
+- Duolingo study: two synthetic archives of two Parquet members each, 8,000,000 rows in total in row groups of 2,000,000 like the real ones, 234 MB compressed. Conversion took 11.5 s; the analysis on 4 processes 270 s: the training pass 13.5 s, the outcome model 0.9 s, the test pass 60 s and DL2 with its grid 196 s on 1,195,883 completed rounds. Scaled to the dataset readme's 87.7 million training rows and 114.5 million test rows and about 26 million completed rounds (a completion rate near the paper's 0.13), the analysis takes about 6,300 s; the conversion, scaled by compressed bytes (9.35 GB against 234 MB), about 460 s. The projection is about 113 minutes, and the stop line 169 minutes. On the synthetic archives each pass had two jobs for the four workers, so the scaled passes may be overstated. DL2 takes most of it, and its number of iterations on the real data is not known. Peak memory was 2.0 GB in the main process and 1.4 GB per worker; the main process holds the completed rounds at 84 bytes each, about 2.2 GB on the real data and twice that while they are joined
+- D067 also asks for a timing on the first archive before the run. It needs the downloaded data, so it is recorded in an entry of its own after the download
+- Commands: one-off scripts that call the committed modules, not committed
