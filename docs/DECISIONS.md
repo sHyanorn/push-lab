@@ -67,6 +67,7 @@ Entries are in the order they were made. Some entries up to D048 were corrected 
 | D061 | Crossing intervals are conditional on a crossing | Active |
 | D062 | Outputs of the two-tower fit vary between runs | Active |
 | D063 | OBD check with ten-minute blocks as resampling units, post hoc | Active |
+| D064 | Source readings in METHODS 11.2 to 11.4, corrected | Active |
 
 ## D001 Python only, static report
 - Date: 2026-11-08
@@ -229,7 +230,7 @@ Entries are in the order they were made. Some entries up to D048 were corrected 
 
 ## D023 Simulator components added or changed against SPEC Section 6
 - Date: 2026-11-08
-- Annoyance: recent push volume lowers organic visits, with elasticity $\epsilon_v \in [0, 0.1]$ at one push a day (METHODS Section 11.4). Without it no volume can lower activity below the organic level, so losses could come only from opt-outs. Evidence goes both ways (LinkedIn WAU fell with more volume, Twitter DAU rose), so zero is in the range and M5 reports its conclusions at $\epsilon_v = 0$ as well as over the full sweep
+- Annoyance: recent push volume lowers organic visits, with elasticity $\epsilon_v \in [0, 0.1]$ at one push a day (METHODS Section 11.4). Without it no volume can lower activity below the organic level, so losses could come only from opt-outs. Evidence goes both ways (LinkedIn WAU fell with more volume, Twitter DAU rose), so zero is in the range and M5 reports its conclusions at $\epsilon_v = 0$ as well as over the full sweep (Note 2026-11-14: the LinkedIn fall compares two policies as well as two volumes; METHODS 11.4.)
 - Active hours come from `time_ms` in UTC+8 instead of `hourmin`, which is a whole-hour bucket off by up to an hour; the time zone is an assumption checked by the overnight low in activity
 - Send slots are fixed at 08:00, 12:00, 17:00 and 21:00, each with a three-hour response window; activity outside the windows does not enter the profiles
 
@@ -625,3 +626,8 @@ Entries are in the order they were made. Some entries up to D048 were corrected 
 - What a pass means here: with these intervals the check cannot tell the estimate from the on-policy value. The estimates did not move. IPS is still 0.891 of the on-policy value, and its interval reaches down to 0.789, so a shortfall of about 21% is not excluded either. The rule also compares each interval with the on-policy point value, whose own uncertainty does not enter it
 - Post hoc target of D046, the BTS logs' own frequencies, here recomputed in every resample together with the on-policy value (D060 noted that they were held fixed): 0.917 (0.822 to 1.017) [0.848 to 0.989] of the on-policy value, a change of +0.026 (−0.021 to 0.074) [−0.004 to 0.059] from the fixed prior. The interval of the change still includes 0
 - Tier: unchanged. The rule was registered together with its resampling unit, the unit was changed after the results were known, and the outcome for IPS turns on the random stream. No estimator is called validated on OBD, and no number that depends on one is reported
+
+## D064 Source readings in METHODS 11.2 to 11.4, corrected
+- Date: 2026-11-14
+- Seven sentences of METHODS 11.2 to 11.4 and one of D023 read their sources more strongly than the sources state. Each now carries a dated note beside it; the registered text, ranges, reference values and every result are unchanged
+- In short: Bie et al. report no average push CTR; Bidargaddi et al. compare sending with not sending; the LinkedIn pair of Prabhakar et al. comes from a policy that was not ramped to all users; Duolingo's half-life was a guess; other online tests reported changes in opt-outs; the plausibility band is drawn from gains
