@@ -13,7 +13,7 @@ Entries are in the order they were made. Some entries up to D048 were corrected 
 | D007 | faiss-cpu for ANN | Active |
 | D008 | LightGBM for fine ranking, two-tower score for coarse ranking | Active |
 | D009 | Volume control is separate from ranking | Active |
-| D010 | Duolingo data is optional | Active |
+| D010 | Duolingo data is optional | Active; study registered in D067 |
 | D011 | Copy generated once with the Claude API and committed | Active |
 | D012 | Statistics conventions | Amended by D029 |
 | D013 | Simulator uplift gate is learned inside the simulator | Active |
@@ -70,6 +70,7 @@ Entries are in the order they were made. Some entries up to D048 were corrected 
 | D064 | Source readings in METHODS 11.2 to 11.4, corrected | Active |
 | D065 | Confirmatory OBD results of ope-checks, cited | Active |
 | D066 | Long-horizon OPE in the simulator, pre-registered | Active |
+| D067 | Duolingo study, pre-registered | Active |
 
 ## D001 Python only, static report
 - Date: 2026-11-08
@@ -649,3 +650,15 @@ Entries are in the order they were made. Some entries up to D048 were corrected 
 - A prototype on synthetic inputs (no KuaiRand user and no setting of this design), not committed, led to three choices: E3 and the SMIS mass were added, FQE uses 100 boosting rounds, and FQE-week gets refit intervals
 - Budget: about 2 hours on 4 processes. Before any run on evaluation users, the committed code is timed on synthetic inputs of full size (as D031 and D042) and the projection is recorded in a new entry; a run that takes more than 1.5 times the projection stops and is reported. For scale, D043 ran 100 logs of per-day estimation with two rewards in 1,330 s on 4 processes, about 53 s per log
 - Random streams (D059): arm draws purpose 7, bootstrap and refits purpose 8, folds of per-day DR purpose 9; truth seeds 300,000 + k; log seeds as in METHODS 14.7, and 7,000 for the surrogate model. The design is fixed in code at the commit that runs it (as D042), and the results record that commit
+
+## D067 Duolingo study, pre-registered
+- Date: 2026-11-14
+- Questions, data, logging check, estimators and decision rules as in METHODS 15. The results are Tier A, limited to the value of one notification under a template policy given the logged histories: the logs randomize each round's template by design, so that value is a randomized comparison, as in Section 10 (METHODS 15, "Tier"). Volume fatigue and long-term effects stay outside Tier A; SPEC Section 5 changes accordingly in the same commit
+- Data handling: `download --only duolingo` fetches the six files from Dataverse (each request redirects to a signed storage URL; resumable with Range) and checks size and the published MD5. `prepare --only duolingo` reads one archive at a time, writes each Parquet member to a temporary file under `data/raw/duolingo/`, converts it row group by row group to `data/processed/duolingo/` with the columns METHODS 15 needs (the recency of each template as 12 floats, $j_t$, the days since the previous notification and the history length) and deletes the temporary file. Other members (`.DS_Store`, `._` and `.crc` files) are skipped, and a member path that would leave the target folder is refused. Nothing from the data is committed; `results/duolingo.json` holds aggregates only. Never in CI, which uses a synthetic fixture
+- Checks that stop the conversion: a schema other than the six columns; row counts other than 87,665,839 (training) and 114,486,159 (test), as the readme gives them; a selected template outside its eligible set; a letter outside A to L. Reported: the range of `datetime` (the readme says 35 days, the paper 34), the mean of $j_t$ and the share of rows with $j_t > 0$, and the share of rounds with one eligible template
+- Disk: the archives take 9.35 GB and one Parquet member is extracted at a time; if the projected total after a member would leave less than 5 GB free, the conversion stops there and reports
+- Known before this registration: the results of the paper named in METHODS 15, the dataset's readme and metadata, and the schema and row-group layout of training part 1. No row value was read
+- No new dependency: pyarrow, numpy, scipy and LightGBM are locked, and tarfile is in the standard library
+- Random streams (D059): purpose 10 for the training sample of $\hat q$ and the test sample of DM and DR
+- Also changed in the same commit: SPEC Section 4 (optional item 1 uses all parts), Section 5 (the Tier A row) and Section 9 (the Duolingo row); D010's status points here
+- Budget: about 3 to 4 hours on 4 processes for conversion and analysis. Before the run, the committed code is timed on the synthetic fixture and on the first part, and the projection is recorded in a new entry; a run that takes more than 1.5 times the projection stops and is reported. Measured times are recorded with the results

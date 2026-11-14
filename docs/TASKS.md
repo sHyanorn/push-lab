@@ -83,7 +83,7 @@ Hour estimates are for planning; the required core is about 85 hours. If behind,
 
 ## Optional
 - [ ] Long-horizon OPE in the simulator: PDIS, SMIS, FQE and a surrogate index on three logging designs, with misspecified-state controls (METHODS 14.7, D066)
-- [ ] Duolingo: sample one training part locally, check propensities, replicate the recovering bandit off-policy
+- [ ] Duolingo: check the logging propensities, replicate the paper's offline results on all six parts, measure the effect of template recency and evaluate RD, D0 and U (METHODS 15, D067)
 - [ ] LLM judge score as a bandit prior, with its correlation to the simulated copy effect swept from zero
 - [ ] DR with optimistic shrinkage; DR-learner; ALS baseline; recent-favorite-author source
 - [ ] DeepFM or DCN with FuxiCTR against LightGBM

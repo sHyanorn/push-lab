@@ -68,7 +68,7 @@ This is a hypothesis to be tested, not a result. The comparisons are pre-registe
 
 ### Optional, in order of value
 
-1. Duolingo notification data: replicate the sleeping, recovering bandit off-policy on one sampled training part (D010)
+1. Duolingo notification data: replicate the sleeping, recovering bandit off-policy on all six parts, measure the effect of template recency and evaluate the template policies of M6 (D067)
 2. LLM judge score as a bandit prior, with its correlation to the simulated copy effect swept from zero
 3. DR with optimistic shrinkage; DR-learner; ALS baseline; recent-favorite-author recall source
 4. DeepFM or DCN ranker against LightGBM (FuxiCTR)
@@ -88,7 +88,7 @@ There is no live traffic, so each claim is tied to one of three tiers and states
 
 | Tier | Evidence | What it can support | What it cannot |
 |---|---|---|---|
-| A | Randomized real data: KuaiRand random exposures, Hillstrom, Criteo, Open Bandit Dataset | A component ranks or targets better in that domain; on the Open Bandit Dataset, how close an off-policy estimator comes to a known policy value | Anything about push, fatigue or long-term effects |
+| A | Randomized real data: KuaiRand random exposures, Hillstrom, Criteo, Open Bandit Dataset, Duolingo notification logs | A component ranks or targets better in that domain; on the Open Bandit Dataset, how close an off-policy estimator comes to a known policy value; on the Duolingo logs, the value of one notification under a template policy given the logged histories | Push outside the Duolingo logs; volume fatigue or long-term effects |
 | B | Off-policy estimates from an estimator first validated against a known answer | The value of a new policy within the support of the logging policy | Policies outside that support; long horizons |
 | C | Simulator runs with a sensitivity sweep | Policy A beats B across a stated share of assumptions, or flips at a stated threshold | Real-world effect sizes |
 
@@ -173,7 +173,7 @@ Ranker and uplift scores are precomputed per user and day outside the slot loop;
 | Hillstrom | Uplift, CI-sized; contrast: women's e-mail against no e-mail | None stated | 64,000 rows, about 21k per arm |
 | Criteo Uplift v2.1 | Uplift at scale | CC BY-NC-SA 4.0 | 13,979,592 rows; train on a 10% sample, evaluate on the remaining rows |
 | Open Bandit Dataset (small) | OPE validation, Men's campaign (34 actions) | CC BY 4.0 (Saito et al. 2021) | 10k rows per policy and campaign |
-| Duolingo notifications (optional) | Template bandit replication | CC BY-NC 4.0 | about 9.35 GB compressed; one part sampled locally |
+| Duolingo notifications (optional) | Template bandit replication | CC BY-NC 4.0 | about 9.35 GB compressed; all six parts converted locally (D067) |
 
 KuaiRand split rules:
 

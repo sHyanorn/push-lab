@@ -18,10 +18,12 @@ from push_lab.runtime import write_json
 TIERS = {
     "A": {
         "evidence": "Randomized real data: KuaiRand random exposures, Hillstrom, Criteo, "
-        "Open Bandit Dataset",
+        "Open Bandit Dataset, Duolingo notification logs",
         "supports": "A component ranks or targets better in that domain; on the Open Bandit "
-        "Dataset, how close an off-policy estimator comes to a known policy value",
-        "cannot": "Anything about push, fatigue or long-term effects",
+        "Dataset, how close an off-policy estimator comes to a known policy value; on the "
+        "Duolingo logs, the value of one notification under a template policy given the logged "
+        "histories",
+        "cannot": "Push outside the Duolingo logs; volume fatigue or long-term effects",
     },
     "B": {
         "evidence": "Off-policy estimate on real logs from an estimator first validated "
