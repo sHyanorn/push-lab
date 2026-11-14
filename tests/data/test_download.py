@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from push_lab.data.download import ChecksumError, fetch
+from push_lab.data.download import USER_AGENT, ChecksumError, fetch
 from push_lab.data.sources import Source
 
 PAYLOAD = bytes(range(256)) * 4096  # 1 MiB
@@ -21,15 +21,25 @@ class _State:
     status: int | None = None  # answer every request with this error status
     cut_after: int | None = None  # drop the connection after this many bytes, once
     requests: list[str | None]
+    agents: list[tuple[str, str | None]]  # (path, User-Agent) of every request
 
     def __init__(self) -> None:
         self.requests = []
+        self.agents = []
 
 
 class _Handler(BaseHTTPRequestHandler):
     state: _State
 
     def do_GET(self) -> None:
+        self.state.agents.append((self.path, self.headers.get("User-Agent")))
+        if self.path == "/redirect":
+            # As Dataverse does: the file is served from another address
+            self.send_response(303)
+            self.send_header("Location", "/file.bin")
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return
         range_header = self.headers.get("Range")
         self.state.requests.append(range_header)
         if self.state.status is not None:
@@ -158,3 +168,13 @@ def test_replaces_corrupt_existing_file(server: tuple[str, _State], tmp_path: Pa
     url, _ = server
     (tmp_path / "file.bin").write_bytes(b"x" * len(PAYLOAD))
     assert _fetch(_source(url), tmp_path).read_bytes() == PAYLOAD
+
+
+def test_sends_its_user_agent_after_a_redirect(server: tuple[str, _State], tmp_path: Path) -> None:
+    url, state = server
+    (tmp_path / "file.bin.part").write_bytes(PAYLOAD[:1000])
+    source = replace(_source(url), url=url.replace("/file.bin", "/redirect"))
+    assert _fetch(source, tmp_path).read_bytes() == PAYLOAD
+    assert state.agents == [("/redirect", USER_AGENT), ("/file.bin", USER_AGENT)]
+    # The Range header follows the redirect too, so the resumed file is correct
+    assert state.requests == ["bytes=1000-"]

@@ -19,6 +19,9 @@ from push_lab.data import paths
 from push_lab.data.sources import OPTIONAL, SOURCES, Source
 
 CHUNK = 1 << 20
+# A fixed, generic client name sent on every request and kept across redirects (D068); some
+# hosts refuse urllib's default "Python-urllib/3.x"
+USER_AGENT = "dataset-downloader/1.0"
 BACKOFF = (2.0, 4.0, 8.0, 16.0)
 RETRYABLE_CLIENT_ERRORS = frozenset({408, 429})
 
@@ -50,7 +53,7 @@ def _transfer(source: Source, part: Path, opener: urllib.request.OpenerDirector)
         offset = 0
     if offset == source.size:
         return
-    request = urllib.request.Request(source.url)
+    request = urllib.request.Request(source.url, headers={"User-Agent": USER_AGENT})
     if offset:
         request.add_header("Range", f"bytes={offset}-")
     with opener.open(request, timeout=60) as response:
