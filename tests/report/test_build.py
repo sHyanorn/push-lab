@@ -50,6 +50,18 @@ def test_facts_quote_the_results() -> None:
     assert values["ref_lift_fn"] == "-2.3% (-2.4% to -2.2%)".replace("-", svg.MINUS)
     assert values["b1_spread"] == "17.7"
     assert values["b2_spread"] == "19.2"
+    assert values["obd_cited_all"] == "0.948 (0.867 to 1.033)"
+    assert values["obd_cited_women"] == "1.004 (0.917 to 1.099)"
+
+
+def test_cited_results_must_still_show_no_shortfall() -> None:
+    results = facts.load(ROOT)
+    facts.check_readings(results)
+    for change in ({"label": "shortfall shown"}, {"ci_high": 0.99}):
+        changed = copy.deepcopy(results)
+        changed["cited"]["ope_checks_obd"]["campaigns"]["women"].update(change)
+        with pytest.raises(ValueError, match="cited women"):
+            facts.check_readings(changed)
 
 
 def test_reference_facts_come_from_the_registered_grid_point() -> None:
@@ -94,7 +106,7 @@ def test_build_writes_the_report_and_refreshes_a_stale_readme(tmp_path: Path) ->
     assert (tmp_path / "README.md").read_text("utf-8") == committed
     page = (tmp_path / "site" / "index.html").read_text("utf-8")
     values = facts.facts(facts.load(ROOT))
-    for name in ("ope_nt_truth", "flip_n", "ref_lift_fn", "obd_dr", "b2_spread"):
+    for name in ("ope_nt_truth", "flip_n", "ref_lift_fn", "obd_dr", "b2_spread", "obd_cited_all"):
         assert values[name] in page
     assert "<script" not in page
 

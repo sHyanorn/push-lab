@@ -117,13 +117,20 @@ F3_OBD_BLOCKS = (
     "of {obd_streams} other random streams and DR in {obd_dr_streams}. The registered verdict "
     "stands, and no estimator is treated as validated (D063)."
 )
+F3_OBD_CITED = (
+    "In a separate registered study, with the same kind of block intervals, IPS on the All and "
+    "Women's campaigns is {obd_cited_all} and {obd_cited_women} of their own on-policy values, "
+    'labeled "no shortfall shown" (D065).'
+)
 F3_SHOWS = (
     "A ranker fitted on logged impressions can rank random candidates worse than its retrieval "
     "score; where uplift grows with baseline response, a response threshold is a strong "
-    "baseline; standard estimators came out about {obd_shortfall} below a known policy value on "
-    "real logs; that value lies outside their registered intervals over impressions and, DM "
-    "apart, inside their post hoc intervals over ten-minute blocks (D063); these data do not "
-    "show where the gap comes from."
+    "baseline; on the Men's campaign, standard estimators came out about {obd_shortfall} below a "
+    "known policy value; that value lies outside their registered intervals over impressions "
+    "and, DM apart, inside their post hoc intervals over ten-minute blocks (D063), and in a "
+    "separate registered study the IPS intervals over such blocks on the All and Women's "
+    "campaigns contain their own on-policy values (D065); these data do not show where the gap "
+    "comes from."
 )
 F3_LIMITS = (
     "Anything about push: the data are video feed, e-mail, ads and e-commerce recommendations. "

@@ -18,6 +18,7 @@ from push_lab.report.svg import MINUS, num
 FILES = (
     *("evidence", "policy", "policy_design", "templates", "ope_carryover", "copy"),
     "ope_obd_blocks",
+    "cited",
 )
 OBD_ESTIMATORS = ("DM", "IPS", "SNIPS", "DR")
 
@@ -140,6 +141,12 @@ def check_readings(results: dict[str, Any]) -> None:
         holds = {e for e in OBD_ESTIMATORS if blocks[e][check]}
         if holds != {"IPS", "SNIPS", "DR"}:
             raise ValueError(f"with blocks, {check} now holds for {sorted(holds)} on OBD")
+    # D065: the prose cites both campaigns as labeled "no shortfall shown"
+    for name, entry in results["cited"]["ope_checks_obd"]["campaigns"].items():
+        if name != "pooled" and (
+            entry["label"] != "no shortfall shown" or not entry["ci_low"] <= 1 <= entry["ci_high"]
+        ):
+            raise ValueError(f"the cited {name} campaign no longer shows no shortfall")
     reference_b1 = results["templates"]["seed_variability"]["B1"]["mean_over_triples"]
     if not reference_b1["ci_low"] < 0 < reference_b1["ci_high"]:
         raise ValueError("B1 at the reference is no longer undetectable")
@@ -199,6 +206,7 @@ def facts(results: dict[str, Any]) -> dict[str, str]:
     blocks = results["ope_obd_blocks"]["full"]
     ratios = {e: blocks["validation"][e]["ratio_to_on_policy"] for e in OBD_ESTIMATORS}
     streams = blocks["other_streams"]
+    cited = results["cited"]["ope_checks_obd"]["campaigns"]
     seeds = results["templates"]["seed_variability"]
     n_main = sum(s["sweep"] == "main" for s in policy["settings"])
     n_above_af = above(results, "annoyance_free", "active_week4", "N", "F")
@@ -260,6 +268,8 @@ def facts(results: dict[str, Any]) -> dict[str, str]:
         "obd_streams": str(streams["streams"]),
         "obd_ips_streams": str(streams["IPS"]["passes"]),
         "obd_dr_streams": str(streams["DR"]["passes"]),
+        "obd_cited_all": interval(cited["all"], 3),
+        "obd_cited_women": interval(cited["women"], 3),
         "b1_spread": num(c["B1"]["spread_over_bootstrap_se"], 1),
         "b2_spread": num(c["B2"]["spread_over_bootstrap_se"], 1),
         "b1_reference": interval(seeds["B1"]["mean_over_triples"], 4, signed=True),

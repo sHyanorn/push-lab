@@ -49,7 +49,7 @@ Entries are in the order they were made. Some entries up to D048 were corrected 
 | D043 | Off-policy checks: cost and results | Superseded in part by D046, D048; wording corrected by D060 |
 | D044 | Amended simulator check, pre-registered | Results in D045; wording corrected by D060 |
 | D045 | Amended simulator check: results | Superseded in part by D046, D048 |
-| D046 | Corrections after the M7 results | Superseded in part by D048; post hoc block intervals in D063 |
+| D046 | Corrections after the M7 results | Superseded in part by D048; post hoc block intervals in D063; confirmatory results of ope-checks in D065 |
 | D047 | Carryover sweep of the simulator check, pre-registered | Results in D048 |
 | D048 | Carryover sweep: results | Active |
 | D049 | Report and README are generated from the results | Active |
@@ -66,8 +66,9 @@ Entries are in the order they were made. Some entries up to D048 were corrected 
 | D060 | "Paired" in the OBD check, corrected | Active |
 | D061 | Crossing intervals are conditional on a crossing | Active |
 | D062 | Outputs of the two-tower fit vary between runs | Active |
-| D063 | OBD check with ten-minute blocks as resampling units, post hoc | Active |
+| D063 | OBD check with ten-minute blocks as resampling units, post hoc | Active; confirmatory results of ope-checks in D065 |
 | D064 | Source readings in METHODS 11.2 to 11.4, corrected | Active |
+| D065 | Confirmatory OBD results of ope-checks, cited | Active |
 
 ## D001 Python only, static report
 - Date: 2026-11-08
@@ -631,3 +632,10 @@ Entries are in the order they were made. Some entries up to D048 were corrected 
 - Date: 2026-11-14
 - Seven sentences of METHODS 11.2 to 11.4 and one of D023 read their sources more strongly than the sources state. Each now carries a dated note beside it; the registered text, ranges, reference values and every result are unchanged
 - In short: Bie et al. report no average push CTR; Bidargaddi et al. compare sending with not sending; the LinkedIn pair of Prabhakar et al. comes from a policy that was not ramped to all users; Duolingo's half-life was a guess; other online tests reported changes in opt-outs; the plausibility band is drawn from gains
+
+## D065 Confirmatory OBD results of ope-checks, cited
+- Date: 2026-11-14
+- D063 cites github.com/sHyanorn/ope-checks (at b80bd36) for the Men's campaign only, which is that project's development campaign and enters none of its verdicts. Its confirmatory campaigns are All and Women's, registered before that project computed any of their outcomes; published results of others on these campaigns were known then (obd/PREREGISTRATION.md at 2fe8163, lines 51 to 58)
+- With intervals over 10,000 resamples of ten-minute blocks, IPS of BTS under its fixed prior, as a ratio to the on-policy click rate, is 0.948 (0.867 to 1.033) on All and 1.004 (0.917 to 1.099) on Women's. That registration also judges a pooled unit, All and Women's weighted 0.54 and 0.46 (line 65), on which IPS is 0.974 (0.915 to 1.036) (README.md line 32). Each is labeled "no shortfall shown" by the rule registered there (README.md lines 32 and 33 at 2fe8163; the rule at PREREGISTRATION.md line 100), the label that registration named beforehand as the likely result (line 102). DR was not run on these campaigns (line 103)
+- Under the same block intervals the Men's IPS ratio also contains 1: 0.891 (0.789 to 1.004) in D063, 0.891 (0.790 to 1.005) in ope-checks (README.md lines 74 and 81). The campaigns differ in their point estimates. With rows or impressions as resampling units (post hoc there, README.md line 87), the All and Women's intervals still contain 1 while the Men's lies below it. All is not a clean hold-out from Men's: all 34 pairs of Beta parameters of the Men's prior occur among the 80 of All, and Women's shares no pair with Men's (README.md line 99, post hoc there)
+- Reading: "no shortfall shown" means that these intervals do not exclude the on-policy value; All's interval also contains 0.89, the Men's ratio. The Men's shortfall of about 10% (D046) rests on intervals over impressions, and under those the other two campaigns show none; with block intervals none of the three shows one. These are another repository's results, cited and not recomputed here. The registered verdict stands: no estimator was validated on the full Men's campaign by the rule of METHODS 14.4, and the project has no Tier B result
