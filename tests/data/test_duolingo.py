@@ -62,6 +62,8 @@ def test_conversion_keeps_every_row_of_every_member_in_order(tmp_path: Path) -> 
     assert sorted(Path(s).name for s in summary["skipped"]) == [
         ".DS_Store",
         "._.DS_Store",
+        "._part-00000.snappy.parquet",
+        "._part-00001.snappy.parquet",
         ".part-00000.snappy.parquet.crc",
         ".part-00001.snappy.parquet.crc",
         "logs",

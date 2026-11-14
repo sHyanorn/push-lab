@@ -202,15 +202,17 @@ def convert_member(source: Path, target: Path) -> dict[str, Any]:
 
 def member_kind(member: tarfile.TarInfo, folder: Path) -> str:
     """ "parquet" for a regular Parquet file, "skip" for a folder or any other regular file
-    (macOS and checksum side files, Spark's ``_SUCCESS``); a path that would leave ``folder``,
-    or a link or other special member, stops the conversion. Skipped members are reported, and
-    the row counts of D067 catch any data left in them."""
+    (macOS side files, ``._`` ones whatever their extension, checksum files, Spark's
+    ``_SUCCESS``); a path that would leave ``folder``, or a link or other special member, stops
+    the conversion. Skipped members are reported, and the row counts of D067 catch any data
+    left in them."""
     path = PurePosixPath(member.name)
     inside = (folder / member.name).resolve().is_relative_to(folder.resolve())
     if path.is_absolute() or ".." in path.parts or not inside:
         raise ConversionError(f"member path leaves the target folder: {member.name!r}")
     if member.isfile():
-        return "parquet" if path.name.endswith(".parquet") else "skip"
+        parquet = path.name.endswith(".parquet") and not path.name.startswith("._")
+        return "parquet" if parquet else "skip"
     if member.isdir():
         return "skip"
     raise ConversionError(f"unexpected member {member.name!r}")

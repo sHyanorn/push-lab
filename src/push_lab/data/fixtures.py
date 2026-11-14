@@ -246,6 +246,7 @@ def duolingo_archive(
             buffer = io.BytesIO()
             pq.write_table(table, buffer, row_group_size=row_group)
             add(f"logs/.part-{i:05d}.snappy.parquet.crc", b"crc")
+            add(f"logs/._part-{i:05d}.snappy.parquet", b"x")
             add(f"logs/part-{i:05d}.snappy.parquet", buffer.getvalue())
         if extra is not None:
             info, data = extra
