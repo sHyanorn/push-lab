@@ -20,7 +20,6 @@ import lightgbm as lgb
 import numpy as np
 import numpy.typing as npt
 from scipy import sparse
-from scipy.stats import norm
 from scipy.stats import t as student_t
 
 from push_lab.data import paths
@@ -91,8 +90,9 @@ REFITS = 50
 ROUNDS = 100
 REGRESSION: dict[str, Any] = sim.PARAMS | {"objective": "regression"}
 Z = sim.Z
-# Twelve intervals of the implementation check, each at level 1 - 0.05 / 12
-CHECK_Z = float(norm.ppf(1 - 0.05 / 12 / 2))
+# Twelve intervals of the implementation check, each at level 1 - 0.05 / 12, with Student t
+# quantiles so that the level holds with 10 logs (D069)
+CHECK_LEVEL = 1 - 0.05 / 12
 # Validation reads coverage only with this many logs (METHODS 14.7, D069)
 COVERAGE_LOGS = 50
 SEPARATION = 0.8
@@ -116,13 +116,13 @@ RETURN_EDGES = (0.25, 1.0)
 
 
 def pdis(w: FloatArray, r: FloatArray) -> tuple[FloatArray, dict[str, float]]:
-    """Per-user sums of rho_t r_t, rho_t the product of the weights up to round t, and the
-    diagnostics of the last round's rho. The estimate is their sum over n H."""
+    """Per-user sums of rho_t r_t, rho_t the product of the weights up to round t, the Kish
+    effective size of the last round's rho and the largest rho of any round. The estimate is
+    their sum over n H."""
     rho = np.cumprod(w, axis=0)
-    last = rho[-1]
     return (rho * r).sum(axis=0), {
-        "effective_size": est.effective_size(last),
-        "max_rho": float(last.max()),
+        "effective_size": est.effective_size(rho[-1]),
+        "max_rho": float(rho.max()),
     }
 
 
@@ -725,16 +725,18 @@ def measures(estimates: list[dict[str, float]], truth: dict[str, Any]) -> dict[s
     return out | {"direction": direction, "separation": separation, "label": label}
 
 
-def implementation_check(settings: dict[str, Any], z: float = CHECK_Z) -> dict[str, Any]:
+def implementation_check(settings: dict[str, Any]) -> dict[str, Any]:
     """PDIS-week and arm means are unbiased by construction: each of their 12 bias intervals, at
-    level 1 - 0.05 / 12, must contain 0, or nothing in METHODS 14.7 is interpreted."""
+    level 1 - 0.05 / 12, must contain 0, or nothing in METHODS 14.7 is interpreted. The
+    quantile is Student t with the Welch degrees of freedom of the bias (D069)."""
     rows = []
     for setting in CHECK_SETTINGS:
         for design, name in CHECK_ESTIMATORS:
             for x in DIFFS:
                 entry = settings[setting]["designs"][design][name][x]
                 bias, se = entry["bias"]["value"], entry["bias_se"]
-                low, high = bias - z * se, bias + z * se
+                q = float(student_t.ppf(1 - (1 - CHECK_LEVEL) / 2, entry["bias_df"]))
+                low, high = bias - q * se, bias + q * se
                 rows.append(
                     {
                         "setting": setting,
@@ -747,7 +749,7 @@ def implementation_check(settings: dict[str, Any], z: float = CHECK_Z) -> dict[s
                     }
                 )
     return {
-        "level": 1 - 0.05 / len(rows),
+        "level": CHECK_LEVEL,
         "intervals": rows,
         "passed": all(r["contains_zero"] for r in rows),
     }
@@ -760,16 +762,35 @@ def _key(name: str, state: str) -> str:
 def summarize_estimator(
     logs: list[dict[str, Any]], key: str, truth: dict[str, Any]
 ) -> dict[str, Any]:
-    """Measures of one estimator (and state) for every D_X over ``logs``."""
+    """Measures of one estimator (and state) for every D_X over ``logs``, with the standard
+    error of the bias, its Welch degrees of freedom, and the diagnostics of each target as
+    their mean, smallest and largest value over the logs."""
     out: dict[str, Any] = {}
     for x in DIFFS:
         estimates = [log["estimates"][key]["D"][x] for log in logs]
         entry = measures(estimates, truth["D"][x])
         values = np.array([e["value"] for e in estimates])
-        entry["bias_se"] = float(
-            np.sqrt(values.var(ddof=1) / len(values) + truth["D"][x]["se"] ** 2)
+        spread = values.var(ddof=1) / len(values)
+        truth_var = truth["D"][x]["se"] ** 2
+        entry["bias_se"] = float(np.sqrt(spread + truth_var))
+        entry["bias_df"] = float(
+            (spread + truth_var) ** 2
+            / (spread**2 / (len(values) - 1) + truth_var**2 / (TRUTH_RUNS - 1))
         )
         out[x] = entry
+    found = [log["estimates"][key].get("diagnostics") for log in logs]
+    if found[0]:
+        out["diagnostics"] = {
+            t: {
+                name: {
+                    "mean": float(np.mean([d[t][name] for d in found])),
+                    "min": float(np.min([d[t][name] for d in found])),
+                    "max": float(np.max([d[t][name] for d in found])),
+                }
+                for name in found[0][t]
+            }
+            for t in TARGETS
+        }
     return out
 
 

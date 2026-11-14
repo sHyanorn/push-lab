@@ -78,20 +78,26 @@ def test_estimators_on_a_chain_with_carryover() -> None:
     assert abs(v0.mean() / horizon - truth) < 0.01
 
 
-def test_target_equal_to_logging_gives_unit_weights_ratios_and_mass() -> None:
+def test_target_equal_to_logging_gives_unit_weights_ratios_and_mass(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     log = hz.simulate(CTX, Params(), "E1", 5_001)
     assert log.explorer is not None
-    rows = sim_ope.user_days(log.out, CTX.static)
-    b = sim_ope.logging_probability(log.explorer, rows.bits, rows.user)
-    w = (b / b).reshape(DAYS, USERS)
-    sums, diagnostics = hz.pdis(w, log.out.visited.astype(np.float64))
-    np.testing.assert_array_equal(sums, log.out.visited.sum(axis=0))
+    explorer = log.explorer
+    monkeypatch.setattr(
+        sim_ope,
+        "target_probability",
+        lambda target, ctx, bits, user: sim_ope.logging_probability(explorer, bits, user),
+    )
+    rounds = hz.e1_rounds(CTX, log, sim_ope.user_days(log.out, CTX.static))
+    w, r = rounds.weight["T"], rounds.reward
+    assert (w == 1.0).all()
+    sums, diagnostics = hz.pdis(w, r)
+    np.testing.assert_array_equal(sums, r.sum(axis=0))
     assert diagnostics["max_rho"] == 1.0 and diagnostics["effective_size"] == USERS
     s = hz.state("S0", log.out, Params(), hz.round_starts("E1"))
     trace: list[np.ndarray] = []
-    _, mass = hz.smis(
-        s.index, s.bins, w, log.out.visited.astype(np.float64), np.ones((1, USERS)), trace
-    )
+    _, mass = hz.smis(s.index, s.bins, w, r, np.ones((1, USERS)), trace)
     assert len(trace) == DAYS - 1
     assert all(np.all(t[~np.isnan(t)] == 1.0) for t in trace)
     assert mass[0] == 1.0
@@ -183,11 +189,24 @@ def test_seven_day_counts_and_bins() -> None:
 def test_both_targets_of_a_difference_share_their_resamples(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(hz, "DIFFS", ("T",))
+    """With N given the weights and actions of T, D_N is 0 in every resample only if the two
+    targets are resampled together."""
+    original = hz.e2_rounds
+
+    def n_as_t(ctx: sim_ope.Context, log: hz.Log) -> hz.Rounds:
+        rounds = original(ctx, log)
+        rounds.weight["N"] = rounds.weight["T"]
+        rounds.mixture["N"] = rounds.mixture["T"]
+        return rounds
+
+    monkeypatch.setattr(hz, "e2_rounds", n_as_t)
     out = hz.estimate_log(CTX, Params(), "E2", 6_003)
-    for entry in out["estimates"].values():
-        d = entry["D"]["T"]
-        assert d["value"] == d["ci_low"] == d["ci_high"] == 0.0
+    for name, entry in out["estimates"].items():
+        d = entry["D"]["N"]
+        assert d["value"] == d["ci_low"] == d["ci_high"] == 0.0, name
+        # With 400 users FQE-week's trees need not split on the arm, so only these two
+        if not name.startswith("FQE"):
+            assert entry["D"]["T2"]["ci_high"] > entry["D"]["T2"]["ci_low"], name
 
 
 def test_truth_runs_share_their_seeds_across_targets(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -253,6 +272,35 @@ def test_implementation_check_fails_on_a_planted_bias() -> None:
     assert not check["passed"]
     failed = {(r["setting"], r["estimator"]) for r in check["intervals"] if not r["contains_zero"]}
     assert ("reference", "PDIS_week") not in failed and ("reference", "arm_means") in failed
+
+
+def test_implementation_check_fails_at_most_five_percent_of_unbiased_runs() -> None:
+    rng = np.random.default_rng(6)
+    truth = {"D": {x: {"value": 0.0, "se": 0.0, "sign": 0} for x in hz.DIFFS}}
+    failures = 0
+    for _ in range(400):
+        settings: dict[str, Any] = {}
+        for setting, m in (("control", 10), ("reference", 50)):
+            designs: dict[str, Any] = {}
+            for design, name in hz.CHECK_ESTIMATORS:
+                logs = [
+                    {
+                        "estimates": {
+                            name: {
+                                "D": {
+                                    x: {"value": v, "ci_low": v, "ci_high": v}
+                                    for x, v in zip(hz.DIFFS, row, strict=True)
+                                }
+                            }
+                        }
+                    }
+                    for row in rng.standard_normal((m, len(hz.DIFFS)))
+                ]
+                designs[design] = {name: hz.summarize_estimator(logs, name, truth)}
+            settings[setting] = {"designs": designs}
+        failures += not hz.implementation_check(settings)["passed"]
+    # About 0.049 with t quantiles; normal quantiles fail about 0.13 of these runs
+    assert failures / 400 < 0.08
 
 
 def _estimates(values: np.ndarray, half: float = 0.01) -> list[dict[str, float]]:
@@ -330,6 +378,9 @@ def _fake_logs(
                         v = TRUE_D[x] + shift + 0.004 * rng.standard_normal()
                         d[x] = {"value": v, "ci_low": v - 0.01, "ci_high": v + 0.01}
                     estimates[key] = {"D": d}
+                    if key == "PDIS":
+                        diagnostics = {t: {"max_rho": float(seed % 7)} for t in hz.TARGETS}
+                        estimates[key]["diagnostics"] = diagnostics
                 out[(setting, design, seed)] = {
                     "estimates": estimates,
                     "arm_users": dict.fromkeys(hz.TARGETS, 1_250),
@@ -353,6 +404,8 @@ def test_summary_of_every_setting() -> None:
     assert "SMIS|S_oracle" not in out["settings"]["annoyance_0"]["designs"]["E1"]
     reading = out["state_reading"]["reference"]["FQE_week"]["N"]
     assert reading["S_oracle"] and not reading["depends on knowing the memory"]
+    rho = out["settings"]["control"]["designs"]["E1"]["PDIS"]["diagnostics"]["T2"]["max_rho"]
+    assert rho["min"] == 0 and rho["max"] == 6
     projection = out["arm_mean_projection"]["N"]
     assert projection["projected"] == pytest.approx(0.01 * np.sqrt(5_000 / 27_285))
     biased = hz.summarize(_fake_logs(seeds, 0.05), truths, seeds)
