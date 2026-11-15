@@ -353,6 +353,19 @@ def test_dl2_leaves_out_a_template_never_eligible(absent: int) -> None:
     assert gamma["ci_low"] <= 0.05 <= gamma["ci_high"]
 
 
+@pytest.mark.parametrize("always", [False, True])
+def test_dl2_stops_on_a_template_whose_c_has_no_finite_estimate(always: bool) -> None:
+    """L stays eligible but is never selected, or is selected in every round in which it is
+    eligible, so c_L has no finite maximum likelihood estimate; the fit converges to a large
+    c_L regardless."""
+    c = _planted(np.random.default_rng(10), 200_000, 0.05, 7.0)
+    keep = ~c.eligible[:, 11] | (c.selected == 11) if always else c.selected != 11
+    c = dl.Completed(*(getattr(c, f)[keep] for f in dl.Completed.__dataclass_fields__))
+    kind = "selected whenever eligible" if always else "never selected"
+    with pytest.raises(ValueError, match=rf"{kind}: L \(D077\)"):
+        dl.dl2(c)
+
+
 RATIOS: dict[str, tuple[Any, Any, int]] = {
     "ratio": (lambda m: m[0] / m[1], lambda m: [1 / m[1], -m[0] / m[1] ** 2], 2),
     "lift": (lambda m: m[1] / m[0] - 1, lambda m: [-m[1] / m[0] ** 2, 1 / m[0]], 2),

@@ -751,6 +751,7 @@ Entries are in the order they were made. Some entries up to D048 were corrected 
 - Date: 2026-11-15
 - A template never eligible in the completed rounds with |A_t| > 1 does not enter the likelihood, so its c_a made the Hessian singular and the run failed after both passes. If that template is A, the other c_a are determined only up to a common shift: in a synthetic test the code then gave them standard errors of 27 to 48 in the paper's form and 0 for ten of the eleven in the curve, with no error
 - Such a template now has no c_a in either fit, as the curve leaves out empty bins, and the earliest letter that occurs takes c = 0, which is A whenever A occurs: a change to METHODS 15, which gives every template a c_a and sets c_A = 0. The results list the templates left out (`templates_left_out`)
+- A template that is eligible in these rounds but never selected, or selected in every round in which it is eligible, has no finite c_a; the analysis then stops before the DL2 fits, naming the template, and writes no results file, as for D075
 
 ## D078 Step of the numerical gradient in the delta method
 - Date: 2026-11-15

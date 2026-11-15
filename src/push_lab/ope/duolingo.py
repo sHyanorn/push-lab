@@ -712,10 +712,28 @@ def read_half_life(fitted: dict[str, Any]) -> dict[str, Any]:
 def dl2(c: Completed, deadline: Deadline | None = None) -> dict[str, Any]:
     """The paper's form with its readings, none if the fit did not converge (D076), then the
     descriptive curve; the curve stops if a recency lies outside the bins (D070). A template
-    never eligible in these rounds has no c_a (D077)."""
-    seen = np.zeros(K, dtype=bool)
+    never eligible in these rounds has no c_a, and one never selected or selected whenever
+    eligible stops the analysis (D077)."""
+    eligible = np.zeros(K, dtype=np.int64)
+    chosen = np.zeros(K, dtype=np.int64)
     for part in c.chunks():
-        seen |= part.eligible.any(axis=0)
+        eligible += part.eligible.sum(axis=0)
+        chosen += np.bincount(part.selected, minlength=K)
+    seen = eligible > 0
+    stops = {
+        "never selected": seen & (chosen == 0),
+        "selected whenever eligible": seen & (chosen == eligible),
+    }
+    if any(s.any() for s in stops.values()):
+        raise ValueError(
+            "no finite c_a for templates in the completed rounds, "
+            + "; ".join(
+                f"{kind}: {', '.join(duolingo.TEMPLATES[a] for a in np.flatnonzero(s))}"
+                for kind, s in stops.items()
+                if s.any()
+            )
+            + " (D077)"
+        )
     templates = np.flatnonzero(seen).tolist()
     paper = fit(PaperForm(templates), c, deadline)
     gamma = paper["parameters"]["gamma"]
