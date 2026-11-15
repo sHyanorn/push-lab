@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import lightgbm as lgb
@@ -250,6 +251,8 @@ def test_the_analysis_runs_on_a_converted_synthetic_archive(tmp_path: Path) -> N
     rows = fixtures.duolingo_raw(raw, 6_000, row_group=3_000)
     conversion.convert(raw, processed, rows, {s: (f"{s}-part-1",) for s in rows})
     out = dl.run(processed, 2)
+    # The result file is JSON: every count is a plain int
+    json.dumps(out)
     assert out["interpreted"] and out["DL1"]["answer"] in ("replicated", "differs")
     assert set(out["DL3"]) >= {"DL3a", "DL3b", "levels", "prior_strength"}
     assert len(out["DL2"]["grid"]) == 35 and "parameters" in out["DL2"]["curve"]

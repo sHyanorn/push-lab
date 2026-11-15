@@ -149,7 +149,7 @@ class DayMoments:
             "independent": float(np.sqrt(np.sum((w * se) ** 2))),
             "days": len(w),
             "j_mean_max": float(max(j_means)),
-            "single_row_days": sum(e[0] == 1 for e in self.days.values()),
+            "single_row_days": int(sum(e[0] == 1 for e in self.days.values())),
         }
 
     def estimate(self, f: Callable[[FloatArray], float]) -> dict[str, Any]:
