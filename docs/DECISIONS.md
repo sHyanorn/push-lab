@@ -79,6 +79,7 @@ Entries are in the order they were made. Some entries up to D048 were corrected 
 | D073 | Duolingo conversion: NaN values, repeated letters and summaries from other code | Active |
 | D074 | Stop lines of the long-horizon and Duolingo runs | Active |
 | D075 | Duolingo study: training precedes test | Active |
+| D076 | DL2: a fit that does not converge is not read | Active |
 
 ## D001 Python only, static report
 - Date: 2026-11-08
@@ -739,3 +740,7 @@ Entries are in the order they were made. Some entries up to D048 were corrected 
 - METHODS 15 states that training and test days do not overlap, so that no cross-fitting is needed, and the logging check and DL2 group the rows of both splits by day number, which holds only if both splits share one clock. Nothing checked either
 - The analysis now stops before its first pass, writing nothing, unless the largest training `datetime` is at most the smallest test `datetime`, both from the conversion report. A test clock that restarts or interleaves with training stops it, and so does test data earlier than training, which would put later data into the scores and the outcome model
 - If the files split within a day, that day holds rows of both splits: the logging check and DL2 pool its rows as one day, which they are, and the scores and outcome model of DL1 and DL3 come from training rows only, none later than any test row. The ranges of both splits are in the results under `conversion`
+
+## D076 DL2: a fit that does not converge is not read
+- Date: 2026-11-15
+- METHODS 15 reads gamma and h from the paper's form and gives no rule for a fit whose optimizer reports failure. If L-BFGS-B ends without success, neither is read: both readings are "fit did not converge", beside the optimizer's message and the estimates and intervals as computed. This can withhold a reading at a maximum the optimizer could not confirm, as when its line search fails at the limit of floating-point precision. The curve is descriptive and keeps its `converged` flag

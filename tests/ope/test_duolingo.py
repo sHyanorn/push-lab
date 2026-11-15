@@ -1,10 +1,12 @@
 import json
 from pathlib import Path
+from typing import Any
 
 import lightgbm as lgb
 import numpy as np
 import pyarrow as pa
 import pytest
+from scipy.optimize import minimize
 
 from push_lab import runtime
 from push_lab.data import duolingo as conversion
@@ -315,3 +317,15 @@ def test_the_analysis_stops_unless_training_precedes_test(
     else:
         ranges = dl.run(processed, 1)["conversion"]
         assert ranges["train"]["datetime_max"] == ranges["test"]["datetime_min"] == 3.0
+
+
+def test_a_fit_that_did_not_converge_is_not_read(monkeypatch: pytest.MonkeyPatch) -> None:
+    """One iteration of L-BFGS-B ends without success, so neither gamma nor h is read."""
+
+    def one_iteration(*args: Any, **kwargs: Any) -> Any:
+        return minimize(*args, **kwargs | {"options": kwargs["options"] | {"maxiter": 1}})
+
+    monkeypatch.setattr(dl, "minimize", one_iteration)
+    out = dl.dl2(_planted(np.random.default_rng(9), 50_000, 0.05, 7.0))
+    assert not out["paper_form"]["converged"]
+    assert out["gamma_reading"] == out["half_life"]["reading"] == "fit did not converge"

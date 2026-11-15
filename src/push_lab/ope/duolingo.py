@@ -70,6 +70,8 @@ TRAIN_SHARE, TEST_SHARE = 0.05, 0.10
 # DL2 recency bins (days before, each closed on the right; the first includes 0)
 EDGES = (1.5, 2.5, 3.5, 5.0, 7.0, 10.0, 14.0, 21.0, 30.0)
 H_BOUNDS = (0.25, 365.0)
+# Reading of gamma and h when L-BFGS-B reports no success (D076)
+NOT_CONVERGED = "fit did not converge"
 RESULTS_FILE = "duolingo.json"
 SMOKE = Path("runs") / "smoke" / "duolingo"
 SMOKE_ROWS = 20_000
@@ -675,7 +677,7 @@ def read_gamma(gamma: dict[str, Any]) -> str:
 
 def read_half_life(fitted: dict[str, Any]) -> dict[str, Any]:
     """h on the scale of days: its interval from the one on log h, and the registered reading
-    when gamma lies above 0."""
+    when the fit converged and gamma lies above 0."""
     log_h = fitted["parameters"]["log_h"]
     out: dict[str, Any] = {"value": float(np.exp(log_h["value"]))}
     for kind in ("conservative", "independent"):
@@ -684,7 +686,9 @@ def read_half_life(fitted: dict[str, Any]) -> dict[str, Any]:
             "ci_high": float(np.exp(log_h[kind]["ci_high"])),
         }
     c = out["conservative"]
-    if read_gamma(fitted["parameters"]["gamma"]) in (
+    if not fitted["converged"]:
+        out["reading"] = NOT_CONVERGED
+    elif read_gamma(fitted["parameters"]["gamma"]) in (
         "decay not detected",
         "a recent showing raises completion",
     ):
@@ -698,12 +702,13 @@ def read_half_life(fitted: dict[str, Any]) -> dict[str, Any]:
 
 
 def dl2(c: Completed, deadline: Deadline | None = None) -> dict[str, Any]:
-    """The paper's form with its readings, then the descriptive curve; the curve stops if a
-    recency lies outside the bins (D070)."""
+    """The paper's form with its readings, none if the fit did not converge (D076), then the
+    descriptive curve; the curve stops if a recency lies outside the bins (D070)."""
     paper = fit(PaperForm(), c, deadline)
+    gamma = paper["parameters"]["gamma"]
     out: dict[str, Any] = {
         "paper_form": paper,
-        "gamma_reading": read_gamma(paper["parameters"]["gamma"]),
+        "gamma_reading": read_gamma(gamma) if paper["converged"] else NOT_CONVERGED,
         "half_life": read_half_life(paper),
     }
     outside, per_bin = 0, np.zeros(len(EDGES) + 1, dtype=np.int64)
