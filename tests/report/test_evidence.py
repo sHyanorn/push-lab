@@ -76,3 +76,43 @@ def test_h2_rows_carry_the_note_of_their_results() -> None:
     assert out["H2"]["note"] == policy["primary"]["main"]["H2"]["note"]
     assert out["H2-af"]["note"] == policy["primary"]["annoyance_free"]["H2"]["note"]
     assert "note" not in out["H1"]
+
+
+def test_long_horizon_rows_carry_the_truth_and_every_setting() -> None:
+    out = {c["id"]: c for c in evidence.build(ROOT)["claims"]}
+    data = json.loads((ROOT / "results" / "ope_horizon.json").read_text("utf-8"))
+    rows = [c for c in out.values() if c["id"].startswith("HZ-")]
+    assert len(rows) == 12 and all(c["tier"] == "C" for c in rows)
+    arms = out["HZ-E3-arm_means-N"]
+    found = data["settings"]["reference"]["designs"]["E3"]["arm_means"]["N"]
+    assert (arms["value"], arms["ci_low"]) == (found["mean"]["value"], found["mean"]["ci_low"])
+    assert arms["label"] == data["primary"]["E3"]["labels"]["arm_means"]["N"]
+    assert arms["truth"]["value"] == data["settings"]["reference"]["truth"]["D"]["N"]["value"]
+    smis = out["HZ-E1-SMIS-N"]["setting_labels"]
+    assert set(smis) == set(data["settings"])
+    assert smis["reference"] == data["primary"]["E1"]["labels"]["SMIS"]["N"]
+
+
+def test_duolingo_rows_use_the_conservative_intervals() -> None:
+    out = {c["id"]: c for c in evidence.build(ROOT)["claims"]}
+    data = json.loads((ROOT / "results" / "duolingo.json").read_text("utf-8"))
+    ips = data["DL3"]["DL3a"]["IPS"]
+    assert out["DL3a"]["value"] == ips["value"]
+    assert out["DL3a"]["ci_low"] == ips["conservative"]["ci_low"]
+    assert out["DL3a"]["label"] == ips["label"]
+    assert out["DL2-gamma"]["label"] == data["DL2"]["gamma_reading"]
+    assert out["DL1"]["status"] == "verdict" and "value" not in out["DL1"]
+    assert {c["tier"] for k, c in out.items() if k.startswith("DL")} == {"A"}
+
+
+def test_unread_studies_add_no_rows(tmp_path: Path) -> None:
+    (tmp_path / "results").mkdir()
+    for name, gate in (("ope_horizon.json", "implementation_check"), ("duolingo.json", "")):
+        data = json.loads((ROOT / "results" / name).read_text("utf-8"))
+        if gate:
+            data[gate]["passed"] = False
+        else:
+            data["interpreted"] = False
+        (tmp_path / "results" / name).write_text(json.dumps(data), encoding="utf-8")
+    assert evidence.horizon_entries(tmp_path) == []
+    assert evidence.duolingo_entries(tmp_path) == []

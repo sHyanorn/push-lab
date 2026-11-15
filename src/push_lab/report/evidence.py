@@ -96,6 +96,8 @@ class ClaimEntry(TypedDict, total=False):
     # OBD, IPS only
     post_hoc_empirical_target: Interval
     post_hoc_difference: Interval
+    # Long-horizon study: the label of the same estimator and target at every setting
+    setting_labels: dict[str, str]
 
 
 def _interval(found: Any) -> ClaimEntry:
@@ -505,6 +507,137 @@ def _empirical_target(full: dict[str, Any], name: str) -> ClaimEntry:
     }
 
 
+# Long-horizon study (METHODS 14.7): the primary estimators of each design, with the key of
+# their S0 results, and the two primary differences
+HORIZON_DESIGNS = {
+    "E1": ("current exploration logs", {"SMIS": "SMIS|S0", "FQE": "FQE|S0"}),
+    "E2": (
+        "weekly arms",
+        {"PDIS_week": "PDIS_week", "SMIS_week": "SMIS_week|S0", "FQE_week": "FQE_week|S0"},
+    ),
+    "E3": ("a four-arm test", {"arm_means": "arm_means"}),
+}
+HORIZON_TARGETS = {"N": "no pushes", "T2": "two pushes a day"}
+
+
+def horizon_entries(root: Path) -> list[ClaimEntry]:
+    """The primary labels of the long-horizon study at the reference, each with its mean
+    estimate over logs, the truth and its label at every setting."""
+    data = _load(root, "ope_horizon.json")
+    if data is None or not data["implementation_check"]["passed"]:
+        return []
+    out: list[ClaimEntry] = []
+    reference = data["settings"]["reference"]
+    for design, (logs, estimators) in HORIZON_DESIGNS.items():
+        for name, key in estimators.items():
+            shown = name.replace("_week", "-week").replace("_", " ")
+            for target, text in HORIZON_TARGETS.items():
+                found = reference["designs"][design][key][target]
+                truth = reference["truth"]["D"][target]
+                extra: ClaimEntry = {
+                    "label": data["primary"][design]["labels"][name][target],
+                    "truth": Interval(
+                        value=truth["value"], ci_low=truth["ci_low"], ci_high=truth["ci_high"]
+                    ),
+                    "setting_labels": {
+                        setting: values["designs"][design][key][target]["label"]
+                        for setting, values in data["settings"].items()
+                    },
+                }
+                out.append(
+                    _entry(
+                        f"HZ-{design}-{name}-{target}",
+                        "C",
+                        f"Long-horizon study, {logs} ({design}): {shown} estimate of {text} "
+                        "minus one push a day (active-day share over 28 days, mean over logs at "
+                        "the reference with a 95% t interval), against the simulator truth",
+                        "ope_horizon.json",
+                        ("settings", "reference", "designs", design, key, target),
+                        "reported",
+                    )
+                    | _interval(found["mean"])
+                    | extra
+                )
+    return out
+
+
+def duolingo_entries(root: Path) -> list[ClaimEntry]:
+    """DL1 to DL3 of the Duolingo study, with the conservative intervals its decisions use."""
+    data = _load(root, "duolingo.json")
+    if data is None or not data["interpreted"]:
+        return []
+
+    def conservative(found: Any) -> ClaimEntry:
+        bounds = found["conservative"]
+        return {"value": found["value"], "ci_low": bounds["ci_low"], "ci_high": bounds["ci_high"]}
+
+    rows = data["DL1"]["rows"]
+    replicated = sum(r["label"] == "replicated" for r in rows.values())
+    dl2 = data["DL2"]
+    recent = dl2["curve"]["parameters"]["beta [0, 1.5]"]["relative change"]
+    window = " (conservative 95% interval across days)"
+    out = [
+        _entry(
+            "DL1",
+            "A",
+            "Duolingo logs: the paper's offline lift lies inside the conservative 95% interval "
+            f"of the IPS lift for {replicated} of {len(rows)} policies (DL1 answered "
+            f"{data['DL1']['answer']})",
+            "duolingo.json",
+            ("DL1", "rows"),
+            "verdict",
+        ),
+        _entry(
+            "DL2-gamma",
+            "A",
+            "Duolingo logs: recency weight of the paper's form, how much a recent showing lowers "
+            f"a template's 2-hour completion against the other templates of its round{window}",
+            "duolingo.json",
+            ("DL2", "paper_form", "parameters", "gamma"),
+            "reported",
+        )
+        | conservative(dl2["paper_form"]["parameters"]["gamma"])
+        | {"label": dl2["gamma_reading"]},
+        _entry(
+            "DL2-h",
+            "A",
+            f"Duolingo logs: half-life in days of the paper's form{window}",
+            "duolingo.json",
+            ("DL2", "half_life"),
+            "reported",
+        )
+        | conservative(dl2["half_life"])
+        | {"label": dl2["half_life"]["reading"]},
+        _entry(
+            "DL2-recent",
+            "A",
+            "Duolingo logs: relative change in 2-hour completion of a template last sent within "
+            f"1.5 days, against one not in the history (descriptive curve){window}",
+            "duolingo.json",
+            ("DL2", "curve", "parameters", "beta [0, 1.5]", "relative change"),
+            "reported",
+        )
+        | conservative(recent),
+    ]
+    for key in ("DL3a", "DL3b"):
+        found = data["DL3"][key]
+        out.append(
+            _entry(
+                key,
+                "A",
+                f"Duolingo logs: {found['comparison'].replace(' - ', ' minus ')} in 2-hour "
+                "completion per notification, by "
+                f"IPS on the test rounds{window}",
+                "duolingo.json",
+                ("DL3", key, "IPS"),
+                "reported",
+            )
+            | conservative(found["IPS"])
+            | {"label": found["IPS"]["label"]}
+        )
+    return out
+
+
 NO_TIER_B = (
     "The project has no Tier B result: no estimator passed the check on the full Men's "
     "campaign of OBD, the only real logs with two policies and known propensities here."
@@ -515,7 +648,10 @@ def build(root: Path) -> dict[str, Any]:
     return {
         "tiers": TIERS,
         "note": NO_TIER_B,
-        "claims": [claim_entry(root, c) for c in CLAIMS] + ope_entries(root),
+        "claims": [claim_entry(root, c) for c in CLAIMS]
+        + ope_entries(root)
+        + horizon_entries(root)
+        + duolingo_entries(root),
     }
 
 

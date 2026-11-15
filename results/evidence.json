@@ -1080,6 +1080,542 @@
    "value": 0.004498410028678656,
    "ci_low": 0.001533415082492713,
    "ci_high": 0.0074634049748645995
+  },
+  {
+   "id": "HZ-E1-SMIS-N",
+   "tier": "C",
+   "statement": "Long-horizon study, current exploration logs (E1): SMIS estimate of no pushes minus one push a day (active-day share over 28 days, mean over logs at the reference with a 95% t interval), against the simulator truth",
+   "source": {
+    "file": "results/ope_horizon.json",
+    "path": [
+     "settings",
+     "reference",
+     "designs",
+     "E1",
+     "SMIS|S0",
+     "N"
+    ]
+   },
+   "status": "reported",
+   "value": -0.433400439044386,
+   "ci_low": -0.48774332249538876,
+   "ci_high": -0.3790575555933833,
+   "label": "reverses",
+   "truth": {
+    "value": 0.012949678571428567,
+    "ci_low": 0.012886192187086963,
+    "ci_high": 0.01301316495577017
+   },
+   "setting_labels": {
+    "control": "not validated",
+    "reference": "reverses",
+    "annoyance_0": "not validated",
+    "annoyance_0.025": "reverses",
+    "annoyance_0.075": "reverses",
+    "annoyance_0.1": "reverses",
+    "fatigue_half_life_3": "reverses",
+    "fatigue_half_life_14": "reverses"
+   }
+  },
+  {
+   "id": "HZ-E1-SMIS-T2",
+   "tier": "C",
+   "statement": "Long-horizon study, current exploration logs (E1): SMIS estimate of two pushes a day minus one push a day (active-day share over 28 days, mean over logs at the reference with a 95% t interval), against the simulator truth",
+   "source": {
+    "file": "results/ope_horizon.json",
+    "path": [
+     "settings",
+     "reference",
+     "designs",
+     "E1",
+     "SMIS|S0",
+     "T2"
+    ]
+   },
+   "status": "reported",
+   "value": 0.1984079766847878,
+   "ci_low": -0.14340038954463738,
+   "ci_high": 0.5402163429142129,
+   "label": "not validated",
+   "truth": {
+    "value": -0.01484403571428572,
+    "ci_low": -0.014902456353824381,
+    "ci_high": -0.014785615074747058
+   },
+   "setting_labels": {
+    "control": "validated, does not separate",
+    "reference": "not validated",
+    "annoyance_0": "validated, does not separate",
+    "annoyance_0.025": "validated, does not separate",
+    "annoyance_0.075": "validated, does not separate",
+    "annoyance_0.1": "validated, does not separate",
+    "fatigue_half_life_3": "validated, does not separate",
+    "fatigue_half_life_14": "validated, does not separate"
+   }
+  },
+  {
+   "id": "HZ-E1-FQE-N",
+   "tier": "C",
+   "statement": "Long-horizon study, current exploration logs (E1): FQE estimate of no pushes minus one push a day (active-day share over 28 days, mean over logs at the reference with a 95% t interval), against the simulator truth",
+   "source": {
+    "file": "results/ope_horizon.json",
+    "path": [
+     "settings",
+     "reference",
+     "designs",
+     "E1",
+     "FQE|S0",
+     "N"
+    ]
+   },
+   "status": "reported",
+   "value": 0.00060990797207785,
+   "ci_low": -0.0003149309163280892,
+   "ci_high": 0.0015347468604837893,
+   "label": "not validated",
+   "truth": {
+    "value": 0.012949678571428567,
+    "ci_low": 0.012886192187086963,
+    "ci_high": 0.01301316495577017
+   },
+   "setting_labels": {
+    "control": "not validated",
+    "reference": "not validated",
+    "annoyance_0": "not validated",
+    "annoyance_0.025": "not validated",
+    "annoyance_0.075": "not validated",
+    "annoyance_0.1": "not validated",
+    "fatigue_half_life_3": "not validated",
+    "fatigue_half_life_14": "not validated"
+   }
+  },
+  {
+   "id": "HZ-E1-FQE-T2",
+   "tier": "C",
+   "statement": "Long-horizon study, current exploration logs (E1): FQE estimate of two pushes a day minus one push a day (active-day share over 28 days, mean over logs at the reference with a 95% t interval), against the simulator truth",
+   "source": {
+    "file": "results/ope_horizon.json",
+    "path": [
+     "settings",
+     "reference",
+     "designs",
+     "E1",
+     "FQE|S0",
+     "T2"
+    ]
+   },
+   "status": "reported",
+   "value": 0.0010387642896377458,
+   "ci_low": 0.00031950870894730486,
+   "ci_high": 0.0017580198703281867,
+   "label": "reverses",
+   "truth": {
+    "value": -0.01484403571428572,
+    "ci_low": -0.014902456353824381,
+    "ci_high": -0.014785615074747058
+   },
+   "setting_labels": {
+    "control": "not validated",
+    "reference": "reverses",
+    "annoyance_0": "validated, does not separate",
+    "annoyance_0.025": "reverses",
+    "annoyance_0.075": "not validated",
+    "annoyance_0.1": "not validated",
+    "fatigue_half_life_3": "not validated",
+    "fatigue_half_life_14": "reverses"
+   }
+  },
+  {
+   "id": "HZ-E2-PDIS_week-N",
+   "tier": "C",
+   "statement": "Long-horizon study, weekly arms (E2): PDIS-week estimate of no pushes minus one push a day (active-day share over 28 days, mean over logs at the reference with a 95% t interval), against the simulator truth",
+   "source": {
+    "file": "results/ope_horizon.json",
+    "path": [
+     "settings",
+     "reference",
+     "designs",
+     "E2",
+     "PDIS_week",
+     "N"
+    ]
+   },
+   "status": "reported",
+   "value": 0.025846857142857144,
+   "ci_low": 0.007304434783890302,
+   "ci_high": 0.04438927950182399,
+   "label": "validated, does not separate",
+   "truth": {
+    "value": 0.012949678571428567,
+    "ci_low": 0.012886192187086963,
+    "ci_high": 0.01301316495577017
+   },
+   "setting_labels": {
+    "control": "validated, does not separate",
+    "reference": "validated, does not separate",
+    "annoyance_0": "validated, does not separate",
+    "annoyance_0.025": "validated, does not separate",
+    "annoyance_0.075": "validated, does not separate",
+    "annoyance_0.1": "validated, does not separate",
+    "fatigue_half_life_3": "validated, does not separate",
+    "fatigue_half_life_14": "validated, does not separate"
+   }
+  },
+  {
+   "id": "HZ-E2-PDIS_week-T2",
+   "tier": "C",
+   "statement": "Long-horizon study, weekly arms (E2): PDIS-week estimate of two pushes a day minus one push a day (active-day share over 28 days, mean over logs at the reference with a 95% t interval), against the simulator truth",
+   "source": {
+    "file": "results/ope_horizon.json",
+    "path": [
+     "settings",
+     "reference",
+     "designs",
+     "E2",
+     "PDIS_week",
+     "T2"
+    ]
+   },
+   "status": "reported",
+   "value": -0.016908571428571433,
+   "ci_low": -0.03869621457900577,
+   "ci_high": 0.004879071721862898,
+   "label": "validated, does not separate",
+   "truth": {
+    "value": -0.01484403571428572,
+    "ci_low": -0.014902456353824381,
+    "ci_high": -0.014785615074747058
+   },
+   "setting_labels": {
+    "control": "validated, does not separate",
+    "reference": "validated, does not separate",
+    "annoyance_0": "validated, does not separate",
+    "annoyance_0.025": "validated, does not separate",
+    "annoyance_0.075": "validated, does not separate",
+    "annoyance_0.1": "validated, does not separate",
+    "fatigue_half_life_3": "validated, does not separate",
+    "fatigue_half_life_14": "validated, does not separate"
+   }
+  },
+  {
+   "id": "HZ-E2-SMIS_week-N",
+   "tier": "C",
+   "statement": "Long-horizon study, weekly arms (E2): SMIS-week estimate of no pushes minus one push a day (active-day share over 28 days, mean over logs at the reference with a 95% t interval), against the simulator truth",
+   "source": {
+    "file": "results/ope_horizon.json",
+    "path": [
+     "settings",
+     "reference",
+     "designs",
+     "E2",
+     "SMIS_week|S0",
+     "N"
+    ]
+   },
+   "status": "reported",
+   "value": 0.015433400465867489,
+   "ci_low": 0.002127580013867883,
+   "ci_high": 0.028739220917867094,
+   "label": "validated, does not separate",
+   "truth": {
+    "value": 0.012949678571428567,
+    "ci_low": 0.012886192187086963,
+    "ci_high": 0.01301316495577017
+   },
+   "setting_labels": {
+    "control": "validated, does not separate",
+    "reference": "validated, does not separate",
+    "annoyance_0": "validated, does not separate",
+    "annoyance_0.025": "validated, does not separate",
+    "annoyance_0.075": "validated, does not separate",
+    "annoyance_0.1": "validated, does not separate",
+    "fatigue_half_life_3": "validated, does not separate",
+    "fatigue_half_life_14": "validated, does not separate"
+   }
+  },
+  {
+   "id": "HZ-E2-SMIS_week-T2",
+   "tier": "C",
+   "statement": "Long-horizon study, weekly arms (E2): SMIS-week estimate of two pushes a day minus one push a day (active-day share over 28 days, mean over logs at the reference with a 95% t interval), against the simulator truth",
+   "source": {
+    "file": "results/ope_horizon.json",
+    "path": [
+     "settings",
+     "reference",
+     "designs",
+     "E2",
+     "SMIS_week|S0",
+     "T2"
+    ]
+   },
+   "status": "reported",
+   "value": -0.01217799566390171,
+   "ci_low": -0.024987787156681658,
+   "ci_high": 0.0006317958288782361,
+   "label": "validated, does not separate",
+   "truth": {
+    "value": -0.01484403571428572,
+    "ci_low": -0.014902456353824381,
+    "ci_high": -0.014785615074747058
+   },
+   "setting_labels": {
+    "control": "validated, does not separate",
+    "reference": "validated, does not separate",
+    "annoyance_0": "validated, does not separate",
+    "annoyance_0.025": "validated, does not separate",
+    "annoyance_0.075": "validated, does not separate",
+    "annoyance_0.1": "validated, does not separate",
+    "fatigue_half_life_3": "validated, does not separate",
+    "fatigue_half_life_14": "validated, does not separate"
+   }
+  },
+  {
+   "id": "HZ-E2-FQE_week-N",
+   "tier": "C",
+   "statement": "Long-horizon study, weekly arms (E2): FQE-week estimate of no pushes minus one push a day (active-day share over 28 days, mean over logs at the reference with a 95% t interval), against the simulator truth",
+   "source": {
+    "file": "results/ope_horizon.json",
+    "path": [
+     "settings",
+     "reference",
+     "designs",
+     "E2",
+     "FQE_week|S0",
+     "N"
+    ]
+   },
+   "status": "reported",
+   "value": 0.010013524208288539,
+   "ci_low": 0.0075713848703483876,
+   "ci_high": 0.01245566354622869,
+   "label": "not validated",
+   "truth": {
+    "value": 0.012949678571428567,
+    "ci_low": 0.012886192187086963,
+    "ci_high": 0.01301316495577017
+   },
+   "setting_labels": {
+    "control": "not validated",
+    "reference": "not validated",
+    "annoyance_0": "not validated",
+    "annoyance_0.025": "not validated",
+    "annoyance_0.075": "not validated",
+    "annoyance_0.1": "not validated",
+    "fatigue_half_life_3": "not validated",
+    "fatigue_half_life_14": "not validated"
+   }
+  },
+  {
+   "id": "HZ-E2-FQE_week-T2",
+   "tier": "C",
+   "statement": "Long-horizon study, weekly arms (E2): FQE-week estimate of two pushes a day minus one push a day (active-day share over 28 days, mean over logs at the reference with a 95% t interval), against the simulator truth",
+   "source": {
+    "file": "results/ope_horizon.json",
+    "path": [
+     "settings",
+     "reference",
+     "designs",
+     "E2",
+     "FQE_week|S0",
+     "T2"
+    ]
+   },
+   "status": "reported",
+   "value": -0.010940037439024388,
+   "ci_low": -0.013194937969372617,
+   "ci_high": -0.008685136908676158,
+   "label": "not validated",
+   "truth": {
+    "value": -0.01484403571428572,
+    "ci_low": -0.014902456353824381,
+    "ci_high": -0.014785615074747058
+   },
+   "setting_labels": {
+    "control": "not validated",
+    "reference": "not validated",
+    "annoyance_0": "validated, does not separate",
+    "annoyance_0.025": "validated, does not separate",
+    "annoyance_0.075": "recovers the ordering",
+    "annoyance_0.1": "recovers the ordering",
+    "fatigue_half_life_3": "recovers the ordering",
+    "fatigue_half_life_14": "validated, does not separate"
+   }
+  },
+  {
+   "id": "HZ-E3-arm_means-N",
+   "tier": "C",
+   "statement": "Long-horizon study, a four-arm test (E3): arm means estimate of no pushes minus one push a day (active-day share over 28 days, mean over logs at the reference with a 95% t interval), against the simulator truth",
+   "source": {
+    "file": "results/ope_horizon.json",
+    "path": [
+     "settings",
+     "reference",
+     "designs",
+     "E3",
+     "arm_means",
+     "N"
+    ]
+   },
+   "status": "reported",
+   "value": 0.012163604896700913,
+   "ci_low": 0.009532034295899397,
+   "ci_high": 0.014795175497502429,
+   "label": "validated, does not separate",
+   "truth": {
+    "value": 0.012949678571428567,
+    "ci_low": 0.012886192187086963,
+    "ci_high": 0.01301316495577017
+   },
+   "setting_labels": {
+    "control": "validated, does not separate",
+    "reference": "validated, does not separate",
+    "annoyance_0": "validated, does not separate",
+    "annoyance_0.025": "validated, does not separate",
+    "annoyance_0.075": "validated, does not separate",
+    "annoyance_0.1": "recovers the ordering",
+    "fatigue_half_life_3": "validated, does not separate",
+    "fatigue_half_life_14": "validated, does not separate"
+   }
+  },
+  {
+   "id": "HZ-E3-arm_means-T2",
+   "tier": "C",
+   "statement": "Long-horizon study, a four-arm test (E3): arm means estimate of two pushes a day minus one push a day (active-day share over 28 days, mean over logs at the reference with a 95% t interval), against the simulator truth",
+   "source": {
+    "file": "results/ope_horizon.json",
+    "path": [
+     "settings",
+     "reference",
+     "designs",
+     "E3",
+     "arm_means",
+     "T2"
+    ]
+   },
+   "status": "reported",
+   "value": -0.014049572157571235,
+   "ci_low": -0.01630822523501813,
+   "ci_high": -0.011790919080124342,
+   "label": "validated, does not separate",
+   "truth": {
+    "value": -0.01484403571428572,
+    "ci_low": -0.014902456353824381,
+    "ci_high": -0.014785615074747058
+   },
+   "setting_labels": {
+    "control": "validated, does not separate",
+    "reference": "validated, does not separate",
+    "annoyance_0": "validated, does not separate",
+    "annoyance_0.025": "validated, does not separate",
+    "annoyance_0.075": "recovers the ordering",
+    "annoyance_0.1": "recovers the ordering",
+    "fatigue_half_life_3": "recovers the ordering",
+    "fatigue_half_life_14": "validated, does not separate"
+   }
+  },
+  {
+   "id": "DL1",
+   "tier": "A",
+   "statement": "Duolingo logs: the paper's offline lift lies inside the conservative 95% interval of the IPS lift for 8 of 8 policies (DL1 answered replicated)",
+   "source": {
+    "file": "results/duolingo.json",
+    "path": [
+     "DL1",
+     "rows"
+    ]
+   },
+   "status": "verdict"
+  },
+  {
+   "id": "DL2-gamma",
+   "tier": "A",
+   "statement": "Duolingo logs: recency weight of the paper's form, how much a recent showing lowers a template's 2-hour completion against the other templates of its round (conservative 95% interval across days)",
+   "source": {
+    "file": "results/duolingo.json",
+    "path": [
+     "DL2",
+     "paper_form",
+     "parameters",
+     "gamma"
+    ]
+   },
+   "status": "reported",
+   "value": 0.013160962208987511,
+   "ci_low": 0.004997098422166927,
+   "ci_high": 0.021324825995808094,
+   "label": "consistent with these data"
+  },
+  {
+   "id": "DL2-h",
+   "tier": "A",
+   "statement": "Duolingo logs: half-life in days of the paper's form (conservative 95% interval across days)",
+   "source": {
+    "file": "results/duolingo.json",
+    "path": [
+     "DL2",
+     "half_life"
+    ]
+   },
+   "status": "reported",
+   "value": 10.931844568383323,
+   "ci_low": 1.3506757580547732,
+   "ci_high": 88.47810065044914,
+   "label": "h not determined"
+  },
+  {
+   "id": "DL2-recent",
+   "tier": "A",
+   "statement": "Duolingo logs: relative change in 2-hour completion of a template last sent within 1.5 days, against one not in the history (descriptive curve) (conservative 95% interval across days)",
+   "source": {
+    "file": "results/duolingo.json",
+    "path": [
+     "DL2",
+     "curve",
+     "parameters",
+     "beta [0, 1.5]",
+     "relative change"
+    ]
+   },
+   "status": "reported",
+   "value": -0.014291649306423813,
+   "ci_low": -0.02432723212483171,
+   "ci_high": -0.0041528424093891635
+  },
+  {
+   "id": "DL3a",
+   "tier": "A",
+   "statement": "Duolingo logs: RD minus U in 2-hour completion per notification, by IPS on the test rounds (conservative 95% interval across days)",
+   "source": {
+    "file": "results/duolingo.json",
+    "path": [
+     "DL3",
+     "DL3a",
+     "IPS"
+    ]
+   },
+   "status": "reported",
+   "value": 0.0017379807096454258,
+   "ci_low": 0.001262588440255914,
+   "ci_high": 0.0022133729790349377,
+   "label": "RD better"
+  },
+  {
+   "id": "DL3b",
+   "tier": "A",
+   "statement": "Duolingo logs: RD minus D0 in 2-hour completion per notification, by IPS on the test rounds (conservative 95% interval across days)",
+   "source": {
+    "file": "results/duolingo.json",
+    "path": [
+     "DL3",
+     "DL3b",
+     "IPS"
+    ]
+   },
+   "status": "reported",
+   "value": 0.00029389541643023986,
+   "ci_low": -1.7897371913373316e-05,
+   "ci_high": 0.0006056882047738531,
+   "label": "no detectable difference"
   }
  ]
 }
