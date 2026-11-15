@@ -5,9 +5,9 @@ temporary file under the raw folder, converted row group by row group to
 ``data/processed/duolingo/<split>/<archive>/`` and deleted. Every row keeps the columns METHODS 15
 needs: the time, the language, the eligible set as a bit mask, the selected template, the
 reward, each template's recency, j_t, the days since the previous notification and the history
-length. An archive is converted into a partial folder and renamed when done, so a rerun skips
-finished archives; ``conversion.json`` is written only after the row counts of both splits
-match the readme, and the analysis reads nothing without it.
+length. An archive is converted into a partial folder and renamed when done, so a rerun at the
+same commit skips finished archives; ``conversion.json`` is written only after the row counts of
+both splits match the readme, and the analysis reads nothing without it.
 """
 
 import json
@@ -88,19 +88,28 @@ def _no_nulls(column: pa.ChunkedArray[Any], what: str) -> None:
         raise ConversionError(f"{what}: {column.null_count} nulls")
 
 
+def _finite(values: npt.NDArray[Any], what: str) -> None:
+    """A NaN or infinite value is not a null to Arrow, so it passes ``_no_nulls``."""
+    bad = int(np.sum(~np.isfinite(values)))
+    if bad:
+        raise ConversionError(f"{what}: {bad} NaN or infinite values")
+
+
 def convert_table(table: pa.Table) -> tuple[pa.Table, dict[str, Any]]:
     """One row group in the output schema, with the counts the report needs."""
     n = table.num_rows
     for name in ("datetime", "eligible_templates", "selected_template", "session_end_completed"):
         _no_nulls(table[name], name)
     when = table["datetime"].to_numpy()
+    _finite(when, "datetime")
 
     eligible = table["eligible_templates"].combine_chunks()
     sizes = pc.list_value_length(eligible).to_numpy(zero_copy_only=False)
     letters = _letters(pc.list_flatten(eligible), "eligible_templates")
     parents = pc.list_parent_indices(eligible).to_numpy()
     mask = np.bincount(parents, weights=1 << letters, minlength=n).astype(np.int64)
-    if (POPCOUNT[mask] != sizes).any() or (sizes == 0).any():
+    # Distinct letters sum to at most 4095; a repeated one may carry past bit 11
+    if (mask >> len(TEMPLATES)).any() or (POPCOUNT[mask] != sizes).any() or (sizes == 0).any():
         raise ConversionError("eligible_templates: a repeated letter or an empty set")
     selected = _letters(table["selected_template"], "selected_template")
     if not ((mask >> selected) & 1).all():
@@ -115,6 +124,7 @@ def convert_table(table: pa.Table) -> tuple[pa.Table, dict[str, Any]]:
         raise ConversionError(f"history: {days.null_count} null n_days")
     template = _letters(entries.field("template"), "history template")
     days_np = days.to_numpy(zero_copy_only=False)
+    _finite(days_np, "history n_days")
     owner = pc.list_parent_indices(history).to_numpy()
     flat = np.full(n * len(TEMPLATES), np.inf, dtype=np.float32)
     np.minimum.at(flat, owner * len(TEMPLATES) + template, days_np)
@@ -229,13 +239,17 @@ def check_disk(folder: Path, size: int) -> None:
         )
 
 
-def convert_archive(archive: Path, split: str, out_dir: Path, scratch: Path) -> dict[str, Any]:
-    """One archive into ``out_dir/split/<name>/``; returns its summary, read back if done."""
+def convert_archive(
+    archive: Path, split: str, out_dir: Path, scratch: Path, commit: str = ""
+) -> dict[str, Any]:
+    """One archive into ``out_dir/split/<name>/``; returns its summary, read back if the
+    archive was converted at ``commit``."""
     name = archive.name.removesuffix(".tar.gz")
     done = out_dir / split / name
     if (done / SUMMARY).exists():
         summary: dict[str, Any] = json.loads((done / SUMMARY).read_text("utf-8"))
-        return summary
+        if summary.get("commit") == commit:
+            return summary
     shutil.rmtree(done, ignore_errors=True)
     partial = out_dir / ".partial" / name
     shutil.rmtree(partial, ignore_errors=True)
@@ -261,7 +275,13 @@ def convert_archive(archive: Path, split: str, out_dir: Path, scratch: Path) -> 
             members.append({"name": member.name, "bytes": member.size} | c)
     if not members:
         raise ConversionError(f"{archive.name}: no Parquet member")
-    summary = {"archive": archive.name, "split": split, "members": members, "skipped": skipped}
+    summary = {
+        "archive": archive.name,
+        "split": split,
+        "commit": commit,
+        "members": members,
+        "skipped": skipped,
+    }
     summary |= combine(
         [{k: v for k, v in m.items() if k not in ("name", "bytes")} for m in members]
     )
@@ -276,19 +296,26 @@ def convert(
     out_dir: Path,
     rows: Mapping[str, int] = ROWS,
     archives: Mapping[str, Sequence[str]] = ARCHIVES,
+    commit: str = "",
 ) -> list[Path]:
     """Every archive, then the row counts of each split against the readme; the report is
-    written only if they match."""
+    written only if they match. ``commit`` is that of the conversion code; an archive converted
+    at another commit is converted again."""
     # A report left by an earlier run would vouch for files this run may not finish
     (out_dir / REPORT).unlink(missing_ok=True)
     report: dict[str, Any] = {}
     for split, names in archives.items():
         summaries = [
-            convert_archive(raw_dir / f"{n}.tar.gz", split, out_dir, raw_dir / "tmp") for n in names
+            convert_archive(raw_dir / f"{n}.tar.gz", split, out_dir, raw_dir / "tmp", commit)
+            for n in names
         ]
         total = combine(
             [
-                {k: s[k] for k in s if k not in ("archive", "split", "members", "skipped")}
+                {
+                    k: s[k]
+                    for k in s
+                    if k not in ("archive", "split", "commit", "members", "skipped")
+                }
                 for s in summaries
             ]
         )
@@ -296,7 +323,7 @@ def convert(
             raise ConversionError(
                 f"{split}: {total['rows']:,} rows, the readme gives {rows[split]:,}"
             )
-        report[split] = total | {"archives": summaries}
+        report[split] = total | {"commit": commit, "archives": summaries}
     for split in report:
         r = report[split]
         r["j_mean"] = r["j_sum"] / r["rows"]

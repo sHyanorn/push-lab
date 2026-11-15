@@ -173,6 +173,66 @@ def test_stops_on_a_letter_outside_a_to_l(tmp_path: Path) -> None:
     _stops(_archive(tmp_path, table), tmp_path / "out", "outside A to L")
 
 
+@pytest.mark.parametrize(
+    ("column", "value"), [("datetime", np.nan), ("n_days", np.nan), ("n_days", np.inf)]
+)
+def test_stops_on_a_nan_or_infinite_time(tmp_path: Path, column: str, value: float) -> None:
+    """Arrow does not count NaN as null, so the null checks of D070 let it through."""
+    table = _table()
+    if column == "datetime":
+        when = table["datetime"].to_numpy().copy()
+        when[0] = value
+        table = _replace(table, "datetime", pa.array(when))
+    else:
+        history: list[Any] = table["history"].to_pylist()
+        owner = next(i for i, h in enumerate(history) if h)
+        history[owner][0]["n_days"] = value
+        table = _replace(table, "history", pa.array(history, table.schema.field("history").type))
+    _stops(_archive(tmp_path, table), tmp_path / "out", "NaN or infinite")
+
+
+def test_stops_on_a_repeated_letter(tmp_path: Path) -> None:
+    """Two L's carry past the twelve bits of the eligible mask."""
+    table = _table()
+    eligible: list[Any] = table["eligible_templates"].to_pylist()
+    selected: list[Any] = table["selected_template"].to_pylist()
+    eligible[0], selected[0] = ["L", "L"], "L"
+    table = _replace(table, "eligible_templates", pa.array(eligible, table.schema.field(2).type))
+    table = _replace(table, "selected_template", pa.array(selected))
+    _stops(_archive(tmp_path, table), tmp_path / "out", "repeated letter")
+
+
+def test_an_archive_converted_by_other_code_is_converted_again(tmp_path: Path) -> None:
+    """A stored summary without the current commit, here one that records none, as earlier code
+    wrote them, and a count that a reconversion replaces."""
+    raw, out = tmp_path / "raw", tmp_path / "processed"
+    rows = fixtures.duolingo_raw(raw, 300)
+    _convert(raw, out, rows)
+    j_sum = json.loads((out / duolingo.REPORT).read_text("utf-8"))["train"]["j_sum"]
+    stored = out / "train" / "train-part-1" / duolingo.SUMMARY
+    summary = json.loads(stored.read_text("utf-8"))
+    summary.pop("commit", None)
+    stored.write_text(json.dumps(summary | {"j_sum": -1}), encoding="utf-8")
+    _convert(raw, out, rows)
+    report = json.loads((out / duolingo.REPORT).read_text("utf-8"))
+    assert report["train"]["j_sum"] == j_sum
+    assert report["train"]["archives"][0]["commit"] == report["train"]["commit"] == ""
+
+
+def test_a_finished_archive_is_reused_only_at_its_commit(tmp_path: Path) -> None:
+    raw, out = tmp_path / "raw", tmp_path / "processed"
+    rows = fixtures.duolingo_raw(raw, 300)
+    duolingo.convert(raw, out, rows, ONE_EACH, commit="a")
+    stored = out / "train" / "train-part-1" / duolingo.SUMMARY
+    summary = json.loads(stored.read_text("utf-8"))
+    stored.write_text(json.dumps(summary | {"j_sum": -1}), encoding="utf-8")
+    duolingo.convert(raw, out, rows, ONE_EACH, commit="a")
+    assert json.loads((out / duolingo.REPORT).read_text("utf-8"))["train"]["j_sum"] == -1
+    duolingo.convert(raw, out, rows, ONE_EACH, commit="b")
+    report = json.loads((out / duolingo.REPORT).read_text("utf-8"))
+    assert report["train"]["j_sum"] == summary["j_sum"] and report["train"]["commit"] == "b"
+
+
 def test_stops_on_a_row_count_other_than_the_readme(tmp_path: Path) -> None:
     raw, out = tmp_path / "raw", tmp_path / "out"
     rows = fixtures.duolingo_raw(raw, 300)

@@ -73,9 +73,10 @@ Entries are in the order they were made. Some entries up to D048 were corrected 
 | D067 | Duolingo study, pre-registered | Active |
 | D068 | Download requests carry a fixed User-Agent | Active |
 | D069 | Long-horizon OPE: readings and implementation | Active |
-| D070 | Duolingo study: download, conversion and implementation | Active |
+| D070 | Duolingo study: download, conversion and implementation | Amended by D073 |
 | D071 | Projected run times of the long-horizon and Duolingo studies | Active |
 | D072 | Conversion time of training part 1 and the revised projection | Active |
+| D073 | Duolingo conversion: NaN values, repeated letters and summaries from other code | Active |
 
 ## D001 Python only, static report
 - Date: 2026-11-08
@@ -698,6 +699,7 @@ Entries are in the order they were made. Some entries up to D048 were corrected 
 - Random streams (D059): the outcome-model sample from `stream(10, 0, file, row group)` and the DM and DR sample from `stream(10, 1, file, row group)`, keyed by converted file and row group; synthetic Duolingo data from purpose 11
 - The inconclusive flag of 14.1 compares the conservative intervals of IPS and SNIPS on all test rounds with those of DM and DR on the 10% sample
 - DL3 scores and the prior strength m come from the template policies' own code (`ArmStats`, 13.4), fed with the sums of the training rounds
+- Status: Amended by D073 (conversion stops)
 
 ## D071 Projected run times of the long-horizon and Duolingo studies
 - Date: 2026-11-14
@@ -716,3 +718,9 @@ Entries are in the order they were made. Some entries up to D048 were corrected 
 - Disk: scaled by rows, the converted data take 8.9 GB. In the container of the timing, the run starts from an empty `data/processed/duolingo/` with 20.4 GB free, so about 11.5 GB stay free once all six are converted; a member of the largest archive, about 2.15 GB at the ratio of part 1, needs 9.3 GB free under the rule of D067
 - The converted part 1 was deleted after the timing, so the run converts all six archives
 - Command: a one-off script that calls the committed modules, not committed
+
+## D073 Duolingo conversion: NaN values, repeated letters and summaries from other code
+- Date: 2026-11-15
+- A NaN in `datetime` or in a history entry's days-before passed every stop of D067 and D070: it reached the converted file, was not counted outside [0, 30], made the argmax of a policy with the recency penalty pick its template, and a NaN time became the smallest int64 as a day. A NaN or an infinite value in either column now stops the conversion, as a null does (D070)
+- A repeated letter whose bits carried past the twelfth raised an IndexError in place of the stop D070 gives it; it now stops the conversion with that message
+- A finished archive's summary was reused by its name whatever code had converted it. Each summary now records the repository commit at which the archive was converted, which `prepare --only duolingo` takes as the analysis does, refusing uncommitted changes to `src`, `pyproject.toml` or `uv.lock`. An archive converted at another commit, or with none recorded, is converted again, so any new commit converts all six again. The conversion report records the commit per split

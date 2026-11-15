@@ -34,5 +34,5 @@ def code_commit(root: Path) -> str:
         ).stdout.strip()
 
     if git("status", "--porcelain", "--", "src", "pyproject.toml", "uv.lock"):
-        raise SystemExit("commit the code before running the sweep")
+        raise SystemExit("commit the code before running")
     return git("rev-parse", "HEAD")

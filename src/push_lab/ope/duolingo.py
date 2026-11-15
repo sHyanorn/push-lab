@@ -1027,7 +1027,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         with tempfile.TemporaryDirectory() as folder:
             raw, processed = Path(folder) / "raw", Path(folder) / "processed"
             rows = fixtures.duolingo_raw(raw, SMOKE_ROWS, row_group=10_000)
-            duolingo.convert(raw, processed, rows, {s: (f"{s}-part-1",) for s in rows})
+            duolingo.convert(
+                raw, processed, rows, {s: (f"{s}-part-1",) for s in rows}, commit=commit
+            )
             result = {"commit": commit} | run(processed, args.processes)
         target = args.root / paths.RESULTS / SMOKE / RESULTS_FILE
     else:

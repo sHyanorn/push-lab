@@ -7,6 +7,7 @@ from pathlib import Path
 
 from push_lab.data import duolingo, kuairand, obd, paths, uplift_trials
 from push_lab.data.sources import CRITEO_UPLIFT, HILLSTROM, KUAIRAND_PURE, OBD_FULL
+from push_lab.runtime import code_commit
 
 
 def _kuairand(root: Path) -> list[Path]:
@@ -38,7 +39,12 @@ def _obd_full(root: Path) -> list[Path]:
 
 
 def _duolingo(root: Path) -> list[Path]:
-    return duolingo.convert(paths.raw_dir(root, "duolingo"), paths.processed_dir(root, "duolingo"))
+    """Records the commit of the conversion code, so it refuses uncommitted code."""
+    return duolingo.convert(
+        paths.raw_dir(root, "duolingo"),
+        paths.processed_dir(root, "duolingo"),
+        commit=code_commit(root),
+    )
 
 
 PREPARERS: dict[str, Callable[[Path], list[Path]]] = {
