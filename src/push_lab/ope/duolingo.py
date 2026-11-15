@@ -155,11 +155,13 @@ class DayMoments:
         }
 
     def estimate(self, f: Callable[[FloatArray], float]) -> dict[str, Any]:
-        """f(mean z) with both 95% intervals (delta method, numerical gradient)."""
+        """f(mean z) with both 95% intervals (delta method, numerical gradient). The step is
+        relative to each mean, so the derivative of a ratio of small means keeps its accuracy
+        (D078)."""
         mu = self.mean()
         g = np.zeros(self.width)
         for i in range(self.width):
-            h = 1e-6 * max(1.0, abs(mu[i]))
+            h = 1e-6 * abs(mu[i]) if mu[i] else 1e-6
             up, down = mu.copy(), mu.copy()
             up[i] += h
             down[i] -= h

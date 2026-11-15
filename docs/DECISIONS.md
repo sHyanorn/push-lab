@@ -81,6 +81,7 @@ Entries are in the order they were made. Some entries up to D048 were corrected 
 | D075 | Duolingo study: training precedes test | Active |
 | D076 | DL2: a fit that does not converge is not read | Active |
 | D077 | DL2: templates never compared | Active |
+| D078 | Step of the numerical gradient in the delta method | Active |
 
 ## D001 Python only, static report
 - Date: 2026-11-08
@@ -750,3 +751,8 @@ Entries are in the order they were made. Some entries up to D048 were corrected 
 - Date: 2026-11-15
 - A template never eligible in the completed rounds with |A_t| > 1 does not enter the likelihood, so its c_a made the Hessian singular and the run failed after both passes. If that template is A, the other c_a are determined only up to a common shift: in a synthetic test the code then gave them standard errors of 27 to 48 in the paper's form and 0 for ten of the eleven in the curve, with no error
 - Such a template now has no c_a in either fit, as the curve leaves out empty bins, and the earliest letter that occurs takes c = 0, which is A whenever A occurs: a change to METHODS 15, which gives every template a c_a and sets c_A = 0. The results list the templates left out (`templates_left_out`)
+
+## D078 Step of the numerical gradient in the delta method
+- Date: 2026-11-15
+- The code computes the delta-method intervals of METHODS 15 with a gradient by central differences, with step 10⁻⁶ max(1, |μ_i|). For a ratio whose denominator is a mean near 10⁻⁶ that step is as large as the mean: the derivative in that mean was 33% too large at 2 × 10⁻⁶, infinite at 10⁻⁶ and of the wrong sign below, so the interval of a rare template's ratio could be wrong or NaN, which the logging check would not flag
+- The step is now 10⁻⁶ |μ_i| (10⁻⁶ when μ_i = 0), so the relative error of the derivative of a ratio no longer depends on the scale of the means. A test compares the standard errors of ratios, lifts and differences of ratios, at scales from 10⁻¹² to 10³, with those from the exact gradient: they agree to 10⁻⁷ in relative terms (at most 8.5 × 10⁻¹¹ when written), where the old step was off by up to 33%. For means near the mean reward of 0.13, the two steps give derivatives that differ by at most about 3 × 10⁻¹⁰ in relative terms

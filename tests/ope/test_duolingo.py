@@ -351,3 +351,40 @@ def test_dl2_leaves_out_a_template_never_eligible(absent: int) -> None:
     assert out["templates_left_out"] == [letter]
     gamma = out["paper_form"]["parameters"]["gamma"]["conservative"]
     assert gamma["ci_low"] <= 0.05 <= gamma["ci_high"]
+
+
+RATIOS: dict[str, tuple[Any, Any, int]] = {
+    "ratio": (lambda m: m[0] / m[1], lambda m: [1 / m[1], -m[0] / m[1] ** 2], 2),
+    "lift": (lambda m: m[1] / m[0] - 1, lambda m: [-m[1] / m[0] ** 2, 1 / m[0]], 2),
+    "difference of ratios": (
+        lambda m: m[0] / m[1] - m[2] / m[3],
+        lambda m: [1 / m[1], -m[0] / m[1] ** 2, -1 / m[3], m[2] / m[3] ** 2],
+        4,
+    ),
+}
+
+
+@pytest.mark.parametrize("scale", [1e-12, 1e-9, 2e-6, 1e-3, 0.13, 10.0, 1e3])
+@pytest.mark.parametrize("name", list(RATIOS))
+def test_delta_method_matches_the_exact_gradient_at_any_scale(name: str, scale: float) -> None:
+    """The ratios, lifts and differences of ratios of METHODS 15. With independent terms the
+    standard error moves with the gradient's error; a step of 1e-6 in absolute terms is as
+    large as a mean near 1e-6."""
+    f, exact, width = RATIOS[name]
+    rng = np.random.default_rng(11)
+    z = scale * rng.uniform(0.2, 5, width) * (1 + 0.1 * rng.normal(size=(5_000, width)))
+    m = _moments(z, rng.integers(0, 3, 5_000), np.zeros(5_000, dtype=np.int64))
+    se = m.estimate(lambda mu: float(f(mu)))["conservative"]["se"]
+    assert se == pytest.approx(
+        m.standard_errors(np.array(exact(m.mean())))["conservative"], rel=1e-7
+    )
+
+
+def test_delta_method_step_at_a_mean_of_zero() -> None:
+    """A mean of exactly 0 takes the step 1e-6, where a step relative to it would be 0."""
+    z = np.column_stack([np.repeat([1.0, -1.0], 2_000), np.linspace(0.5, 1.5, 4_000)])
+    m = _moments(z, np.zeros(4_000, dtype=np.int64), np.zeros(4_000, dtype=np.int64))
+    assert m.mean()[0] == 0.0
+    se = m.estimate(lambda mu: float(mu[0] / mu[1]))["conservative"]["se"]
+    exact = np.array([1 / m.mean()[1], 0.0])
+    assert se == pytest.approx(m.standard_errors(exact)["conservative"], rel=1e-7)
