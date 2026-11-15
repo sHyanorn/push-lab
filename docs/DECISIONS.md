@@ -78,6 +78,7 @@ Entries are in the order they were made. Some entries up to D048 were corrected 
 | D072 | Conversion time of training part 1 and the revised projection | Active |
 | D073 | Duolingo conversion: NaN values, repeated letters and summaries from other code | Active |
 | D074 | Stop lines of the long-horizon and Duolingo runs | Active |
+| D075 | Duolingo study: training precedes test | Active |
 
 ## D001 Python only, static report
 - Date: 2026-11-08
@@ -732,3 +733,9 @@ Entries are in the order they were made. Some entries up to D048 were corrected 
 - Long-horizon study: once the line passes, the run stops while it waits for a worker's result and terminates the workers. Per-log files already in `results/runs/ope_horizon/` stay; `results/ope_horizon.json` is not written. The summary after the last log is not checked
 - Duolingo study: each archive's conversion time is recorded in its summary and summed per split in the conversion report, and the conversion stops before each member and between row groups once the time of its archives passes the line. The analysis counts the conversion's time first, then stops while it waits for a worker's result, after the outcome model and at each evaluation of the likelihood gradient in the DL2 fits and their Hessians. The other steps after the test pass (joining the completed rounds, the logging check, DL1, the grid and DL3) take seconds and are not checked. A stopped analysis writes no results file. The conversion's time and commit are copied into the results under `conversion`
 - A stopped run exits with the time spent and the line, and is reported in an entry of its own
+
+## D075 Duolingo study: training precedes test
+- Date: 2026-11-15
+- METHODS 15 states that training and test days do not overlap, so that no cross-fitting is needed, and the logging check and DL2 group the rows of both splits by day number, which holds only if both splits share one clock. Nothing checked either
+- The analysis now stops before its first pass, writing nothing, unless the largest training `datetime` is at most the smallest test `datetime`, both from the conversion report. A test clock that restarts or interleaves with training stops it, and so does test data earlier than training, which would put later data into the scores and the outcome model
+- If the files split within a day, that day holds rows of both splits: the logging check and DL2 pool its rows as one day, which they are, and the scores and outcome model of DL1 and DL3 come from training rows only, none later than any test row. The ranges of both splits are in the results under `conversion`

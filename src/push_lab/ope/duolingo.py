@@ -949,9 +949,16 @@ def grid(moments: dict[str, DayMoments]) -> dict[str, Any]:
 
 def run(processed: Path, processes: int) -> dict[str, Any]:
     """Both passes and the results; stops at the line of D074, counting the conversion's
-    seconds first."""
+    seconds first. Day numbers group the rows of both splits and the outcome model is not
+    cross-fitted, so every training time must precede every test time (D075)."""
     start = time.perf_counter()
     report = json.loads((processed / duolingo.REPORT).read_text("utf-8"))
+    train, test = report["train"], report["test"]
+    if train["datetime_max"] > test["datetime_min"]:
+        raise ValueError(
+            f"training times {train['datetime_min']} to {train['datetime_max']} do not precede "
+            f"test times {test['datetime_min']} to {test['datetime_max']} (D075)"
+        )
     deadline = Deadline(
         duolingo.STOP_LINE_S, sum(report[split]["seconds"] for split in ("train", "test"))
     )

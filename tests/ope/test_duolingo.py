@@ -3,6 +3,7 @@ from pathlib import Path
 
 import lightgbm as lgb
 import numpy as np
+import pyarrow as pa
 import pytest
 
 from push_lab import runtime
@@ -289,3 +290,28 @@ def test_dl2_checks_the_line_at_each_likelihood_evaluation() -> None:
     c = _planted(np.random.default_rng(7), 20_000, 0.05, 7.0)
     with pytest.raises(runtime.RunStopped, match="fifth check"):
         dl.dl2(c, FifthCheck(60))
+
+
+@pytest.mark.parametrize("test_start", [2.5, 3.0])
+def test_the_analysis_stops_unless_training_precedes_test(
+    tmp_path: Path, test_start: float
+) -> None:
+    """Training ends at day 3. Test times from day 2.5 on overlap it, as a test clock that
+    restarted would, and day numbers would then mix the splits; a test split that starts at the
+    last training time is allowed."""
+    raw, processed = tmp_path / "raw", tmp_path / "processed"
+    rng = np.random.default_rng(8)
+    for split, days in (("train", (0.0, 3.0)), ("test", (test_start, 6.0))):
+        table = fixtures.duolingo_table(rng, 1_000, days)
+        when = table["datetime"].to_numpy().copy()
+        when[0] = days[1] if split == "train" else days[0]
+        table = table.set_column(0, table.schema.field(0), pa.array(when))
+        fixtures.duolingo_archive(raw / f"{split}-part-1.tar.gz", [table])
+    rows = {"train": 1_000, "test": 1_000}
+    conversion.convert(raw, processed, rows, {s: (f"{s}-part-1",) for s in rows})
+    if test_start < 3.0:
+        with pytest.raises(ValueError, match="do not precede test times"):
+            dl.run(processed, 1)
+    else:
+        ranges = dl.run(processed, 1)["conversion"]
+        assert ranges["train"]["datetime_max"] == ranges["test"]["datetime_min"] == 3.0
