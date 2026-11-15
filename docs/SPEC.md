@@ -178,7 +178,7 @@ Ranker and uplift scores are precomputed per user and day outside the slot loop;
 KuaiRand split rules:
 
 - Only `tab == 1` rows: `is_click` means a click in the two-column UI there and a valid play in the single-column UI, and 99% of random exposures are tab 1
-- Ranker and two-tower: train on standard logs from 2022-04-08 to 04-21; features frozen at 04-21
+- Ranker and two-tower: train on standard logs from 2022-04-09 to 04-21 (D025); features frozen at 04-21
 - Random exposures (04-22 to 05-08) split by user into two halves: one evaluates the rankers, the other fits the simulator response model
 
 No raw data or row-level samples are committed. CI runs on synthetic fixtures.
