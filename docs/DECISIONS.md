@@ -757,3 +757,13 @@ Entries are in the order they were made. Some entries up to D048 were corrected 
 - Date: 2026-11-15
 - The code computes the delta-method intervals of METHODS 15 with a gradient by central differences, with step 10⁻⁶ max(1, |μ_i|). For a ratio whose denominator is a mean near 10⁻⁶ that step is as large as the mean: the derivative in that mean was 33% too large at 2 × 10⁻⁶, infinite at 10⁻⁶ and of the wrong sign below, so the interval of a rare template's ratio could be wrong or NaN, which the logging check would not flag
 - The step is now 10⁻⁶ |μ_i| (10⁻⁶ when μ_i = 0), so the relative error of the derivative of a ratio no longer depends on the scale of the means. A test compares the standard errors of ratios, lifts and differences of ratios, at scales from 10⁻¹² to 10³, with those from the exact gradient: they agree to 10⁻⁷ in relative terms (at most 8.5 × 10⁻¹¹ when written), where the old step was off by up to 33%. For means near the mean reward of 0.13, the two steps give derivatives that differ by at most about 3 × 10⁻¹⁰ in relative terms
+
+## D079 Long-horizon OPE: the run
+- Date: 2026-11-15
+- Run as registered in D066 and D069, at commit 6e59194, in a container of 4 vCPU and 15.7 GiB RAM, with no other job of this project running and no restart. KuaiRand-Pure was downloaded and `sim.build` rerun first; `results/simulator.json` differed from the committed file only in its timings, which were not kept (as D032)
+- Time: 3,800.5 s against the projection of about 5,000 s (D071) and the stop line of 7,500 s (D074). The resident memory of all its processes, summed and sampled every 30 s, peaked at 3.1 GiB
+- Implementation check: all 12 bias intervals of PDIS-week and arm means contain 0 at level 1 − 0.05/12, so the results are read
+- Primary results, at the reference with S0, where the truth is $D_N = 0.0129$ and $D_{T2} = -0.0148$: on E1, SMIS reverses $D_N$ and is not validated for $D_{T2}$ (under-coverage), and FQE is not validated for $D_N$ (bias, under-coverage) and reverses $D_{T2}$; on E2, PDIS-week and SMIS-week are validated and do not separate for both, and FQE-week has the correct direction for both but is not validated (bias for both, under-coverage for $D_{T2}$); on E3, arm means are validated and do not separate for both, with separation 0.28 and 0.52. No design recovers the ordering, as METHODS 14.7 expected before the run
+- State reading: no estimator depends on knowing the simulator's memory, at the reference or at either fatigue half-life
+- Arm means: the half-width of the interval of $D_N$ and $D_{T2}$, projected to all 27,285 users, is about 0.007
+- Results in `results/ope_horizon.json`; per-log estimates and truth runs under `results/runs/ope_horizon/`, not committed
