@@ -1,8 +1,10 @@
+import time
 from typing import Any
 
 import numpy as np
 import pytest
 
+from push_lab import runtime
 from push_lab.ope import horizon as hz
 from push_lab.ope import simulator as sim_ope
 from push_lab.sim import env, world
@@ -411,3 +413,15 @@ def test_summary_of_every_setting() -> None:
     biased = hz.summarize(_fake_logs(seeds, 0.05), truths, seeds)
     assert not biased["implementation_check"]["passed"]
     assert biased["primary"]["E3"]["labels"]["arm_means"]["N"] == "not validated"
+
+
+def test_the_run_stops_at_its_line_while_it_waits(
+    tmp_path: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Workers without simulator inputs never deliver a result, so only a run that stops while
+    it waits for one ends, here at a line of 2 s."""
+    monkeypatch.setattr(hz, "STOP_LINE_S", 2.0)
+    start = time.perf_counter()
+    with pytest.raises(runtime.RunStopped):
+        hz.run(tmp_path, 1, logs=1, runs=tmp_path)
+    assert time.perf_counter() - start < 60

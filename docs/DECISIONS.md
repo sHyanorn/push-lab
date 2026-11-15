@@ -77,6 +77,7 @@ Entries are in the order they were made. Some entries up to D048 were corrected 
 | D071 | Projected run times of the long-horizon and Duolingo studies | Active |
 | D072 | Conversion time of training part 1 and the revised projection | Active |
 | D073 | Duolingo conversion: NaN values, repeated letters and summaries from other code | Active |
+| D074 | Stop lines of the long-horizon and Duolingo runs | Active |
 
 ## D001 Python only, static report
 - Date: 2026-11-08
@@ -724,3 +725,10 @@ Entries are in the order they were made. Some entries up to D048 were corrected 
 - A NaN in `datetime` or in a history entry's days-before passed every stop of D067 and D070: it reached the converted file, was not counted outside [0, 30], made the argmax of a policy with the recency penalty pick its template, and a NaN time became the smallest int64 as a day. A NaN or an infinite value in either column now stops the conversion, as a null does (D070)
 - A repeated letter whose bits carried past the twelfth raised an IndexError in place of the stop D070 gives it; it now stops the conversion with that message
 - A finished archive's summary was reused by its name whatever code had converted it. Each summary now records the repository commit at which the archive was converted, which `prepare --only duolingo` takes as the analysis does, refusing uncommitted changes to `src`, `pyproject.toml` or `uv.lock`. An archive converted at another commit, or with none recorded, is converted again, so any new commit converts all six again. The conversion report records the commit per split
+
+## D074 Stop lines of the long-horizon and Duolingo runs
+- Date: 2026-11-15
+- D066 and D067 stop a run that takes more than 1.5 times its projection, and D067 records measured times with the results. No code stopped a run, and the conversion's time was recorded nowhere; the analyses already wrote their own `timings_s`. The code takes the projections as D071 and D072 record them, about 5,000 s for the long-horizon study and about 6,900 s for the Duolingo conversion and analysis together, and stops at 1.5 times each in wall-clock time: 7,500 s and 10,350 s (D071: 125 minutes; D072: 172 minutes)
+- Long-horizon study: once the line passes, the run stops while it waits for a worker's result and terminates the workers. Per-log files already in `results/runs/ope_horizon/` stay; `results/ope_horizon.json` is not written. The summary after the last log is not checked
+- Duolingo study: each archive's conversion time is recorded in its summary and summed per split in the conversion report, and the conversion stops before each member and between row groups once the time of its archives passes the line. The analysis counts the conversion's time first, then stops while it waits for a worker's result, after the outcome model and at each evaluation of the likelihood gradient in the DL2 fits and their Hessians. The other steps after the test pass (joining the completed rounds, the logging check, DL1, the grid and DL3) take seconds and are not checked. A stopped analysis writes no results file. The conversion's time and commit are copied into the results under `conversion`
+- A stopped run exits with the time spent and the line, and is reported in an entry of its own

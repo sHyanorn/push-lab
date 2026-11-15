@@ -32,7 +32,7 @@ from scipy.stats import norm
 
 from push_lab.data import duolingo, fixtures, paths
 from push_lab.policy.templates import ArmStats
-from push_lab.runtime import code_commit, one_thread_per_process, write_json
+from push_lab.runtime import Deadline, code_commit, one_thread_per_process, write_json
 from push_lab.sim.world import DUOLINGO_STREAM, stream
 from push_lab.uplift import learners
 
@@ -526,8 +526,12 @@ class Model:
         s = np.column_stack([diff[:, 1:]] + [(diff * d).sum(axis=1) for d in derivatives])
         return loglik, s.sum(axis=0), s
 
-    def gradient(self, theta: FloatArray, c: Completed) -> tuple[float, FloatArray]:
-        """Mean log-likelihood and its gradient."""
+    def gradient(
+        self, theta: FloatArray, c: Completed, deadline: Deadline | None = None
+    ) -> tuple[float, FloatArray]:
+        """Mean log-likelihood and its gradient, after checking the stop line."""
+        if deadline is not None:
+            deadline.check()
         ll, g = 0.0, np.zeros(len(theta))
         for part in c.chunks():
             a, b, _ = self.chunk(theta, part)
@@ -584,10 +588,11 @@ class Curve(Model):
         return beta[k], [(k == b).astype(np.float64) for b in self.bins]
 
 
-def fit(model: Model, c: Completed) -> dict[str, Any]:
-    """Maximum likelihood (L-BFGS-B), with the intervals of ``intervals``."""
+def fit(model: Model, c: Completed, deadline: Deadline | None = None) -> dict[str, Any]:
+    """Maximum likelihood (L-BFGS-B), with the intervals of ``intervals``; stops at the line
+    of ``deadline`` at any evaluation of the likelihood."""
     result = minimize(
-        lambda t: tuple(-x for x in model.gradient(t, c)),
+        lambda t: tuple(-x for x in model.gradient(t, c, deadline)),
         model.start,
         jac=True,
         method="L-BFGS-B",
@@ -602,7 +607,7 @@ def fit(model: Model, c: Completed) -> dict[str, Any]:
         if (low is not None and abs(t - low) < 1e-6) or (high is not None and abs(t - high) < 1e-6)
     ]
     return {
-        "parameters": intervals(model, theta, c),
+        "parameters": intervals(model, theta, c, deadline),
         "rounds": len(c),
         "converged": bool(result.success),
         "message": str(result.message),
@@ -610,7 +615,9 @@ def fit(model: Model, c: Completed) -> dict[str, Any]:
     }
 
 
-def intervals(model: Model, theta: FloatArray, c: Completed) -> dict[str, Any]:
+def intervals(
+    model: Model, theta: FloatArray, c: Completed, deadline: Deadline | None = None
+) -> dict[str, Any]:
     """Each round's influence is -H^-1 s_t, H the mean Hessian by central differences of the
     gradient; intervals from the day-level standard errors of the influence. Where the model
     holds a parameter (``held``), each other parameter's standard error is the larger of the
@@ -624,7 +631,9 @@ def intervals(model: Model, theta: FloatArray, c: Completed) -> dict[str, Any]:
         up, down = theta.copy(), theta.copy()
         up[i] += h
         down[i] -= h
-        hessian[:, i] = (model.gradient(up, c)[1] - model.gradient(down, c)[1]) / (2 * h)
+        hessian[:, i] = (
+            model.gradient(up, c, deadline)[1] - model.gradient(down, c, deadline)[1]
+        ) / (2 * h)
     hessian = (hessian + hessian.T) / 2
     influence = -np.linalg.inv(hessian)
     free = [i for i, name in enumerate(model.names) if name not in model.held]
@@ -688,10 +697,10 @@ def read_half_life(fitted: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
-def dl2(c: Completed) -> dict[str, Any]:
+def dl2(c: Completed, deadline: Deadline | None = None) -> dict[str, Any]:
     """The paper's form with its readings, then the descriptive curve; the curve stops if a
     recency lies outside the bins (D070)."""
-    paper = fit(PaperForm(), c)
+    paper = fit(PaperForm(), c, deadline)
     out: dict[str, Any] = {
         "paper_form": paper,
         "gamma_reading": read_gamma(paper["parameters"]["gamma"]),
@@ -706,7 +715,7 @@ def dl2(c: Completed) -> dict[str, Any]:
         out["curve"] = {"stopped": f"{outside} eligible recencies outside [0, 30] days"}
         return out
     curve = Curve([b for b in range(len(EDGES)) if per_bin[b]])
-    fitted = fit(curve, c)
+    fitted = fit(curve, c, deadline)
     for name in curve.names:
         if name.startswith("beta"):
             p = fitted["parameters"][name]
@@ -939,8 +948,14 @@ def grid(moments: dict[str, DayMoments]) -> dict[str, Any]:
 
 
 def run(processed: Path, processes: int) -> dict[str, Any]:
+    """Both passes and the results; stops at the line of D074, counting the conversion's
+    seconds first."""
     start = time.perf_counter()
     report = json.loads((processed / duolingo.REPORT).read_text("utf-8"))
+    deadline = Deadline(
+        duolingo.STOP_LINE_S, sum(report[split]["seconds"] for split in ("train", "test"))
+    )
+    deadline.check()
     languages = sorted(set(report["train"]["languages"]) | set(report["test"]["languages"]))
 
     def jobs(split: str) -> list[Job]:
@@ -953,7 +968,7 @@ def run(processed: Path, processes: int) -> dict[str, Any]:
     timings: dict[str, float] = {}
     # Workers inherit the thread limits set before they start (main)
     with mp.get_context("spawn").Pool(processes) as pool:
-        trained = pool.map(train_job, jobs("train"))
+        trained = list(deadline.results(pool.imap(train_job, jobs("train"))))
         timings["train_pass_s"] = round(time.perf_counter() - start, 1)
         x = np.concatenate([t["x"] for t in trained])
         y = np.concatenate([t["y"] for t in trained])
@@ -965,8 +980,11 @@ def run(processed: Path, processes: int) -> dict[str, Any]:
         rd, m = shrunk_scores(template, rounds, rewards)
         scores = Scores(raw_scores(template), raw_scores(ui), rd)
         timings["fit_s"] = round(time.perf_counter() - start, 1)
+        deadline.check()
         text = model.model_to_string()
-        tested = pool.map(test_job, [(job, scores, text) for job in jobs("test")])
+        tested = list(
+            deadline.results(pool.imap(test_job, [(job, scores, text) for job in jobs("test")]))
+        )
         timings["test_pass_s"] = round(time.perf_counter() - start, 1)
     moments = _merge_moments([t["moments"] for t in tested])
     sample = _merge_moments([t["sample"] for t in tested])
@@ -983,6 +1001,8 @@ def run(processed: Path, processes: int) -> dict[str, Any]:
             split: {
                 k: report[split][k]
                 for k in (
+                    "commit",
+                    "seconds",
                     "datetime_min",
                     "datetime_max",
                     "j_mean",
@@ -1006,7 +1026,7 @@ def run(processed: Path, processes: int) -> dict[str, Any]:
             "rd": dict(zip(duolingo.TEMPLATES, scores.rd.tolist(), strict=True)),
         },
         "DL1": dl1(moments, sample),
-        "DL2": dl2(completed) | {"grid": grid(moments)},
+        "DL2": dl2(completed, deadline) | {"grid": grid(moments)},
         "DL3": dl3(moments, sample, m),
     }
     timings["total_s"] = round(time.perf_counter() - start, 1)

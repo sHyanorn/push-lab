@@ -25,7 +25,7 @@ from scipy.stats import t as student_t
 from push_lab.data import paths
 from push_lab.ope import estimators as est
 from push_lab.ope import simulator as sim
-from push_lab.runtime import code_commit, one_thread_per_process, write_json
+from push_lab.runtime import Deadline, code_commit, one_thread_per_process, write_json
 from push_lab.sim import env, world
 from push_lab.sim.env import Action, Observation
 from push_lab.sim.explore import EpsilonGreedy
@@ -99,6 +99,8 @@ SEPARATION = 0.8
 ALL_USERS = 27_285
 RESULTS_FILE = "ope_horizon.json"
 RUNS = Path("runs") / "ope_horizon"
+# Stop line: 1.5 times the 5,000 s projected in D071 (D066, D074)
+STOP_LINE_S = 1.5 * 5_000
 # Two log seeds per design, outputs apart from the registered runs (D050)
 SMOKE = Path("runs") / "smoke" / "ope_horizon"
 SMOKE_LOGS = 2
@@ -962,14 +964,19 @@ def _work(job: tuple[Any, ...]) -> tuple[tuple[Any, ...], Any]:
 
 
 def run(root: Path, processes: int, logs: int | None = None, runs: Path = RUNS) -> dict[str, Any]:
+    """Every log and truth run, then the summary; stops at the line of D074 while it waits for
+    a worker."""
     start = time.perf_counter()
+    deadline = Deadline(STOP_LINE_S)
     seeds = design_seeds(logs)
     folder = root / paths.RESULTS / runs
     work = jobs(seeds)
     results: dict[tuple[str, str, int], dict[str, Any]] = {}
     truth_runs: dict[str, dict[int, dict[str, float]]] = {s: {} for s in SETTINGS}
     with mp.get_context("spawn").Pool(processes, _init, (root,)) as pool:
-        for count, (job, result) in enumerate(pool.imap_unordered(_work, work), 1):
+        for count, (job, result) in enumerate(
+            deadline.results(pool.imap_unordered(_work, work)), 1
+        ):
             if job[0] == "truth":
                 truth_runs[job[1]][job[2]] = result
             else:

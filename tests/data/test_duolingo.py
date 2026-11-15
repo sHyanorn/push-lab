@@ -9,6 +9,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
+from push_lab import runtime
 from push_lab.data import duolingo, fixtures
 from push_lab.data.sources import DUOLINGO
 
@@ -261,3 +262,20 @@ def test_stops_before_a_member_that_would_fill_the_disk(
     with pytest.raises(duolingo.ConversionError, match="must remain"):
         _convert(raw, tmp_path / "out", {"train": 200, "test": 200})
     assert not list((tmp_path / "out").glob("*/*/part-*.parquet"))
+
+
+def test_the_conversion_records_its_time_and_stops_at_the_line(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    raw, out = tmp_path / "raw", tmp_path / "processed"
+    rows = fixtures.duolingo_raw(raw, 300)
+    _convert(raw, out, rows)
+    report = json.loads((out / duolingo.REPORT).read_text("utf-8"))
+    seconds = [a["seconds"] for split in ("train", "test") for a in report[split]["archives"]]
+    assert all(s >= 0 for s in seconds) and report["train"]["seconds"] == seconds[0]
+    monkeypatch.setattr(duolingo, "STOP_LINE_S", 0.0)
+    with pytest.raises(runtime.RunStopped):
+        _convert(raw, tmp_path / "again", rows)
+    assert not (tmp_path / "again" / duolingo.REPORT).exists()
+    # Stopped before the first member: no output file was opened
+    assert not list((tmp_path / "again").rglob("part-*.parquet"))

@@ -1,8 +1,13 @@
-"""Helpers shared by the command-line steps: result files, the code commit and threads."""
+"""Helpers shared by the command-line steps: result files, the code commit, threads and stop
+lines."""
 
 import json
+import multiprocessing as mp
 import os
 import subprocess
+import time
+from collections.abc import Iterator
+from multiprocessing.pool import IMapIterator
 from pathlib import Path
 from typing import Any
 
@@ -36,3 +41,39 @@ def code_commit(root: Path) -> str:
     if git("status", "--porcelain", "--", "src", "pyproject.toml", "uv.lock"):
         raise SystemExit("commit the code before running")
     return git("rev-parse", "HEAD")
+
+
+class RunStopped(Exception):
+    """A run passed its stop line (D066, D067, D074)."""
+
+
+class Deadline:
+    """A stop line in seconds of wall-clock time, of which ``spent`` went to earlier steps."""
+
+    def __init__(self, line: float, spent: float = 0.0) -> None:
+        self.line, self.spent = line, spent
+        self.start = time.perf_counter()
+
+    def elapsed(self) -> float:
+        return self.spent + time.perf_counter() - self.start
+
+    def _stopped(self) -> RunStopped:
+        return RunStopped(
+            f"stopped after {self.elapsed():,.0f} s at the stop line of {self.line:,.0f} s"
+        )
+
+    def check(self) -> None:
+        if self.elapsed() >= self.line:
+            raise self._stopped()
+
+    def results[T](self, items: IMapIterator[T]) -> Iterator[T]:
+        """The results of a pool's ``imap``, waiting only until the line, so that a run stops
+        while a worker is still busy."""
+        while True:
+            self.check()
+            try:
+                yield items.next(timeout=self.line - self.elapsed())
+            except StopIteration:
+                return
+            except mp.TimeoutError:
+                raise self._stopped() from None

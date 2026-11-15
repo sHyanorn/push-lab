@@ -5,6 +5,7 @@ import lightgbm as lgb
 import numpy as np
 import pytest
 
+from push_lab import runtime
 from push_lab.data import duolingo as conversion
 from push_lab.data import fixtures
 from push_lab.ope import duolingo as dl
@@ -256,3 +257,35 @@ def test_the_analysis_runs_on_a_converted_synthetic_archive(tmp_path: Path) -> N
     assert out["interpreted"] and out["DL1"]["answer"] in ("replicated", "differs")
     assert set(out["DL3"]) >= {"DL3a", "DL3b", "levels", "prior_strength"}
     assert len(out["DL2"]["grid"]) == 35 and "parameters" in out["DL2"]["curve"]
+
+
+def test_the_analysis_counts_the_conversion_time_toward_the_stop_line(tmp_path: Path) -> None:
+    """A conversion whose two splits took the whole line of D074 between them, 1.5 times
+    6,900 s, leaves the analysis no time: it stops before its first pass."""
+    raw, processed = tmp_path / "raw", tmp_path / "processed"
+    rows = fixtures.duolingo_raw(raw, 1_000)
+    conversion.convert(raw, processed, rows, {s: (f"{s}-part-1",) for s in rows})
+    path = processed / conversion.REPORT
+    report = json.loads(path.read_text("utf-8"))
+    halves = {split: report[split] | {"seconds": 10_350 / 2} for split in ("train", "test")}
+    path.write_text(json.dumps(report | halves), "utf-8")
+    with pytest.raises(Exception, match="at the stop line of 10,350 s") as stopped:
+        dl.run(processed, 1)
+    assert isinstance(stopped.value, runtime.RunStopped)
+
+
+def test_dl2_checks_the_line_at_each_likelihood_evaluation() -> None:
+    """A line that passes at the fifth check stops the first fit within its iterations, which a
+    single check before fitting would not."""
+
+    class FifthCheck(runtime.Deadline):
+        checks = 0
+
+        def check(self) -> None:
+            self.checks += 1
+            if self.checks == 5:
+                raise runtime.RunStopped("fifth check")
+
+    c = _planted(np.random.default_rng(7), 20_000, 0.05, 7.0)
+    with pytest.raises(runtime.RunStopped, match="fifth check"):
+        dl.dl2(c, FifthCheck(60))

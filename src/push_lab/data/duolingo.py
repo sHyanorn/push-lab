@@ -14,6 +14,7 @@ import json
 import os
 import shutil
 import tarfile
+import time
 from collections.abc import Mapping, Sequence
 from pathlib import Path, PurePosixPath
 from typing import Any, cast
@@ -23,6 +24,8 @@ import numpy.typing as npt
 import pyarrow as pa
 import pyarrow.compute as pc
 import pyarrow.parquet as pq
+
+from push_lab.runtime import Deadline
 
 IntArray = npt.NDArray[np.int64]
 
@@ -67,6 +70,8 @@ POPCOUNT = np.array([bin(i).count("1") for i in range(1 << len(TEMPLATES))])
 FREE_MARGIN = 5 * 10**9
 CHUNK = 1 << 20
 SUMMARY = "summary.json"
+# Stop line of the conversion and the analysis together: 1.5 times the 6,900 s of D072 (D074)
+STOP_LINE_S = 1.5 * 6_900
 REPORT = "conversion.json"
 
 
@@ -191,8 +196,10 @@ def combine(counts: list[dict[str, Any]]) -> dict[str, Any]:
     return out
 
 
-def convert_member(source: Path, target: Path) -> dict[str, Any]:
-    """A Parquet member, row group by row group, after checking its schema and row count."""
+def convert_member(source: Path, target: Path, deadline: Deadline | None = None) -> dict[str, Any]:
+    """A Parquet member, row group by row group, after checking its schema and row count;
+    stops between row groups at the line of ``deadline``, which ``convert_archive`` also
+    checks before each member."""
     # Closed before the caller deletes the member, which Windows refuses for an open file
     with pq.ParquetFile(source) as file:
         if not file.schema_arrow.equals(SCHEMA, check_metadata=False):
@@ -203,6 +210,8 @@ def convert_member(source: Path, target: Path) -> dict[str, Any]:
                 table, c = convert_table(file.read_row_group(i))
                 writer.write_table(table, row_group_size=max(1, table.num_rows))
                 counts.append(c)
+                if deadline is not None:
+                    deadline.check()
         rows = file.metadata.num_rows
         out = combine(counts) | {"row_groups": file.num_row_groups}
     if out.get("rows", 0) != rows:
@@ -240,16 +249,22 @@ def check_disk(folder: Path, size: int) -> None:
 
 
 def convert_archive(
-    archive: Path, split: str, out_dir: Path, scratch: Path, commit: str = ""
+    archive: Path,
+    split: str,
+    out_dir: Path,
+    scratch: Path,
+    commit: str = "",
+    deadline: Deadline | None = None,
 ) -> dict[str, Any]:
-    """One archive into ``out_dir/split/<name>/``; returns its summary, read back if the
-    archive was converted at ``commit``."""
+    """One archive into ``out_dir/split/<name>/``; returns its summary, with the seconds its
+    conversion took, read back if the archive was converted at ``commit``."""
     name = archive.name.removesuffix(".tar.gz")
     done = out_dir / split / name
     if (done / SUMMARY).exists():
         summary: dict[str, Any] = json.loads((done / SUMMARY).read_text("utf-8"))
         if summary.get("commit") == commit:
             return summary
+    start = time.perf_counter()
     shutil.rmtree(done, ignore_errors=True)
     partial = out_dir / ".partial" / name
     shutil.rmtree(partial, ignore_errors=True)
@@ -262,6 +277,8 @@ def convert_archive(
             if member_kind(member, scratch) == "skip":
                 skipped.append(member.name)
                 continue
+            if deadline is not None:
+                deadline.check()
             check_disk(scratch, member.size)
             temp = scratch / f"{name}.member.parquet"
             source = tar.extractfile(member)
@@ -269,7 +286,7 @@ def convert_archive(
             with temp.open("wb") as f:
                 shutil.copyfileobj(source, f, CHUNK)
             try:
-                c = convert_member(temp, partial / f"part-{len(members):03d}.parquet")
+                c = convert_member(temp, partial / f"part-{len(members):03d}.parquet", deadline)
             finally:
                 temp.unlink()
             members.append({"name": member.name, "bytes": member.size} | c)
@@ -285,6 +302,7 @@ def convert_archive(
     summary |= combine(
         [{k: v for k, v in m.items() if k not in ("name", "bytes")} for m in members]
     )
+    summary["seconds"] = round(time.perf_counter() - start, 1)
     (partial / SUMMARY).write_text(json.dumps(summary, indent=1) + "\n", encoding="utf-8")
     done.parent.mkdir(parents=True, exist_ok=True)
     os.replace(partial, done)
@@ -300,15 +318,21 @@ def convert(
 ) -> list[Path]:
     """Every archive, then the row counts of each split against the readme; the report is
     written only if they match. ``commit`` is that of the conversion code; an archive converted
-    at another commit is converted again."""
+    at another commit is converted again. The conversion stops once its archives' seconds pass
+    the stop line, and the analysis counts them toward the same line (D074)."""
     # A report left by an earlier run would vouch for files this run may not finish
     (out_dir / REPORT).unlink(missing_ok=True)
     report: dict[str, Any] = {}
+    spent = 0.0
     for split, names in archives.items():
-        summaries = [
-            convert_archive(raw_dir / f"{n}.tar.gz", split, out_dir, raw_dir / "tmp", commit)
-            for n in names
-        ]
+        summaries = []
+        for n in names:
+            deadline = Deadline(STOP_LINE_S, spent)
+            s = convert_archive(
+                raw_dir / f"{n}.tar.gz", split, out_dir, raw_dir / "tmp", commit, deadline
+            )
+            spent += s["seconds"]
+            summaries.append(s)
         total = combine(
             [
                 {
