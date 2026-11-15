@@ -6,19 +6,22 @@ in ``text.py``.
 """
 
 import json
+from collections import Counter
 from collections.abc import Iterable, Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
 from push_lab.data import paths
 from push_lab.report import svg, text
-from push_lab.report.evidence import ClaimEntry
+from push_lab.report.evidence import HORIZON_DESIGNS, ClaimEntry
 from push_lab.report.svg import MINUS, num
 
 FILES = (
     *("evidence", "policy", "policy_design", "templates", "ope_carryover", "copy"),
     "ope_obd_blocks",
     "cited",
+    "duolingo",
+    "ope_horizon",
 )
 OBD_ESTIMATORS = ("DM", "IPS", "SNIPS", "DR")
 
@@ -127,6 +130,9 @@ def check_readings(results: dict[str, Any]) -> None:
     for key, label in labels.items():
         if c[key]["label"] != label:
             raise ValueError(f"{key} is now labeled {c[key]['label']!r}")
+    # The README states that the gate beats a daily push on average, yet not in most settings
+    if c["H3"]["label"] != "depends on the setting" or c["H3"]["ci_low"] <= 0:
+        raise ValueError("H3 is no longer positive on average and setting-dependent")
     if c["B2"]["holm_rejected"] or not c["B2"]["ci_low"] < 0 < c["B2"]["ci_high"]:
         raise ValueError("B2 is no longer undetectable")
     if c["C2"]["ci_high"] >= 0 or c["U4"]["ci_high"] >= 0:
@@ -178,6 +184,120 @@ def check_readings(results: dict[str, Any]) -> None:
     for name in ("fatigue_elasticity", "opt_out", "return_boost", "novelty"):
         if any(carry[name][k]["result"] == "flip" for k in carry[name] if k != "values"):
             raise ValueError(f"the OPE bias now flips along {name}")
+    check_duolingo(results["duolingo"])
+    check_horizon(results["ope_horizon"])
+
+
+# The readings of the Duolingo study that the prose states in words (D080)
+DUOLINGO_READINGS = {
+    ("logging_check", "uniform"): True,
+    ("interpreted",): True,
+    ("DL1", "answer"): "replicated",
+    ("DL2", "paper_form", "converged"): True,
+    ("DL2", "gamma_reading"): "consistent with these data",
+    ("DL2", "half_life", "reading"): "h not determined",
+    ("DL3", "DL3a", "IPS", "label"): "RD better",
+    ("DL3", "DL3b", "IPS", "label"): "no detectable difference",
+}
+
+
+def check_duolingo(data: dict[str, Any]) -> None:
+    for path, expected in DUOLINGO_READINGS.items():
+        found: Any = data
+        for key in path:
+            found = found[key]
+        if found != expected:
+            raise ValueError(f"Duolingo {'.'.join(path)} is now {found!r}")
+    if recent_change(data)["conservative"]["ci_high"] >= 0:
+        raise ValueError("Duolingo: a recent showing no longer lowers completion")
+
+
+# The primary labels of the long-horizon study as the prose describes them (D079)
+HORIZON_LABELS = {
+    ("E1", "SMIS", "N"): "reverses",
+    ("E1", "FQE", "T2"): "reverses",
+    **{
+        ("E2", name, target): "validated, does not separate"
+        for name in ("PDIS_week", "SMIS_week")
+        for target in ("N", "T2")
+    },
+    ("E2", "FQE_week", "N"): "not validated",
+    ("E2", "FQE_week", "T2"): "not validated",
+    ("E3", "arm_means", "N"): "validated, does not separate",
+    ("E3", "arm_means", "T2"): "validated, does not separate",
+}
+
+
+def check_horizon(data: dict[str, Any]) -> None:
+    if not data["implementation_check"]["passed"]:
+        raise ValueError("the long-horizon implementation check no longer passes")
+    for (design, name, target), label in HORIZON_LABELS.items():
+        if data["primary"][design]["labels"][name][target] != label:
+            raise ValueError(f"long-horizon {design} {name} {target} is no longer {label!r}")
+    reference = data["settings"]["reference"]["designs"]
+    for target in ("N", "T2"):
+        if "bias" not in reference["E2"]["FQE_week|S0"][target]["reasons"]:
+            raise ValueError(f"FQE-week is no longer biased for {target}")
+    if not arms_recover(data):
+        raise ValueError("arm means no longer recover both orderings at any setting")
+    if smis_reversals(data) != len(annoyed(data)):
+        raise ValueError("SMIS no longer reverses at every setting with annoyance")
+    methods = {name: s["truth"]["method"] for name, s in data["settings"].items()}
+    runs = f"{data['truth_runs']} paired online runs"
+    if methods.pop("control") != "exact" or set(methods.values()) != {runs}:
+        raise ValueError(f"the truth is now computed otherwise: {methods}")
+    if any(data["settings"][s]["truth"]["D"]["N"]["value"] <= 0 for s in annoyed(data)):
+        raise ValueError("no pushes no longer beat one a day wherever pushes annoy users")
+
+
+def annoyed(data: dict[str, Any]) -> list[str]:
+    """Settings of the long-horizon study where pushes annoy users."""
+    return [name for name, s in data["settings"].items() if s["params"]["annoyance"] > 0]
+
+
+def smis_reversals(data: dict[str, Any]) -> int:
+    """Settings where pushes annoy users at which SMIS on the current logs reverses no pushes
+    minus one a day."""
+    settings = data["settings"]
+    return sum(
+        settings[s]["designs"]["E1"]["SMIS|S0"]["N"]["label"] == "reverses" for s in annoyed(data)
+    )
+
+
+def arms_recover(data: dict[str, Any]) -> list[str]:
+    """Settings where arm means recover the ordering of both primary differences."""
+    return [
+        name
+        for name, s in data["settings"].items()
+        if all(
+            s["designs"]["E3"]["arm_means"][x]["label"] == "recovers the ordering"
+            for x in ("N", "T2")
+        )
+    ]
+
+
+def setting_name(data: dict[str, Any], name: str, article: bool = True) -> str:
+    """A setting of the long-horizon study by the parameter it changes from the reference."""
+    if name in ("reference", "control"):
+        return f"the {name}" if article else name
+    reference = data["settings"]["reference"]["params"]
+    (key,) = (k for k, v in data["settings"][name]["params"].items() if v != reference[k])
+    value = short(data["settings"][name]["params"][key])
+    if key == "annoyance":
+        return f"an annoyance of {value}" if article else f"annoyance {value}"
+    words = key.replace("_", " ").replace("half life", "half-life")
+    return f"a {words} of {value} days" if article else f"{words} {value}"
+
+
+def recent_change(data: dict[str, Any]) -> dict[str, Any]:
+    """The relative change in completion of the most recent recency bin of the DL2 curve."""
+    bins = [k for k in data["DL2"]["curve"]["parameters"] if k.startswith("beta")]
+    return dict(data["DL2"]["curve"]["parameters"][bins[0]]["relative change"])
+
+
+def conservative(found: Mapping[str, Any]) -> dict[str, float]:
+    """An estimate with the conservative interval of METHODS 15."""
+    return {"value": found["value"], **found["conservative"]}
 
 
 # Facts: every number the prose uses -------------------------------------------------------
@@ -212,7 +332,7 @@ def facts(results: dict[str, Any]) -> dict[str, str]:
     n_above_af = above(results, "annoyance_free", "active_week4", "N", "F")
     reference = reference_setting(results)
     ref = reference["policies"]
-    return {
+    return study_facts(results) | {
         "no_tier_b": results["evidence"]["note"],
         "crossing_note": text.CROSSING_NOTE,
         "h2_note": text.H2_NOTE,
@@ -255,6 +375,7 @@ def facts(results: dict[str, Any]) -> dict[str, str]:
         "band_above": str(band["main_sweep_counts"]["above"]),
         "band_straddling": str(band["main_sweep_counts"]["straddling"]),
         "h3_wins": str(c["H3"]["wins"]),
+        "h3_average": sweep_average(c["H3"]),
         "h3_af_wins": "none" if c["H3-af"]["wins"] == 0 else str(c["H3-af"]["wins"]),
         "h3_flip": crossing(policy["flips"]["annoyance"]["H3"], 3),
         "obd_ips": interval(c["OBD-ratio-IPS"], 3),
@@ -284,6 +405,49 @@ def facts(results: dict[str, Any]) -> dict[str, str]:
         "other_clear": str(rating["passed_not_kept"]["clear_yes"]),
         "other_fits": str(rating["passed_not_kept"]["fits_yes"]),
         "other_misleading": str(rating["passed_not_kept"]["misleading_yes"]),
+    }
+
+
+def study_facts(results: dict[str, Any]) -> dict[str, str]:
+    """The values of the Duolingo and long-horizon prose."""
+    duo, hz = results["duolingo"], results["ope_horizon"]
+    rows = duo["DL1"]["rows"]
+    replicated = sum(r["label"] == "replicated" for r in rows.values())
+    recent = recent_change(duo)
+    lowered = {
+        "value": -recent["value"],
+        "ci_low": -recent["conservative"]["ci_high"],
+        "ci_high": -recent["conservative"]["ci_low"],
+    }
+    bins = [k for k in duo["DL2"]["curve"]["parameters"] if k.startswith("beta")]
+    truth = hz["settings"]["reference"]["truth"]["D"]
+    logs = {s: len(v["E1"]) for s, v in hz["log_seeds"].items()}
+    projection = hz["arm_mean_projection"]
+    return {
+        # The gain follows "by", which gives its sign
+        "dl3a": interval(conservative(duo["DL3"]["DL3a"]["IPS"]), 5),
+        "dl3b": interval(conservative(duo["DL3"]["DL3b"]["IPS"]), 5, signed=True),
+        "dl1_replicated": f"{replicated} of {len(rows)}",
+        "dl_rows": f"{sum(duo['rows'].values()):,}",
+        "dl_days": str(len(duo["j_mean_by_day"])),
+        "dl_test_rows": f"{duo['rows']['test']:,}",
+        "dl_test_days": str(duo["DL3"]["DL3a"]["IPS"]["days"]),
+        "dl_mean_reward": num(duo["DL1"]["mean_test_reward"], 5),
+        "dl_gamma": interval(conservative(duo["DL2"]["paper_form"]["parameters"]["gamma"]), 4),
+        "dl_h": interval(conservative(duo["DL2"]["half_life"]), 1),
+        "dl_recent_days": bins[0].split(", ")[1].rstrip("])"),
+        "dl_recent": pct_interval(lowered, 1),
+        "hz_settings": str(len(hz["settings"])),
+        "hz_logs_ref": str(logs.pop("reference")),
+        "hz_logs": same(str(n) for n in logs.values()),
+        "hz_users": f"{hz['users']:,}",
+        "hz_all_users": f"{projection['all_users']:,}",
+        "hz_truth_runs": str(hz["truth_runs"]),
+        "hz_truth_n": interval(truth["N"], 4, signed=True),
+        "hz_truth_t2": interval(truth["T2"], 4, signed=True),
+        "hz_e1_reversed": f"{smis_reversals(hz)} of the {len(hz['settings'])}",
+        "hz_arm_recovers": " and ".join(setting_name(hz, s) for s in arms_recover(hz)),
+        "hz_projected": same(num(projection[x]["projected"], 3) for x in ("N", "T_half", "T2")),
     }
 
 
@@ -374,6 +538,10 @@ def matrix_detail(claim: ClaimEntry) -> str:
         parts.append(f"reversed at {claim['reversed_settings']} settings")
     if "post_hoc_empirical_target" in claim:
         parts.append(f"post hoc {auto_interval(claim['post_hoc_empirical_target'])}")
+    if "setting_labels" in claim:
+        counts = Counter(claim["setting_labels"].values())
+        shown = ", ".join(f"{label} {n}" for label, n in counts.most_common())
+        parts.append(f"labels at the {len(claim['setting_labels'])} settings: {shown}")
     if claim["id"] in ("H2", "H2-af"):
         parts.append(text.H2_NOTE)
     if claim["id"] in ("B1", "B2"):
@@ -412,6 +580,83 @@ def tier_rows(results: dict[str, Any]) -> list[list[str]]:
 
 
 TIER_HEAD = ("Tier", "Evidence", "Can support", "Cannot support", "Claims")
+
+
+DL1_HEAD = ("Policy", "IPS lift", "Paper's lift", "Label")
+DL3_HEAD = ("Comparison", "IPS", "SNIPS", "DR", "Label")
+DL_CURVE_HEAD = ("Last sent, days before", "Change in completion")
+
+
+def dl1_rows(results: dict[str, Any]) -> list[list[str]]:
+    """Each DL1 policy's IPS lift over the mean test reward against the paper's."""
+    return [
+        [
+            name,
+            pct_interval(conservative(row["lift"]), 2),
+            num(row["paper_lift"] * 100, 2) + "%",
+            row["label"],
+        ]
+        for name, row in results["duolingo"]["DL1"]["rows"].items()
+    ]
+
+
+def dl3_rows(results: dict[str, Any]) -> list[list[str]]:
+    rows = []
+    for key in ("DL3a", "DL3b"):
+        found = results["duolingo"]["DL3"][key]
+        name = f"{key}: {found['comparison'].replace(' - ', ' minus ')}"
+        cells = [interval(conservative(found[e]), 5, signed=True) for e in ("IPS", "SNIPS", "DR")]
+        rows.append([name, *cells, found["IPS"]["label"]])
+    return rows
+
+
+def dl_curve_rows(results: dict[str, Any]) -> list[list[str]]:
+    """Relative change in completion per recency bin, against a template not in the history."""
+    parameters = results["duolingo"]["DL2"]["curve"]["parameters"]
+    return [
+        [key.removeprefix("beta "), pct_interval(conservative(entry["relative change"]), 1)]
+        for key, entry in parameters.items()
+        if key.startswith("beta")
+    ]
+
+
+HZ_HEAD = ("Design", "Estimator", "No pushes minus one a day", "Two a day minus one")
+HZ_CODE = {
+    "reverses": "R",
+    "recovers the ordering": "O",
+    "validated, does not separate": "V",
+    "not validated": "X",
+}
+
+
+def horizon_claims(results: dict[str, Any]) -> list[ClaimEntry]:
+    return [c for c in results["evidence"]["claims"] if c["id"].startswith("HZ-")]
+
+
+def horizon_rows(results: dict[str, Any]) -> list[list[str]]:
+    """The primary labels at the reference, each with its mean estimate over logs."""
+    rows: dict[tuple[str, str], list[str]] = {}
+    for claim in horizon_claims(results):
+        _, design, name, _ = claim["id"].split("-")
+        cell = f"{claim['label']}; {interval(claim, 4, signed=True)}"
+        rows.setdefault((design, name), []).append(cell)
+    return [
+        [f"{d}, {HORIZON_DESIGNS[d][0]}", n.replace("_week", "-week").replace("_", " "), *v]
+        for (d, n), v in rows.items()
+    ]
+
+
+def horizon_setting_head(results: dict[str, Any]) -> tuple[str, ...]:
+    hz = results["ope_horizon"]
+    return ("Id", *(setting_name(hz, s, article=False) for s in hz["settings"]))
+
+
+def horizon_setting_rows(results: dict[str, Any]) -> list[list[str]]:
+    """The label code of each primary estimator and difference at every setting."""
+    return [
+        [claim["id"], *(HZ_CODE[label] for label in claim["setting_labels"].values())]
+        for claim in horizon_claims(results)
+    ]
 
 
 # Chart series -----------------------------------------------------------------------------

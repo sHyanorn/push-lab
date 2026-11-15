@@ -110,6 +110,42 @@ def finding_one(results: dict[str, Any], values: dict[str, str]) -> str:
             facts.ORDERING_CAPTION, xs, ordering, "Annoyance", "Difference", text.POST_HOC
         )
         + shows_limits(text.F1_SHOWS, text.F1_LIMITS, values)
+        + horizon(results, values)
+        + "</section>"
+    )
+
+
+def horizon(results: dict[str, Any], values: dict[str, str]) -> str:
+    """The long-horizon study: primary labels at the reference and the label at every setting."""
+    settings = table(
+        facts.horizon_setting_head(results), facts.horizon_setting_rows(results), nowrap=(0,)
+    )
+    return (
+        f"<h3>{escape(text.HZ_TITLE)}</h3>"
+        + paragraph(text.HZ_SCOPE, values, "scope")
+        + paragraph(text.HZ_BODY, values)
+        + table(facts.HZ_HEAD, facts.horizon_rows(results), nowrap=(0, 1))
+        + f"<details><summary>{text.HZ_SETTINGS}</summary>{settings}"
+        + paragraph(text.HZ_CODES, values, "scope")
+        + "</details>"
+        + f'<p><span class="tag">{text.DESCRIPTIVE}</span> '
+        + f"{escape(text.HZ_PROJECTION.format(**values))}</p>"
+        + shows_limits(text.HZ_SHOWS, text.HZ_LIMITS, values)
+    )
+
+
+def duolingo(results: dict[str, Any], values: dict[str, str]) -> str:
+    curve = table(facts.DL_CURVE_HEAD, facts.dl_curve_rows(results), nowrap=(0, 1))
+    return (
+        f'<section id="duolingo"><h2>{escape(text.DL_TITLE)}</h2>'
+        + paragraph(text.DL_SCOPE, values, "scope")
+        + paragraph(text.DL_REPLICATION, values)
+        + table(facts.DL1_HEAD, facts.dl1_rows(results), nowrap=(1, 2))
+        + paragraph(text.DL_RECENCY, values)
+        + f"<details><summary>{text.DL_CURVE}</summary>{curve}</details>"
+        + paragraph(text.DL_POLICIES, values)
+        + table(facts.DL3_HEAD, facts.dl3_rows(results), nowrap=(1, 2, 3))
+        + shows_limits(text.DL_SHOWS, text.DL_LIMITS, values)
         + "</section>"
     )
 
@@ -184,6 +220,7 @@ font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif}
 main{max-width:980px;margin:0 auto;padding:40px 16px 64px}
 h1{font-size:28px;margin:0 0 8px;letter-spacing:-.01em}
 h2{font-size:20px;margin:56px 0 8px;line-height:1.3}
+h3{font-size:17px;margin:40px 0 8px;line-height:1.3}
 p{margin:0 0 12px;max-width:72ch}
 a{color:var(--accent)}
 .lead{font-size:18px;color:var(--ink-2)}
@@ -234,6 +271,7 @@ def page(results: dict[str, Any], values: dict[str, str]) -> str:
     nav = "".join(
         f'<a href="#{a}">{escape(t)}</a>'
         for a, t in (
+            ("duolingo", "Notification logs"),
             ("ope", "Off-policy estimates"),
             ("policies", "Delivery policies"),
             ("real-data", "Real-data checks"),
@@ -253,10 +291,11 @@ def page(results: dict[str, Any], values: dict[str, str]) -> str:
     )
     body = (
         "<main><header><h1>push-lab</h1>"
-        f'<p class="lead">{escape(text.SUMMARY)}</p>'
+        + paragraph(text.SUMMARY, values, "lead")
         + paragraph(text.NO_TIER_B, values, "note")
         + f'<p class="reading-note">{escape(text.READING)}</p>'
         + f"<nav>{nav}</nav></header>"
+        + duolingo(results, values)
         + finding_one(results, values)
         + finding_two(results, values)
         + finding_three(results, values)
@@ -276,6 +315,6 @@ def page(results: dict[str, Any], values: dict[str, str]) -> str:
         '<!doctype html><html lang="en"><head><meta charset="utf-8">'
         '<meta name="viewport" content="width=device-width,initial-scale=1">'
         "<title>push-lab report</title>"
-        f'<meta name="description" content="{escape(text.SUMMARY)}">'
+        f'<meta name="description" content="{escape(text.DESCRIPTION)}">'
         f"<style>{CSS}{svg.CHART_CSS}</style></head><body>{body}</body></html>\n"
     )

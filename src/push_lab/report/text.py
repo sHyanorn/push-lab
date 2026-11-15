@@ -4,10 +4,24 @@ Templates hold no numbers: every placeholder is filled from the results by ``fac
 and a test fails if a digit appears here outside identifiers and the interval level.
 """
 
-SUMMARY = (
+DESCRIPTION = (
     "An offline lab for push notification recommendation: recall, ranking, uplift gating, "
-    "send volume, timing and copy selection built on public data, with every result labeled "
+    "send volume, timing and template selection built on public data, with every result labeled "
     "by how far it can be trusted without live traffic."
+)
+# The summary at the top of the README and of the report
+SUMMARY = (
+    "An offline lab for push notification recommendation on public data, each result tiered by "
+    "how far it can be trusted without live traffic: A, randomized real data; B, a validated "
+    "off-policy estimate; C, simulator runs with a sensitivity sweep. Offline, on Duolingo's "
+    "randomized notification logs, the project's template bandit raises two-hour session "
+    "completion per notification by {dl3a} from {dl_mean_reward} under uniform choice, and its "
+    "recency penalty makes no detectable difference (Tier A, one notification given the logged "
+    "histories). In the simulator, the state-carrying estimator SMIS favors one push a day over "
+    "none on the exploration logs, the reverse of the truth, at "
+    "{hz_e1_reversed} settings, all those where pushes annoy users (Tier C). Volume, timing and "
+    "long-term effects are measured only in the simulator, which cannot give real-world effect "
+    "sizes."
 )
 
 READING = (
@@ -54,6 +68,92 @@ F1_SHOWS = (
 F1_LIMITS = (
     "The size or sign of annoyance in a real app, or how parameters interact: the sweep moves "
     "one parameter at a time."
+)
+
+# Long-horizon study, a subsection of finding 1
+HZ_TITLE = "Long-horizon estimators and logging designs"
+HZ_SCOPE = (
+    "Tier C, registered in D066 and D069, run in D079. {hz_settings} settings: the "
+    "no-carryover control, the reference and one-at-a-time changes of annoyance and the fatigue "
+    "half-life; {hz_logs_ref} logs per design at the reference and {hz_logs} elsewhere, each on "
+    "{hz_users} users, against exact values in the control and {hz_truth_runs} paired online "
+    "runs of each target elsewhere."
+)
+HZ_BODY = (
+    "At the reference the truth of no pushes minus one push a day is {hz_truth_n} in "
+    "active-day share, and of two a day minus one {hz_truth_t2}. No primary estimator recovers "
+    "both on any design. On the current exploration logs SMIS reverses the first and FQE the "
+    "second. With arms drawn each week, PDIS-week and SMIS-week are validated but too wide to "
+    "separate, and FQE-week is biased. In a four-arm test, arm means are validated and, on "
+    "{hz_users} users, too wide as well. Across the settings, SMIS on the current logs favors "
+    "one push a day over none, the reverse of the truth, at {hz_e1_reversed} settings, every "
+    "one in which pushes annoy users, and arm means recover both orderings only at "
+    "{hz_arm_recovers}."
+)
+HZ_PROJECTION = (
+    "Projected to all {hz_all_users} users, the half-width of an arm-mean interval would be "
+    "about {hz_projected}, below the size of both differences at the reference."
+)
+HZ_CODES = (
+    "R reverses, O recovers the ordering, V validated without separating, X not validated. "
+    "Away from the reference a label rests on {hz_logs} logs and reads the bias interval alone."
+)
+HZ_SETTINGS = "Labels at every setting"
+HZ_SHOWS = (
+    "Carrying a state across days does not rescue the current logs, which almost never follow "
+    "no pushes or two a day for a week. Where a design logs those volumes, importance weights "
+    "and arm means pass validation but are too wide at this sample size, and FQE-week is "
+    "biased, which points to a randomized test of volumes on more users."
+)
+HZ_LIMITS = (
+    "Real effect sizes. The study has one simulated world and {hz_users} users, moves one "
+    "parameter at a time, and reads its primary labels at the reference only."
+)
+
+# Duolingo notification logs
+DL_TITLE = (
+    "On real notification logs, a template bandit beats uniform choice and its recency penalty "
+    "adds nothing detectable"
+)
+DL_SCOPE = (
+    "Tier A, limited to the value of one notification under a template policy given the logged "
+    "histories (METHODS 15, D080). Duolingo practice reminders, published by Yancey and "
+    "Settles: {dl_rows} notifications over "
+    "{dl_days} days, each with its template drawn uniformly from the eligible ones. A user's "
+    "rows cannot be linked, so intervals are conservative across days."
+)
+DL_REPLICATION = (
+    "The logged choices pass the check for uniform selection. On the paper's split, the mean "
+    "test reward is {dl_mean_reward}, and the paper's offline lift lies inside the conservative "
+    "interval of the IPS lift for {dl1_replicated} policies (DL1)."
+)
+DL_RECENCY = (
+    "Within a round the eligible templates compete for the same user at the same moment, so "
+    "the round's own completion rate cancels (DL2). The recency weight of the paper's form is "
+    "{dl_gamma}, so the paper's weight is consistent with these data; its half-life, {dl_h} "
+    "days, is not determined. On the descriptive curve, a template last sent within "
+    "{dl_recent_days} days completes {dl_recent} less often than one not in the history."
+)
+DL_POLICIES = (
+    "With scores from the training days, the project's recovering difference softmax RD beats "
+    "uniform templates U by {dl3a} in two-hour completion per notification by IPS (DL3a), a "
+    "gain that is positive and below that of the paper's own softmax, as expected before the "
+    "run. RD minus D0, the same policy without its recency penalty, is {dl3b}: no detectable "
+    "difference (DL3b). IPS decides, as registered; SNIPS and DR are reported beside it."
+)
+DL_CURVE = "Recency curve"
+DL_SHOWS = (
+    "On real push logs, choosing among fixed templates by learned scores raises the completion "
+    "of one notification by a small, clearly detected amount, and the paper's offline results "
+    "hold under this project's estimators and intervals. A recently sent template completes "
+    "slightly less often, yet the penalty for it adds no detectable value."
+)
+DL_LIMITS = (
+    "A policy as deployed, whose choices would change later histories; volume fatigue, "
+    "long-term effects and push outside these logs. Within a day the intervals are "
+    "approximate. IPS on the uniform logs of OBD, the same kind of comparison, came out below "
+    "the deployed policy's click rate on the Men's campaign under the registered intervals "
+    "(real-data checks below)."
 )
 
 # Finding 2: delivery policies
@@ -158,7 +258,8 @@ TPL_LIMITS = (
     "The simulator never reads the text: copy effects are drawn per template, so nothing here "
     "says whether the generated copy is good or which wording works for real users."
 )
-RATING_TAG = "descriptive"
+DESCRIPTIVE = "descriptive"
+RATING_TAG = DESCRIPTIVE
 TPL_RATING = (
     "Rating of the generated copy by {rater} (METHODS 13.3), meant to be blind, though the "
     "rater may have seen the catalog first: of {kept_items} kept templates, {kept_clear} were "
@@ -239,12 +340,27 @@ README_FINDINGS_HEAD = ("#", "Finding", "Evidence")
 # (finding, evidence) per finding of the report, in its order
 README_FINDINGS = (
     (
+        "On Duolingo's randomized practice-reminder logs, the offline results of Yancey and "
+        "Settles replicate for {dl1_replicated} policies, a template sent within "
+        "{dl_recent_days} days completes {dl_recent} less often than one not in the logged "
+        "history, and the project's template "
+        "bandit (RD) beats uniform choice by {dl3a} in two-hour completion per notification, "
+        "while its recency penalty adds nothing detectable, at {dl3b}.",
+        "Tier A, one notification given the logged histories: policies scored on the "
+        "{dl_test_rows} notifications of {dl_test_days} test days; conservative intervals "
+        "across days",
+    ),
+    (
         "In the simulator, per-day doubly robust (DR) estimates favor more pushes when sending "
         "annoys users: their bias for half the volume changes sign at an annoyance of "
-        "{flip_thalf}.",
+        "{flip_thalf}. In a registered long-horizon study, no estimator recovers both volume "
+        "differences at the reference on any of three logging designs; SMIS, which carries a "
+        "state across days, favors one push a day over none on the project's exploration logs, "
+        "the reverse of the truth, at {hz_e1_reversed} settings, every one in which pushes annoy "
+        "users.",
         "Tier C: the registered reference run and a sweep of {ope_settings} settings on "
-        "{ope_grids} one-at-a-time grids, of which the annoyance grid runs from {ope_range} with "
-        "the other parameters at the reference",
+        "{ope_grids} one-at-a-time grids (annoyance {ope_range}); the long-horizon study at "
+        "{hz_settings} settings",
     ),
     (
         "In the simulator, on the one-at-a-time grid, whether a daily push pays turns on two "
@@ -263,20 +379,12 @@ README_FINDINGS = (
     ),
 )
 README_FINDINGS_NOTE = (
-    "The [report](" + REPORT_URL + ") gives each finding in full: its sweep, its post hoc "
-    "analyses, and what it shows and does not show."
+    "The story registered in the [specification](docs/SPEC.md) holds only in part. Its central "
+    "claim, that an uplift gate under a volume budget keeps more users active, does not hold as "
+    "stated in the simulator (Tier C): at half volume the gate beats a daily push by {h3_average} "
+    "active days per user on average, yet in only {h3_wins} of {main_settings} main "
+    "settings, losing in {h3_losses}, and per-setting verdicts understate fit noise. The "
+    "[report](" + REPORT_URL + ") "
+    "gives each finding in full, with its sweep, post hoc analyses and limits, and the outcome "
+    "of each item of the story."
 )
-# The outcome of each STORY item, in its order
-README_STORY = (
-    "Holds in the simulator, as a registered secondary result without a test: by point estimate "
-    "in {w1_t_above_g} of {main_settings} main settings",
-    "Partly, in the simulator: by point estimate in {w4_n_above_f} of {main_settings} main "
-    "settings and in {w4_n_above_f_af} of the {af_settings} without annoyance",
-    "Not as stated, in the simulator: at half volume the gate beats a daily push in {h3_wins} of "
-    "{main_settings} main settings and loses in {h3_losses}",
-    "Partly, in the simulator: flips are located for F-N and H3; every other crossing of H1 to H4 "
-    "is unresolved",
-    "Holds for the results in the evidence matrix, each Tier A or C; counts of the generated copy "
-    "and its rating are descriptive, and registered verdicts later overturned are kept as history",
-)
-README_STORY_NOTE = "The [report](" + REPORT_URL + ") gives each outcome with its numbers."

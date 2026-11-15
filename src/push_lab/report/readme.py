@@ -1,6 +1,7 @@
 """The generated blocks of ``README.md``, each between a pair of ``results`` markers (D049).
 
-The README gives one line per finding and per story item; the report page keeps the full text.
+The README gives the summary and one line per finding; the report page keeps the full text
+and the outcome of the registered story.
 """
 
 from collections.abc import Sequence
@@ -25,17 +26,10 @@ def blocks(results: dict[str, Any], values: dict[str, str]) -> dict[str, str]:
             for number, (finding, evidence) in enumerate(text.README_FINDINGS, start=1)
         ],
     )
-    story = md_table(
-        text.STORY_HEAD,
-        [
-            (item, outcome.format(**values))
-            for (item, _), outcome in zip(text.STORY, text.README_STORY, strict=True)
-        ],
-    )
     return {
+        "summary": text.SUMMARY.format(**values),
         "evidence": f"{tiers}\n\n{text.NO_TIER_B.format(**values)}",
-        "findings": f"{findings}\n\n{text.README_FINDINGS_NOTE}",
-        "story": f"{story}\n\n{text.README_STORY_NOTE}",
+        "findings": f"{findings}\n\n{text.README_FINDINGS_NOTE.format(**values)}",
     }
 
 

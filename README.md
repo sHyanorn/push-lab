@@ -2,7 +2,9 @@
 
 [![CI](https://github.com/sHyanorn/push-lab/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/sHyanorn/push-lab/actions/workflows/ci.yml?query=branch%3Amain)
 
-An offline lab for push notification recommendation: recall, ranking, uplift gating, send volume, timing and copy selection built on public data, with every result labeled by how far it can be trusted without live traffic. Results are tiered: A for randomized real data, B for an off-policy estimate from an estimator first validated against a known answer, C for simulator runs with a sensitivity sweep. No estimator passed that validation on the full Men's campaign of the Open Bandit Dataset, the only real logs here with two policies and known propensities, so the project has no Tier B result. Send volume, timing and copy are tested only in the simulator, which cannot give real-world effect sizes.
+<!-- results:summary -->
+An offline lab for push notification recommendation on public data, each result tiered by how far it can be trusted without live traffic: A, randomized real data; B, a validated off-policy estimate; C, simulator runs with a sensitivity sweep. Offline, on Duolingo's randomized notification logs, the project's template bandit raises two-hour session completion per notification by 0.00174 (0.00126 to 0.00221) from 0.12950 under uniform choice, and its recency penalty makes no detectable difference (Tier A, one notification given the logged histories). In the simulator, the state-carrying estimator SMIS favors one push a day over none on the exploration logs, the reverse of the truth, at 6 of the 8 settings, all those where pushes annoy users (Tier C). Volume, timing and long-term effects are measured only in the simulator, which cannot give real-world effect sizes.
+<!-- /results:summary -->
 
 [![Report](docs/report.png)](https://shyanorn.github.io/push-lab/)
 
@@ -13,11 +15,12 @@ The numbers below and the [report](https://shyanorn.github.io/push-lab/) are gen
 <!-- results:findings -->
 | # | Finding | Evidence |
 |---|---|---|
-| 1 | In the simulator, per-day doubly robust (DR) estimates favor more pushes when sending annoys users: their bias for half the volume changes sign at an annoyance of 0.0058 (0.0014 to 0.0106). | Tier C: the registered reference run and a sweep of 24 settings on 5 one-at-a-time grids, of which the annoyance grid runs from 0 to 0.1 with the other parameters at the reference |
-| 2 | In the simulator, on the one-at-a-time grid, whether a daily push pays turns on two parameters only, annoyance and the base rate; at the reference setting it changes the daily active share by −2.3% (−2.4% to −2.2%) against no pushes. | Tier C: 64 Latin hypercube settings, the same settings without annoyance, and a one-at-a-time grid |
-| 3 | On randomized real data, the fused fine ranker ranks random exposures worse than the two-tower score it refines (C2), the T-learner targets Criteo visits worse than a plain response model (U4), and on the full Men's campaign of the Open Bandit Dataset IPS estimates the BTS click rate at 0.891 (0.815 to 0.966) of its on-policy value and DR at 0.897 (0.824 to 0.975), so no estimator passed. | Tier A: KuaiRand random exposures, Hillstrom, Criteo and the Open Bandit Dataset |
+| 1 | On Duolingo's randomized practice-reminder logs, the offline results of Yancey and Settles replicate for 8 of 8 policies, a template sent within 1.5 days completes 1.4% (0.4% to 2.4%) less often than one not in the logged history, and the project's template bandit (RD) beats uniform choice by 0.00174 (0.00126 to 0.00221) in two-hour completion per notification, while its recency penalty adds nothing detectable, at +0.00029 (−0.00002 to 0.00061). | Tier A, one notification given the logged histories: policies scored on the 114,486,159 notifications of 18 test days; conservative intervals across days |
+| 2 | In the simulator, per-day doubly robust (DR) estimates favor more pushes when sending annoys users: their bias for half the volume changes sign at an annoyance of 0.0058 (0.0014 to 0.0106). In a registered long-horizon study, no estimator recovers both volume differences at the reference on any of three logging designs; SMIS, which carries a state across days, favors one push a day over none on the project's exploration logs, the reverse of the truth, at 6 of the 8 settings, every one in which pushes annoy users. | Tier C: the registered reference run and a sweep of 24 settings on 5 one-at-a-time grids (annoyance 0 to 0.1); the long-horizon study at 8 settings |
+| 3 | In the simulator, on the one-at-a-time grid, whether a daily push pays turns on two parameters only, annoyance and the base rate; at the reference setting it changes the daily active share by −2.3% (−2.4% to −2.2%) against no pushes. | Tier C: 64 Latin hypercube settings, the same settings without annoyance, and a one-at-a-time grid |
+| 4 | On randomized real data, the fused fine ranker ranks random exposures worse than the two-tower score it refines (C2), the T-learner targets Criteo visits worse than a plain response model (U4), and on the full Men's campaign of the Open Bandit Dataset IPS estimates the BTS click rate at 0.891 (0.815 to 0.966) of its on-policy value and DR at 0.897 (0.824 to 0.975), so no estimator passed. | Tier A: KuaiRand random exposures, Hillstrom, Criteo and the Open Bandit Dataset |
 
-The [report](https://shyanorn.github.io/push-lab/) gives each finding in full: its sweep, its post hoc analyses, and what it shows and does not show.
+The story registered in the [specification](docs/SPEC.md) holds only in part. Its central claim, that an uplift gate under a volume budget keeps more users active, does not hold as stated in the simulator (Tier C): at half volume the gate beats a daily push by +0.093 (0.052 to 0.136) active days per user on average, yet in only 43 of 64 main settings, losing in 19, and per-setting verdicts understate fit noise. The [report](https://shyanorn.github.io/push-lab/) gives each finding in full, with its sweep, post hoc analyses and limits, and the outcome of each item of the story.
 <!-- /results:findings -->
 
 <!-- results:evidence -->
@@ -30,25 +33,9 @@ The [report](https://shyanorn.github.io/push-lab/) gives each finding in full: i
 The project has no Tier B result: no estimator passed the check on the full Men's campaign of OBD, the only real logs with two policies and known propensities here.
 <!-- /results:evidence -->
 
-### The registered story
-
-[SPEC Section 3](docs/SPEC.md) states the story as a hypothesis registered before the simulations ran.
-
-<!-- results:story -->
-| Item | Outcome |
-|---|---|
-| Sending the top item to every user every day wins on clicks in week one | Holds in the simulator, as a registered secondary result without a test: by point estimate in 64 of 64 main settings |
-| It loses users to fatigue and opt-outs by week four | Partly, in the simulator: by point estimate in 45 of 64 main settings and in none of the 64 without annoyance |
-| An uplift gate under a volume budget, at each user's active slot, with a bandit choosing copy, sends fewer pushes and keeps more users active | Not as stated, in the simulator: at half volume the gate beats a daily push in 43 of 64 main settings and loses in 19 |
-| The conclusion holds across most plausible settings, and the report shows where it flips | Partly, in the simulator: flips are located for F-N and H3; every other crossing of H1 to H4 is unresolved |
-| Every number carries an evidence tier | Holds for the results in the evidence matrix, each Tier A or C; counts of the generated copy and its rating are descriptive, and registered verdicts later overturned are kept as history |
-
-The [report](https://shyanorn.github.io/push-lab/) gives each outcome with its numbers.
-<!-- /results:story -->
-
 ## How it works
 
-Ranking is evaluated on KuaiRand random exposures, and uplift models on Hillstrom and Criteo. A simulator built from KuaiRand tables runs delivery policies that differ in volume, gating, timing and copy, each over a sensitivity sweep. Copy templates are generated once, rated, and chosen by a bandit in the simulator. Off-policy estimators are checked against a known policy value on the Open Bandit Dataset, and in the simulator. A report step reads `results/*.json` and writes the report page and the generated blocks of this README ([D049](docs/DECISIONS.md)).
+Ranking is evaluated on KuaiRand random exposures, and uplift models on Hillstrom and Criteo. A simulator built from KuaiRand tables runs delivery policies that differ in volume, gating, timing and copy, each over a sensitivity sweep. Copy templates are generated once, rated, and chosen by a bandit in the simulator. On Duolingo's notification logs the same policy rule is scored offline on Duolingo's own templates, after a check that the logged template choice was uniform and a replication of the paper's offline results. Off-policy estimators are checked against a known policy value on the Open Bandit Dataset, and in the simulator, including estimators that carry a state across days and two more logging designs. A report step reads `results/*.json` and writes the report page and the generated blocks of this README ([D049](docs/DECISIONS.md)).
 
 Each result in the evidence matrix carries a tier, simulator results are shown only with their sensitivity sweep, and post hoc analyses are labeled. Pre-registrations and results are in [docs/DECISIONS.md](docs/DECISIONS.md); formulas, assumptions and parameter ranges in [docs/METHODS.md](docs/METHODS.md).
 
@@ -60,6 +47,7 @@ Needs Python 3.14 and [uv](https://docs.astral.sh/uv/); everything runs on 4 CPU
 uv sync
 uv run pytest                                   # synthetic fixtures and the committed results; no downloads
 uv run python -m push_lab.data.download         # datasets into data/raw, checksums verified
+uv run python -m push_lab.data.download --only duolingo  # optional Duolingo logs, 9.35 GB; prepare takes the same flag
 uv run python -m push_lab.data.prepare          # Parquet into data/processed
 uv run python -m push_lab.report.build          # report in site/ and the README numbers
 ```
@@ -69,12 +57,12 @@ uv run python -m push_lab.report.build          # report in site/ and the README
 ## Limits
 
 - Tier C results come from a simulator. They can show that one policy beats another across a stated share of assumptions; they cannot give real-world effect sizes. Settings are points drawn over the parameter box, not probabilities of the real world.
-- Finding 1 does not show the size or sign of annoyance in a real app, or how parameters interact: the sweep moves one parameter at a time.
-- The decomposed gate G2 assumes that an open and an organic visit are independent given the features. This holds in the simulator by construction, so part of any G2 win comes from the simulator's structure.
-- Per-setting verdicts of H1 and H3 rest on one model fit and understate fit noise. Crossing intervals cover user sampling with the grid's seeds fixed, not the interpolation or model-fit randomness (D034).
-- The simulator does not read the copy, so nothing here says which text works.
-- The data of finding 3 are video feed, e-mail, ads and e-commerce recommendations, so finding 3 says nothing about push. The OBD ratio measures the estimators, not the value of any push policy.
-- On the full Men's campaign of OBD, the target is BTS with its fixed production prior, which the deployed BTS was not. The registered intervals resample impressions, which are not independent in these logs. Post hoc, with ten-minute blocks as resampling units, the registered rule would pass both IPS and DR, and the IPS pass is marginal and depends on the random stream; the registered verdict stands, and no estimator is treated as validated (D063). In a separate registered study, with the same kind of block intervals, the IPS intervals on the All and Women's campaigns contain their own on-policy values and are labeled "no shortfall shown" (D065). These data do not show where the gap below the on-policy value comes from.
+- Finding 2 does not show the size or sign of annoyance in a real app, or how parameters interact: the sweeps move one parameter at a time. The long-horizon study has one simulated world and 5,000 users, and reads its primary labels at the reference only.
+- Crossing intervals cover user sampling with the grid's seeds fixed, not the interpolation or model-fit randomness (D034).
+- The simulator does not read the copy, so its results say nothing about which text works.
+- The Duolingo results cover one notification given the logged histories: a deployed policy would change later histories, and the logs show nothing about volume fatigue or long-term effects. With no user id, intervals are conservative across days and approximate within a day. They rest on uniform logged choice, the same kind of comparison as IPS on the uniform logs of OBD (below).
+- The data of finding 4 are video feed, e-mail, ads and e-commerce recommendations, so finding 4 says nothing about push. The OBD ratio measures the estimators, not the value of any push policy.
+- On the full Men's campaign of OBD, IPS and DR fall below the deployed policy's click rate under the registered intervals; the registered verdict stands, and no estimator is treated as validated (D063). The target is BTS with its fixed prior, which the deployed BTS was not, and the registered intervals resample impressions, which are not independent in these logs. These data do not show where the gap comes from; the [report](https://shyanorn.github.io/push-lab/#real-data) gives the post hoc block intervals and a separate registered study of the All and Women's campaigns (D063, D065).
 - The results reproduce exactly on the machine that produced them, apart from a rare last-bit deviation in the two-tower fit and the few numbers that follow from it ([D062](docs/DECISIONS.md)). On other machines the fitted models and what follows from them differ ([D053](docs/DECISIONS.md)).
 
 ## Layout

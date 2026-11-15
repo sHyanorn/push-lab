@@ -4,7 +4,7 @@ import itertools
 import json
 import re
 import shutil
-from html import unescape
+from html import escape, unescape
 from pathlib import Path
 
 import pytest
@@ -12,8 +12,8 @@ import pytest
 from push_lab.report import build, facts, html, readme, svg, text
 
 ROOT = Path(__file__).parents[2]
-# Identifiers such as H1, T2, C2, U4 or D046, section references and the interval level
-ALLOWED = re.compile(r"\b[A-Z]{1,3}\d{1,3}\b|95%|METHODS \d+(\.\d+)?")
+# Identifiers such as H1, T2, C2, U4, DL3a or D046, section references and the interval level
+ALLOWED = re.compile(r"\b[A-Z]{1,3}\d{1,3}[a-z]?\b|95%|METHODS \d+(\.\d+)?")
 
 
 def _strings(path: Path) -> list[str]:
@@ -99,15 +99,18 @@ def test_committed_readme_matches_the_results() -> None:
 def test_build_writes_the_report_and_refreshes_a_stale_readme(tmp_path: Path) -> None:
     shutil.copytree(ROOT / "results", tmp_path / "results", ignore=shutil.ignore_patterns("runs"))
     committed = (ROOT / "README.md").read_text("utf-8")
-    stale = committed.replace("<!-- /results:story -->", "stale\n<!-- /results:story -->")
+    stale = committed.replace("<!-- /results:summary -->", "stale\n<!-- /results:summary -->")
     (tmp_path / "README.md").write_text(stale, encoding="utf-8")
     assert build.main(["--root", str(tmp_path), "--check"]) == 1
     assert build.main(["--root", str(tmp_path)]) == 0
     assert (tmp_path / "README.md").read_text("utf-8") == committed
     page = (tmp_path / "site" / "index.html").read_text("utf-8")
     values = facts.facts(facts.load(ROOT))
-    for name in ("ope_nt_truth", "flip_n", "ref_lift_fn", "obd_dr", "b2_spread", "obd_cited_all"):
-        assert values[name] in page
+    names = ("ope_nt_truth", "flip_n", "ref_lift_fn", "obd_dr", "b2_spread", "obd_cited_all")
+    for name in (*names, "dl3a", "dl_gamma", "hz_truth_t2", "hz_projected"):
+        assert escape(values[name]) in page
+    for item, _ in text.STORY:
+        assert escape(item) in page
     assert "<script" not in page
 
 
@@ -125,12 +128,12 @@ def test_a_changed_reading_fails_the_build_and_the_check(tmp_path: Path) -> None
 
 
 def test_render_readme_needs_every_block() -> None:
-    with pytest.raises(ValueError, match="results:story"):
+    with pytest.raises(ValueError, match="results:summary"):
         readme.render(
             "<!-- results:evidence -->\n<!-- /results:evidence -->",
             {
                 "evidence": "x",
-                "story": "y",
+                "summary": "y",
             },
         )
 
@@ -143,14 +146,15 @@ def test_readme_blocks_keep_their_form() -> None:
     rows = findings[2 : 2 + len(text.README_FINDINGS)]
     assert [row.split(" | ")[0] for row in rows] == [f"| {n}" for n in range(1, len(rows) + 1)]
     assert all(row.count(" | ") == 2 and row.endswith(" |") for row in rows)
-    assert [row.split(" | ")[2][:6] for row in rows] == ["Tier C", "Tier C", "Tier A"]
-    assert findings[2 + len(rows) :] == ["", text.README_FINDINGS_NOTE]
-    story = generated["story"].splitlines()
-    assert story[:2] == ["| Item | Outcome |", "|---|---|"]
-    assert [row.split(" | ")[0][2:] for row in story[2:-2]] == [item for item, _ in text.STORY]
-    assert all(row.count(" | ") == 1 and row.endswith(" |") for row in story[2:-2])
-    assert story[-2:] == ["", text.README_STORY_NOTE]
-    assert not any("{" in line for line in findings + story)
+    assert [row.split(" | ")[2][:6] for row in rows] == ["Tier A", "Tier C", "Tier C", "Tier A"]
+    values = facts.facts(results)
+    assert findings[2 + len(rows) :] == ["", text.README_FINDINGS_NOTE.format(**values)]
+    note = findings[-1]
+    assert f"in only {values['h3_wins']} of {values['main_settings']} main settings" in note
+    assert values["h3_average"] in note and "Tier C" in note
+    summary = generated["summary"]
+    assert "\n" not in summary and "{" not in summary
+    assert not any("{" in line for line in findings)
 
 
 def test_a_block_in_another_form_fails_the_check(tmp_path: Path) -> None:
@@ -269,3 +273,47 @@ def test_prose_on_the_obd_block_intervals_follows_the_block_results() -> None:
     changed["ope_obd_blocks"]["full"]["validation"]["DM"]["ratio_to_on_policy"]["value"] = 0.8
     with pytest.raises(ValueError, match="one value"):
         facts.facts(changed)
+
+
+def test_study_facts_quote_the_results() -> None:
+    results = facts.load(ROOT)
+    values = facts.facts(results)
+    ips = results["duolingo"]["DL3"]["DL3a"]["IPS"]
+    low, high = ips["conservative"]["ci_low"], ips["conservative"]["ci_high"]
+    assert values["dl3a"] == f"{ips['value']:.5f} ({low:.5f} to {high:.5f})"
+    assert values["dl1_replicated"] == "8 of 8"
+    assert values["dl_recent"] == "1.4% (0.4% to 2.4%)"
+    assert values["hz_e1_reversed"] == "6 of the 8"
+    assert values["hz_arm_recovers"] == "an annoyance of 0.1"
+    assert values["hz_truth_n"].startswith("+0.0129 ")
+
+
+@pytest.mark.parametrize(
+    ("file", "path", "value", "match"),
+    [
+        ("duolingo", ("DL3", "DL3b", "IPS", "label"), "RD better", "DL3b"),
+        ("duolingo", ("DL1", "answer"), "differs", "DL1"),
+        ("ope_horizon", ("primary", "E3", "labels", "arm_means", "N"), "reverses", "E3"),
+        ("ope_horizon", ("implementation_check", "passed"), False, "implementation"),
+    ],
+)
+def test_a_changed_study_reading_fails_the_build(
+    file: str, path: tuple[str, ...], value: object, match: str
+) -> None:
+    results = facts.load(ROOT)
+    facts.check_readings(results)
+    changed = copy.deepcopy(results)
+    target = changed[file]
+    for key in path[:-1]:
+        target = target[key]
+    target[path[-1]] = value
+    with pytest.raises(ValueError, match=match):
+        facts.check_readings(changed)
+
+
+def test_smis_must_reverse_wherever_pushes_annoy_users() -> None:
+    changed = copy.deepcopy(facts.load(ROOT))
+    smis = changed["ope_horizon"]["settings"]["annoyance_0.025"]["designs"]["E1"]["SMIS|S0"]
+    smis["N"]["label"] = "not validated"
+    with pytest.raises(ValueError, match="every setting with annoyance"):
+        facts.check_readings(changed)
