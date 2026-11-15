@@ -264,7 +264,7 @@ The p-values follow the Conventions (twice the smaller tail share at zero). U1 a
 
 ## 11. Push simulator
 
-**Problem.** No public data links push sends to later behavior (SPEC Section 12), so delivery policies are compared in a simulator. Every component below is an assumption with a stated source and a swept range that includes no effect; any result that depends on the simulator is Tier C and is reported only with the sweep (M5). M4 builds the simulator and checks its fitted inputs; it reports no policy outcomes.
+**Problem.** None of the data used here randomizes push volume, timing or gating (SPEC Section 12; the Duolingo logs of Section 15 randomize only the template), so delivery policies are compared in a simulator. Every component below is an assumption with a stated source and a swept range that includes no effect; any result that depends on the simulator is Tier C and is reported only with the sweep (M5). M4 builds the simulator and checks its fitted inputs; it reports no policy outcomes.
 
 **Population and time.** All 27,285 KuaiRand-Pure users, 28 simulated days, four send slots a day at 08:00, 12:00, 17:00 and 21:00 (local time, UTC+8). Simulated days are not calendar days; every user starts with no push history. A 5,000-user sample drawn with `numpy.random.default_rng(0)` serves quick runs.
 

@@ -213,7 +213,7 @@ Estimates are measured in M1 to M4 and recorded in DECISIONS.md.
 
 ## 12. Known limitations
 
-- No public dataset links push sends to in-app consumption. The end-to-end push story is a simulation built on video feed data
+- None of the datasets used here randomizes push volume, timing or gating: the Duolingo logs (METHODS 15) randomize only each notification's template and record whether a session was completed within 2 hours. The end-to-end push story is a simulation built on video feed data
 - The uplift trials are e-mail and ads, not push; they validate methods, not the simulator's gate
 - Long-term effects of volume cannot be measured here, only assumed and swept
 - A single budget multiplier is optimal only when each user's marginal gain falls with every extra send; fatigue can break this
