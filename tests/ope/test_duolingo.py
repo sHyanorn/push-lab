@@ -329,3 +329,25 @@ def test_a_fit_that_did_not_converge_is_not_read(monkeypatch: pytest.MonkeyPatch
     out = dl.dl2(_planted(np.random.default_rng(9), 50_000, 0.05, 7.0))
     assert not out["paper_form"]["converged"]
     assert out["gamma_reading"] == out["half_life"]["reading"] == "fit did not converge"
+
+
+@pytest.mark.parametrize("absent", [11, 0])
+def test_dl2_leaves_out_a_template_never_eligible(absent: int) -> None:
+    """Without L, its c_L would not enter the likelihood; without A, the other c_a would be
+    determined only up to a common shift. Either makes the Hessian singular."""
+    c = _planted(np.random.default_rng(10), 200_000, 0.05, 7.0)
+    keep = ~c.eligible[:, absent]
+    c = dl.Completed(*(getattr(c, f)[keep] for f in dl.Completed.__dataclass_fields__))
+    out = dl.dl2(c)
+    letter = conversion.TEMPLATES[absent]
+    for fitted in (out["paper_form"], out["curve"]):
+        # No standard error collapses or explodes along an undetermined direction
+        assert all(0 < p["conservative"]["se"] < 1 for p in fitted["parameters"].values())
+        c_names = [n for n in fitted["parameters"] if n.startswith("c_")]
+        # The earliest letter that occurs has c = 0
+        reference = "B" if absent == 0 else "A"
+        assert len(c_names) == K - 2 and f"c_{letter}" not in c_names
+        assert f"c_{reference}" not in c_names
+    assert out["templates_left_out"] == [letter]
+    gamma = out["paper_form"]["parameters"]["gamma"]["conservative"]
+    assert gamma["ci_low"] <= 0.05 <= gamma["ci_high"]

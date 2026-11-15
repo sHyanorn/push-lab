@@ -493,8 +493,10 @@ class Completed:
 
 class Model:
     """u[a, t] = c_a + template term; the choice probability of a completed round is the
-    softmax of u over its eligible templates, since the template was drawn uniformly. c_A = 0."""
+    softmax of u over its eligible templates, since the template was drawn uniformly. Only
+    templates that occur have a c_a, and the earliest of them, A if it occurs, has c = 0 (D077)."""
 
+    free: list[int]
     names: list[str]
     bounds: list[tuple[float | None, float | None]]
     start: FloatArray
@@ -511,7 +513,7 @@ class Model:
         parameter]. Ineligible templates get probability 0, so their terms never enter."""
         term, derivatives = self.terms(theta, c)
         u = term
-        u += np.r_[0.0, theta[: K - 1]][None, :]
+        u[:, self.free] += theta[: len(self.free)]
         u[~c.eligible] = -np.inf
         top = u.max(axis=1, keepdims=True)
         p = np.exp(u - top)
@@ -523,9 +525,10 @@ class Model:
         diff = -p
         diff[rows, c.selected] += 1.0
         if not scores:
-            parts = [diff.sum(axis=0)[1:]] + [np.array([np.sum(diff * d)]) for d in derivatives]
+            parts = [diff[:, self.free].sum(axis=0)]
+            parts += [np.array([np.sum(diff * d)]) for d in derivatives]
             return loglik, np.concatenate(parts), None
-        s = np.column_stack([diff[:, 1:]] + [(diff * d).sum(axis=1) for d in derivatives])
+        s = np.column_stack([diff[:, self.free]] + [(diff * d).sum(axis=1) for d in derivatives])
         return loglik, s.sum(axis=0), s
 
     def gradient(
@@ -543,15 +546,16 @@ class Model:
 
 
 class PaperForm(Model):
-    """Term -gamma 0.5^(d/h), 0 for a template not in the history; theta = (c_B..c_L, gamma,
-    log h)."""
+    """Term -gamma 0.5^(d/h), 0 for a template not in the history; theta = (c of every
+    occurring template after the first, gamma, log h)."""
 
-    def __init__(self) -> None:
-        self.names = [f"c_{t}" for t in duolingo.TEMPLATES[1:]] + ["gamma", "log_h"]
+    def __init__(self, templates: Sequence[int] = range(K)) -> None:
+        self.free = list(templates)[1:]
+        self.names = [f"c_{duolingo.TEMPLATES[a]}" for a in self.free] + ["gamma", "log_h"]
         self.held = ("log_h",)
-        free: list[tuple[float | None, float | None]] = [(None, None)] * K
+        free: list[tuple[float | None, float | None]] = [(None, None)] * (len(self.free) + 1)
         self.bounds = [*free, (float(np.log(H_BOUNDS[0])), float(np.log(H_BOUNDS[1])))]
-        self.start = np.r_[np.zeros(K - 1), GAMMA, np.log(HALF_LIFE)]
+        self.start = np.r_[np.zeros(len(self.free)), GAMMA, np.log(HALF_LIFE)]
 
     def terms(self, theta: FloatArray, c: Completed) -> tuple[FloatArray, list[FloatArray]]:
         """-gamma g with g = 0.5^(d/h), and its derivatives -g in gamma and -gamma g ln 2 d/h in
@@ -575,18 +579,20 @@ class Curve(Model):
     """Term beta_k for the recency bin k of the template, 0 when not in the history; bins in
     which no eligible template falls are left out."""
 
-    def __init__(self, bins: Sequence[int]) -> None:
+    def __init__(self, bins: Sequence[int], templates: Sequence[int] = range(K)) -> None:
         self.bins = list(bins)
+        self.free = list(templates)[1:]
         labels = ["[0, 1.5]"] + [f"({a:g}, {b:g}]" for a, b in pairwise(EDGES)]
         self.labels = [labels[k] for k in self.bins]
-        self.names = [f"c_{t}" for t in duolingo.TEMPLATES[1:]] + [f"beta {x}" for x in self.labels]
-        self.bounds = [(None, None)] * (K - 1 + len(self.bins))
-        self.start = np.zeros(K - 1 + len(self.bins))
+        self.names = [f"c_{duolingo.TEMPLATES[a]}" for a in self.free]
+        self.names += [f"beta {x}" for x in self.labels]
+        self.bounds = [(None, None)] * len(self.names)
+        self.start = np.zeros(len(self.names))
 
     def terms(self, theta: FloatArray, c: Completed) -> tuple[FloatArray, list[FloatArray]]:
         k = recency_bin(c.recency.astype(np.float64))
         beta = np.zeros(len(EDGES) + 1)
-        beta[self.bins] = theta[K - 1 :]
+        beta[self.bins] = theta[len(self.free) :]
         return beta[k], [(k == b).astype(np.float64) for b in self.bins]
 
 
@@ -703,10 +709,16 @@ def read_half_life(fitted: dict[str, Any]) -> dict[str, Any]:
 
 def dl2(c: Completed, deadline: Deadline | None = None) -> dict[str, Any]:
     """The paper's form with its readings, none if the fit did not converge (D076), then the
-    descriptive curve; the curve stops if a recency lies outside the bins (D070)."""
-    paper = fit(PaperForm(), c, deadline)
+    descriptive curve; the curve stops if a recency lies outside the bins (D070). A template
+    never eligible in these rounds has no c_a (D077)."""
+    seen = np.zeros(K, dtype=bool)
+    for part in c.chunks():
+        seen |= part.eligible.any(axis=0)
+    templates = np.flatnonzero(seen).tolist()
+    paper = fit(PaperForm(templates), c, deadline)
     gamma = paper["parameters"]["gamma"]
     out: dict[str, Any] = {
+        "templates_left_out": [duolingo.TEMPLATES[a] for a in range(K) if not seen[a]],
         "paper_form": paper,
         "gamma_reading": read_gamma(gamma) if paper["converged"] else NOT_CONVERGED,
         "half_life": read_half_life(paper),
@@ -719,7 +731,7 @@ def dl2(c: Completed, deadline: Deadline | None = None) -> dict[str, Any]:
     if outside:
         out["curve"] = {"stopped": f"{outside} eligible recencies outside [0, 30] days"}
         return out
-    curve = Curve([b for b in range(len(EDGES)) if per_bin[b]])
+    curve = Curve([b for b in range(len(EDGES)) if per_bin[b]], templates)
     fitted = fit(curve, c, deadline)
     for name in curve.names:
         if name.startswith("beta"):

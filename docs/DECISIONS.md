@@ -80,6 +80,7 @@ Entries are in the order they were made. Some entries up to D048 were corrected 
 | D074 | Stop lines of the long-horizon and Duolingo runs | Active |
 | D075 | Duolingo study: training precedes test | Active |
 | D076 | DL2: a fit that does not converge is not read | Active |
+| D077 | DL2: templates never compared | Active |
 
 ## D001 Python only, static report
 - Date: 2026-11-08
@@ -744,3 +745,8 @@ Entries are in the order they were made. Some entries up to D048 were corrected 
 ## D076 DL2: a fit that does not converge is not read
 - Date: 2026-11-15
 - METHODS 15 reads gamma and h from the paper's form and gives no rule for a fit whose optimizer reports failure. If L-BFGS-B ends without success, neither is read: both readings are "fit did not converge", beside the optimizer's message and the estimates and intervals as computed. This can withhold a reading at a maximum the optimizer could not confirm, as when its line search fails at the limit of floating-point precision. The curve is descriptive and keeps its `converged` flag
+
+## D077 DL2: templates never compared
+- Date: 2026-11-15
+- A template never eligible in the completed rounds with |A_t| > 1 does not enter the likelihood, so its c_a made the Hessian singular and the run failed after both passes. If that template is A, the other c_a are determined only up to a common shift: in a synthetic test the code then gave them standard errors of 27 to 48 in the paper's form and 0 for ten of the eleven in the curve, with no error
+- Such a template now has no c_a in either fit, as the curve leaves out empty bins, and the earliest letter that occurs takes c = 0, which is A whenever A occurs: a change to METHODS 15, which gives every template a c_a and sets c_A = 0. The results list the templates left out (`templates_left_out`)
