@@ -318,9 +318,9 @@ def facts(results: dict[str, Any]) -> dict[str, str]:
     c = claims(results)
     policy, carry, copy = results["policy"], results["ope_carryover"], results["copy"]
     grid = carry["flips"]["annoyance"]["values"]
-    orderings = carry["post_hoc"]["orderings"]["annoyance"]["N-T"]
-    dr_values = [p["value"] for p in orderings["DR"]]
-    truth = orderings["truth"]
+    ordering = carry["post_hoc"]["orderings"]["annoyance"]["N-T"]
+    dr_values = [p["value"] for p in ordering["DR"]]
+    truth = ordering["truth"]
     band = policy["band_F_over_N"]
     rating = copy["rating"]
     blocks = results["ope_obd_blocks"]["full"]
@@ -336,6 +336,7 @@ def facts(results: dict[str, Any]) -> dict[str, str]:
         "no_tier_b": results["evidence"]["note"],
         "crossing_note": text.CROSSING_NOTE,
         "h2_note": text.H2_NOTE,
+        "tpl_limits": text.TPL_LIMITS,
         "ope_grids": str(len(carry["post_hoc"]["orderings"])),
         "opens_w1_t": interval(ref["T"]["opens_week1"], 3),
         "opens_w1_g": interval(ref["G"]["opens_week1"], 3),
@@ -346,7 +347,6 @@ def facts(results: dict[str, Any]) -> dict[str, str]:
         "w4_n_above_f_af": "none" if n_above_af == 0 else str(n_above_af),
         "af_settings": str(sum(s["sweep"] == "annoyance_free" for s in policy["settings"])),
         "h3_losses": str(c["H3"]["losses"]),
-        "h4_half": num(policy["primary"]["main"]["H4"]["median_half_width"], 3),
         "ope_range": f"{short(grid[0])} to {short(grid[-1])}",
         "ope_settings": str(len(carry["settings"])),
         "ref_annoyance": short(results["policy_design"]["reference"]["annoyance"]),
@@ -365,6 +365,7 @@ def facts(results: dict[str, Any]) -> dict[str, str]:
             f"{num(truth[0]['value'], 4, True)} to {num(truth[-1]['value'], 4, True)}"
         ),
         "main_settings": str(n_main),
+        "h3_af_wins": "none" if c["H3-af"]["wins"] == 0 else str(c["H3-af"]["wins"]),
         "ref_lift_fn": pct_interval(reference["daily_lift_F_over_N"], 1),
         "fn_flip": interval(c["F-N"], 3),
         "fn_flip_base": crossing(policy["flips"]["base_rate"]["F-N"], 2),
@@ -376,7 +377,6 @@ def facts(results: dict[str, Any]) -> dict[str, str]:
         "band_straddling": str(band["main_sweep_counts"]["straddling"]),
         "h3_wins": str(c["H3"]["wins"]),
         "h3_average": sweep_average(c["H3"]),
-        "h3_af_wins": "none" if c["H3-af"]["wins"] == 0 else str(c["H3-af"]["wins"]),
         "h3_flip": crossing(policy["flips"]["annoyance"]["H3"], 3),
         "obd_ips": interval(c["OBD-ratio-IPS"], 3),
         "obd_dr": interval(c["OBD-ratio-DR"], 3),
@@ -396,6 +396,8 @@ def facts(results: dict[str, Any]) -> dict[str, str]:
         "b1_reference": interval(seeds["B1"]["mean_over_triples"], 4, signed=True),
         "b1_triples": str(seeds["B1"]["triples"]),
         "b1_negative": str(seeds["B1"]["negative_triples"]),
+        "b2_reference": interval(seeds["B2"]["mean_over_triples"], 4, signed=True),
+        "b2_negative": str(seeds["B2"]["negative_triples"]),
         "rater": rating["rater"],
         "kept_items": str(rating["kept"]["items"]),
         "kept_clear": str(rating["kept"]["clear_yes"]),
@@ -453,9 +455,9 @@ def study_facts(results: dict[str, Any]) -> dict[str, str]:
 
 # Tables ---------------------------------------------------------------------------------
 
+TIER_A_ROWS = ("C1", "C2", "R1", "U1", "U2", "U3", "U4", "OBD-ratio-IPS", "OBD-ratio-DR")
 MAIN_SWEEP_ROWS = ("H1", "H2", "H3", "H4")
 POLICY_ROWS = (*MAIN_SWEEP_ROWS, "H1-af", "H2-af", "H3-af", "H4-af")
-TIER_A_ROWS = ("C1", "C2", "R1", "U1", "U2", "U3", "U4", "OBD-ratio-IPS", "OBD-ratio-DR")
 TEMPLATE_ROWS = ("B1", "B2")
 
 
@@ -582,22 +584,7 @@ def tier_rows(results: dict[str, Any]) -> list[list[str]]:
 TIER_HEAD = ("Tier", "Evidence", "Can support", "Cannot support", "Claims")
 
 
-DL1_HEAD = ("Policy", "IPS lift", "Paper's lift", "Label")
 DL3_HEAD = ("Comparison", "IPS", "SNIPS", "DR", "Label")
-DL_CURVE_HEAD = ("Last sent, days before", "Change in completion")
-
-
-def dl1_rows(results: dict[str, Any]) -> list[list[str]]:
-    """Each DL1 policy's IPS lift over the mean test reward against the paper's."""
-    return [
-        [
-            name,
-            pct_interval(conservative(row["lift"]), 2),
-            num(row["paper_lift"] * 100, 2) + "%",
-            row["label"],
-        ]
-        for name, row in results["duolingo"]["DL1"]["rows"].items()
-    ]
 
 
 def dl3_rows(results: dict[str, Any]) -> list[list[str]]:
@@ -610,23 +597,7 @@ def dl3_rows(results: dict[str, Any]) -> list[list[str]]:
     return rows
 
 
-def dl_curve_rows(results: dict[str, Any]) -> list[list[str]]:
-    """Relative change in completion per recency bin, against a template not in the history."""
-    parameters = results["duolingo"]["DL2"]["curve"]["parameters"]
-    return [
-        [key.removeprefix("beta "), pct_interval(conservative(entry["relative change"]), 1)]
-        for key, entry in parameters.items()
-        if key.startswith("beta")
-    ]
-
-
 HZ_HEAD = ("Design", "Estimator", "No pushes minus one a day", "Two a day minus one")
-HZ_CODE = {
-    "reverses": "R",
-    "recovers the ordering": "O",
-    "validated, does not separate": "V",
-    "not validated": "X",
-}
 
 
 def horizon_claims(results: dict[str, Any]) -> list[ClaimEntry]:
@@ -643,19 +614,6 @@ def horizon_rows(results: dict[str, Any]) -> list[list[str]]:
     return [
         [f"{d}, {HORIZON_DESIGNS[d][0]}", n.replace("_week", "-week").replace("_", " "), *v]
         for (d, n), v in rows.items()
-    ]
-
-
-def horizon_setting_head(results: dict[str, Any]) -> tuple[str, ...]:
-    hz = results["ope_horizon"]
-    return ("Id", *(setting_name(hz, s, article=False) for s in hz["settings"]))
-
-
-def horizon_setting_rows(results: dict[str, Any]) -> list[list[str]]:
-    """The label code of each primary estimator and difference at every setting."""
-    return [
-        [claim["id"], *(HZ_CODE[label] for label in claim["setting_labels"].values())]
-        for claim in horizon_claims(results)
     ]
 
 

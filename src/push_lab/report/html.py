@@ -1,5 +1,6 @@
 """The report page: one static HTML file with inline CSS and SVG and no scripts (D049)."""
 
+import re
 from collections.abc import Sequence
 from html import escape
 from typing import Any
@@ -65,22 +66,12 @@ def legend(names: Sequence[str]) -> str:
     return f'<div class="legend">{items}</div>'
 
 
-def shows_limits(shows: str, limits: str, values: dict[str, str]) -> str:
-    return (
-        '<dl class="reading">'
-        f"<div><dt>{text.SHOWS}</dt><dd>{escape(shows.format(**values))}</dd></div>"
-        f"<div><dt>{text.LIMITS}</dt><dd>{escape(limits.format(**values))}</dd></div>"
-        "</dl>"
-    )
-
-
 def chart_figure(
     caption: str,
     xs: Sequence[float],
     series: Sequence[svg.Series],
     x_title: str,
     y_title: str,
-    tag: str = "",
 ) -> str:
     def shown(point: dict[str, Any]) -> str:
         return facts.interval(point, 4, signed=True)
@@ -88,119 +79,111 @@ def chart_figure(
     chart = svg.line_chart(xs, series, x_title, y_title, caption, shown)
     rows = [[facts.short(x), *(shown(s.points[k]) for s in series)] for k, x in enumerate(xs)]
     data = table((x_title, *(s.name for s in series)), rows, "data", nowrap=(0,))
-    badge = f' <span class="tag">{escape(tag)}</span>' if tag else ""
     return (
-        f"<figure><figcaption>{escape(caption)}{badge}</figcaption>"
+        f"<figure><figcaption>{escape(caption)}</figcaption>"
         f'{legend([s.name for s in series])}<div class="scroll">{chart}</div>'
         f"<details><summary>Data</summary>{data}</details></figure>"
     )
 
 
-def finding_one(results: dict[str, Any], values: dict[str, str]) -> str:
-    xs, bias = facts.ope_bias(results)
-    _, ordering = facts.ope_ordering(results)
-    post_hoc = escape(text.F1_POST_HOC.format(**values))
+def tagged(tag: str, template: str, values: dict[str, str]) -> str:
+    return f'<p><span class="tag">{escape(tag)}</span> {escape(template.format(**values))}</p>'
+
+
+def story(values: dict[str, str]) -> str:
     return (
-        f'<section id="ope"><h2>{escape(text.F1_TITLE)}</h2>'
-        + paragraph(text.F1_SCOPE, values, "scope")
-        + paragraph(text.F1_BODY, values)
-        + chart_figure(facts.BIAS_CAPTION, xs, bias, "Annoyance", "Bias")
-        + f'<p><span class="tag">{text.POST_HOC}</span> {post_hoc}</p>'
-        + chart_figure(
-            facts.ORDERING_CAPTION, xs, ordering, "Annoyance", "Difference", text.POST_HOC
-        )
-        + shows_limits(text.F1_SHOWS, text.F1_LIMITS, values)
-        + horizon(results, values)
+        f'<section id="story"><h2>{escape(text.STORY_TITLE)}</h2>'
+        + table(text.STORY_HEAD, facts.story_rows(values))
         + "</section>"
-    )
-
-
-def horizon(results: dict[str, Any], values: dict[str, str]) -> str:
-    """The long-horizon study: primary labels at the reference and the label at every setting."""
-    settings = table(
-        facts.horizon_setting_head(results), facts.horizon_setting_rows(results), nowrap=(0,)
-    )
-    return (
-        f"<h3>{escape(text.HZ_TITLE)}</h3>"
-        + paragraph(text.HZ_SCOPE, values, "scope")
-        + paragraph(text.HZ_BODY, values)
-        + table(facts.HZ_HEAD, facts.horizon_rows(results), nowrap=(0, 1))
-        + f"<details><summary>{text.HZ_SETTINGS}</summary>{settings}"
-        + paragraph(text.HZ_CODES, values, "scope")
-        + "</details>"
-        + f'<p><span class="tag">{text.DESCRIPTIVE}</span> '
-        + f"{escape(text.HZ_PROJECTION.format(**values))}</p>"
-        + shows_limits(text.HZ_SHOWS, text.HZ_LIMITS, values)
     )
 
 
 def duolingo(results: dict[str, Any], values: dict[str, str]) -> str:
-    curve = table(facts.DL_CURVE_HEAD, facts.dl_curve_rows(results), nowrap=(0, 1))
     return (
         f'<section id="duolingo"><h2>{escape(text.DL_TITLE)}</h2>'
         + paragraph(text.DL_SCOPE, values, "scope")
-        + paragraph(text.DL_REPLICATION, values)
-        + table(facts.DL1_HEAD, facts.dl1_rows(results), nowrap=(1, 2))
-        + paragraph(text.DL_RECENCY, values)
-        + f"<details><summary>{text.DL_CURVE}</summary>{curve}</details>"
-        + paragraph(text.DL_POLICIES, values)
+        + paragraph(text.DL_BODY, values)
         + table(facts.DL3_HEAD, facts.dl3_rows(results), nowrap=(1, 2, 3))
-        + shows_limits(text.DL_SHOWS, text.DL_LIMITS, values)
         + "</section>"
     )
 
 
-def finding_two(results: dict[str, Any], values: dict[str, str]) -> str:
-    rows = facts.sweep_rows(results, facts.POLICY_ROWS)
+def brief(rows: list[list[str]]) -> list[list[str]]:
+    """Rows of ``facts.sweep_rows`` without the unit in parentheses that ends each comparison."""
+    return [[row[0], re.sub(r"\s*\([^()]*\)$", "", row[1]), *row[2:]] for row in rows]
+
+
+def policies(results: dict[str, Any], values: dict[str, str]) -> str:
+    rows = brief(facts.sweep_rows(results, facts.MAIN_SWEEP_ROWS))
     return (
         f'<section id="policies"><h2>{escape(text.F2_TITLE)}</h2>'
         + paragraph(text.F2_SCOPE, values, "scope")
         + paragraph(text.F2_BODY, values)
         + paragraph(text.F2_GATES, values)
         + table(facts.SWEEP_HEAD, rows, nowrap=(0, 4))
-        + f'<p class="scope">{escape(text.SPREAD_NOTE)}</p>'
-        + losing(results["policy"]["primary"]["main"], facts.MAIN_SWEEP_ROWS)
-        + shows_limits(text.F2_SHOWS, text.F2_LIMITS, values)
         + "</section>"
     )
 
 
-def finding_three(results: dict[str, Any], values: dict[str, str]) -> str:
+def off_policy(results: dict[str, Any], values: dict[str, str]) -> str:
+    xs, bias = facts.ope_bias(results)
     return (
-        f'<section id="real-data"><h2>{escape(text.F3_TITLE)}</h2>'
-        + paragraph(text.F3_SCOPE, values, "scope")
-        + paragraph(text.F3_BODY, values)
-        + paragraph(text.F3_OBD_MISMATCH, values)
-        + paragraph(text.F3_OBD_BLOCKS, values)
-        + paragraph(text.F3_OBD_CITED, values)
-        + table(facts.TIER_A_HEAD, facts.tier_a_rows(results), nowrap=(0, 2))
-        + shows_limits(text.F3_SHOWS, text.F3_LIMITS, values)
+        f'<section id="ope"><h2>{escape(text.F1_TITLE)}</h2>'
+        + paragraph(text.F1_SCOPE, values, "scope")
+        + paragraph(text.F1_BODY, values)
+        + chart_figure(facts.BIAS_CAPTION, xs, bias, "Annoyance", "Bias")
+        + tagged(text.POST_HOC, text.F1_POST_HOC, values)
+        + horizon(results, values)
         + "</section>"
     )
 
 
-def losing(primary: dict[str, Any], ids: Sequence[str]) -> str:
-    """Ids of the main-sweep settings where each comparison loses (METHODS 12.7)."""
-    rows = [
-        [i, ", ".join(str(s["id"]) for s in primary[i]["losing_settings"]) or "none"] for i in ids
-    ]
-    settings = table(("Id", "Settings"), rows, nowrap=(0,))
-    return f"<details><summary>{text.LOSING}</summary>{settings}</details>"
+def horizon(results: dict[str, Any], values: dict[str, str]) -> str:
+    """The long-horizon study: primary labels at the reference."""
+    return (
+        f"<h3>{escape(text.HZ_TITLE)}</h3>"
+        + paragraph(text.HZ_SCOPE, values, "scope")
+        + paragraph(text.HZ_BODY, values)
+        + table(facts.HZ_HEAD, facts.horizon_rows(results), nowrap=(0, 1))
+    )
 
 
 def templates_section(results: dict[str, Any], values: dict[str, str]) -> str:
-    rows = facts.sweep_rows(results, facts.TEMPLATE_ROWS)
-    rating = escape(text.TPL_RATING.format(**values))
+    rows = brief(facts.sweep_rows(results, facts.TEMPLATE_ROWS))
     return (
         f'<section id="templates"><h2>{escape(text.TPL_TITLE)}</h2>'
         + paragraph(text.TPL_SCOPE, values, "scope")
         + paragraph(text.TPL_BODY, values)
         + table(facts.SWEEP_HEAD, rows, nowrap=(0, 4))
-        + losing(results["templates"]["primary"], facts.TEMPLATE_ROWS)
-        + paragraph(text.TPL_LIMITS, values)
-        + f'<p><span class="tag">{text.RATING_TAG}</span> {rating}</p>'
+        + tagged(text.RATING_TAG, text.TPL_RATING, values)
         + "</section>"
     )
+
+
+def real_data(values: dict[str, str]) -> str:
+    return (
+        f'<section id="real-data"><h2>{escape(text.F3_TITLE)}</h2>'
+        + paragraph(text.F3_SCOPE, values, "scope")
+        + paragraph(text.F3_BODY, values)
+        + tagged(text.POST_HOC, text.F3_OBD_POST_HOC, values)
+        + paragraph(text.F3_OBD_CITED, values)
+        + "</section>"
+    )
+
+
+def method(values: dict[str, str]) -> str:
+    return (
+        f'<section id="method"><h2>{escape(text.METHOD_TITLE)}</h2>'
+        + paragraph(text.METHOD, values)
+        + f"<h2>{escape(text.REPRODUCE_TITLE)}</h2>"
+        + paragraph(text.REPRODUCE, values)
+        + "</section>"
+    )
+
+
+def limits(values: dict[str, str]) -> str:
+    items = "".join(f"<li>{escape(i.format(**values))}</li>" for i in text.LIMITS_LIST)
+    return f'<section id="limits"><h2>{escape(text.LIMITS_TITLE)}</h2><ul>{items}</ul></section>'
 
 
 CSS = """
@@ -225,9 +208,7 @@ p{margin:0 0 12px;max-width:72ch}
 a{color:var(--accent)}
 .lead{font-size:18px;color:var(--ink-2)}
 .scope{color:var(--muted);font-size:14px}
-.note{border-left:3px solid var(--accent);padding:8px 14px;background:var(--surface);
-border-radius:0 6px 6px 0;max-width:72ch}
-.reading-note{color:var(--muted);font-size:14px}
+li{max-width:72ch;margin:0 0 8px}
 nav{display:flex;flex-wrap:wrap;gap:4px 16px;margin:20px 0 0;font-size:14px}
 figure{margin:20px 0;padding:16px;background:var(--surface);border:1px solid var(--ring);
 border-radius:8px}
@@ -245,16 +226,12 @@ th,td{text-align:left;vertical-align:top;padding:6px 10px;border-bottom:1px soli
 th{color:var(--ink-2);font-weight:600;white-space:nowrap}
 td{font-variant-numeric:tabular-nums}
 td.nw{white-space:nowrap}
-.reading{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0 0}
-.reading div{background:var(--surface);border:1px solid var(--ring);border-radius:8px;
-padding:12px 14px}
-.reading dt{font-weight:600;font-size:14px;margin-bottom:4px}.reading dd{margin:0}
 .sub{display:block;color:var(--muted);font-size:12px;margin-top:2px;overflow-wrap:anywhere}
 .matrix td.value{min-width:190px}
 .matrix td:first-child{overflow-wrap:anywhere;min-width:7rem}
 footer{margin-top:64px;color:var(--muted);font-size:14px}
 @media (max-width:979px){th{white-space:normal}}
-@media (max-width:640px){.reading{grid-template-columns:1fr}h1{font-size:24px}
+@media (max-width:640px){h1{font-size:24px}
 .chart{min-width:600px}figure{padding:12px}
 .stack thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
 .stack th{white-space:nowrap}
@@ -271,12 +248,14 @@ def page(results: dict[str, Any], values: dict[str, str]) -> str:
     nav = "".join(
         f'<a href="#{a}">{escape(t)}</a>'
         for a, t in (
+            ("story", "Registered story"),
             ("duolingo", "Notification logs"),
-            ("ope", "Off-policy estimates"),
             ("policies", "Delivery policies"),
-            ("real-data", "Real-data checks"),
+            ("ope", "Off-policy estimates"),
             ("templates", "Templates"),
-            ("story", "Core story"),
+            ("real-data", "Real-data checks"),
+            ("method", "Method"),
+            ("limits", "Limits"),
             ("matrix", "Evidence matrix"),
         )
     )
@@ -292,17 +271,15 @@ def page(results: dict[str, Any], values: dict[str, str]) -> str:
     body = (
         "<main><header><h1>push-lab</h1>"
         + paragraph(text.SUMMARY, values, "lead")
-        + paragraph(text.NO_TIER_B, values, "note")
-        + f'<p class="reading-note">{escape(text.READING)}</p>'
         + f"<nav>{nav}</nav></header>"
+        + story(values)
         + duolingo(results, values)
-        + finding_one(results, values)
-        + finding_two(results, values)
-        + finding_three(results, values)
+        + policies(results, values)
+        + off_policy(results, values)
         + templates_section(results, values)
-        + f'<section id="story"><h2>{escape(text.STORY_TITLE)}</h2>'
-        + table(text.STORY_HEAD, facts.story_rows(values))
-        + "</section>"
+        + real_data(values)
+        + method(values)
+        + limits(values)
         + f'<section id="matrix"><h2>{escape(text.MATRIX_TITLE)}</h2>'
         + f"<p>{escape(text.MATRIX_NOTE)}</p>"
         + matrix_table(facts.matrix_rows(results))
